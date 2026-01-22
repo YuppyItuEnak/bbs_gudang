@@ -1,0 +1,50 @@
+name: bbs_gudang
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  pdf: ^3.6.0
+  path_provider: ^2.0.11
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.5+1
+  percent_indicator: ^4.2.5
+  http: ^1.2.2
+  image_picker: ^1.0.4
+  file_picker: ^10.3.2
+  shared_preferences: ^2.4.2
+  flutter_launcher_icons: ^0.14.4
+  intl: ^0.20.2
+  video_thumbnail: ^0.5.6
+  permission_handler: ^12.0.1
+  device_info_plus: ^10.1.0
+  video_player: ^2.8.3
+  chewie: ^1.7.2
+  flutter_pdfview: ^1.0.0
+  open_file: ^3.3.2
+  jwt_decoder: ^2.0.1
+  url_launcher: ^6.3.0
+
+flutter_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "lib/assets/Logo_Badan_Gizi_Nasional_(2024) 1.png"
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  image_picker: ^1.2.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - lib/assets/
