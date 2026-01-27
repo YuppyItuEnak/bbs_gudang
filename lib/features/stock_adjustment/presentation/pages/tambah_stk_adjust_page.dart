@@ -1,5 +1,7 @@
-import 'package:bbs_gudang/features/transfer_warehouse/presentation/pages/tambah_item_page.dart';
+import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
+import 'package:bbs_gudang/features/list_item/presentation/pages/tambah_item_page.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 // Pastikan path import ini benar sesuai struktur project Anda
 // import 'package:bbs_gudang/features/transfer_warehouse/presentation/pages/tambah_item_page.dart';
 
@@ -19,20 +21,23 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
   List<Map<String, dynamic>> selectedItems = [];
 
   // Fungsi navigasi ke pilih item (Logika sama dengan Stock Opname)
- // Fungsi untuk navigasi ke halaman pilih item
+  // Fungsi untuk navigasi ke halaman pilih item
   void _navigateToSelectItem() async {
     // 1. Berpindah ke halaman List Item dan menunggu hasil (result)
     // Pastikan class 'TambahItem' sudah di-import di bagian atas
+    final token = context.read<AuthProvider>().token;
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const TambahItem()),
+      MaterialPageRoute(builder: (context) =>  TambahItem(token: token!,)),
     );
 
     // 2. Logika setelah kembali dari halaman TambahItem
     if (result != null && result is Map<String, dynamic>) {
       setState(() {
         // Cek apakah item sudah ada di list berdasarkan kode barang
-        int existingIndex = selectedItems.indexWhere((item) => item['kode'] == result['kode']);
+        int existingIndex = selectedItems.indexWhere(
+          (item) => item['kode'] == result['kode'],
+        );
 
         if (existingIndex != -1) {
           // Jika sudah ada, cukup tambahkan quantity-nya

@@ -1,5 +1,7 @@
-import 'package:bbs_gudang/features/transfer_warehouse/presentation/pages/tambah_item_page.dart';
+import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
+import 'package:bbs_gudang/features/list_item/presentation/pages/tambah_item_page.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class TambahStckOpnamePage extends StatefulWidget {
   const TambahStckOpnamePage({super.key});
@@ -14,11 +16,13 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
   List<Map<String, dynamic>> selectedItems = [];
 
   // Fungsi untuk navigasi ke halaman pilih item
+
   void _navigateToSelectItem() async {
     // Berpindah ke halaman List Item dan menunggu hasil (result)
+    final token = context.read<AuthProvider>().token;
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const TambahItem()),
+      MaterialPageRoute(builder: (context) =>  TambahItem(token: token!)),
     );
 
     // Jika user memilih barang, tambahkan ke list

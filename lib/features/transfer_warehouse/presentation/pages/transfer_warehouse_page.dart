@@ -26,7 +26,7 @@ class _TransferWarehousePageState extends State<TransferWarehousePage> {
 
       final token = context.read<AuthProvider>().token;
       if (token != null) {
-        provider.fetchListTransferWarehouse(token: token);
+        provider.fetchListTransferWarehouse(token: token, refresh: true);
       }
     });
   }

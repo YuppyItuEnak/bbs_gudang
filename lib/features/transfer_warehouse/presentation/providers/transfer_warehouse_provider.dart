@@ -1,3 +1,6 @@
+import 'package:bbs_gudang/data/models/list_item/list_item_model.dart';
+import 'package:bbs_gudang/data/models/transfer_warehouse/company_warehouse_model.dart';
+import 'package:bbs_gudang/data/models/transfer_warehouse/transfer_company_model.dart';
 import 'package:bbs_gudang/data/models/transfer_warehouse/transfer_warehouse_model.dart';
 import 'package:bbs_gudang/data/services/transfer_warehouse/transfer_warehouse_repository.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +14,18 @@ class TransferWarehouseProvider extends ChangeNotifier {
   List<TransferWarehouseModel> _listTransferWarehouse = [];
   TransferWarehouseModel? _detailTransferWarehouse;
 
+  List<TransferCompanyModel> _companies = [];
+  List<TransferCompanyModel> get companies => _companies;
+
+  List<CompanyWarehouseModel> _warehouses = [];
+  List<CompanyWarehouseModel> get warehouses => _warehouses;
+
+  bool _isLoadingCompany = false;
+  bool _isLoadingWarehouse = false;
+
+  bool get isLoadingCompany => _isLoadingCompany;
+  bool get isLoadingWarehouse => _isLoadingWarehouse;
+
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   List<TransferWarehouseModel> get listTransferWarehouse =>
@@ -18,7 +33,88 @@ class TransferWarehouseProvider extends ChangeNotifier {
   TransferWarehouseModel? get detailTransferWarehouse =>
       _detailTransferWarehouse;
 
-  Future<void> fetchListTransferWarehouse({required String token}) async {
+  List<Map<String, dynamic>> _items = [];
+  List<Map<String, dynamic>> get items => _items;
+
+  bool isSubmitting = false;
+  List<Map<String, dynamic>> transactions = [];
+
+  void setTransactions(List<Map<String, dynamic>> data) {
+    transactions = data;
+    notifyListeners();
+  }
+
+  void setItems(List<Map<String, dynamic>> newItems) {
+    _items = newItems;
+    notifyListeners();
+  }
+
+  void removeItem(String id) {
+    _items.removeWhere((e) => e['id'] == id);
+    notifyListeners();
+  }
+
+  void updateQty(String id, int qty) {
+    final index = _items.indexWhere((e) => e['id'] == id);
+    if (index != -1) {
+      _items[index]['qty'] = qty;
+      notifyListeners();
+    }
+  }
+
+  Future<void> submitTransfer({
+    required String token,
+    required String unitBusinessId,
+    required String sourceWarehouseId,
+    required String destinationWarehouseId,
+    required String status, // DRAFT / POSTED
+    String? notes,
+  }) async {
+    isSubmitting = true;
+    notifyListeners();
+
+    try {
+      final payload = {
+        "status": status,
+        "unit_bussiness_id": unitBusinessId,
+        "date": DateTime.now().toIso8601String().substring(0, 10),
+        "source_warehouse_id": sourceWarehouseId,
+        "destination_warehouse_id": destinationWarehouseId,
+        "notes": notes,
+        "tonnage": items.length,
+        "t_inventory_transfer_warehouse_d": items
+            .map(
+              (e) => {
+                "item_id": e['id'],
+                "item_code": e['code'],
+                "item_name": e['name'],
+                "qty": e['qty'],
+                "uom": "PCS",
+                "weight": 0,
+                "notes": "",
+              },
+            )
+            .toList(),
+      };
+
+      await _transferWarehouseRepository.saveTransferWarehouse(
+        token: token,
+        payload: payload,
+      );
+    } finally {
+      isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchListTransferWarehouse({
+    required String token,
+    bool refresh = false,
+  }) async {
+    if (refresh) {
+      _listTransferWarehouse = [];
+    }
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -50,9 +146,63 @@ class TransferWarehouseProvider extends ChangeNotifier {
           .fetchDetailTransferWarehouse(token: token, id: id);
     } catch (e) {
       _errorMessage = e.toString();
-      debugPrint("❌ ERROR FETCH Transfer Warehouse: $e");
+      debugPrint("❌ ERROR FETCH Detail Transfer Warehouse: $e");
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadUserCompanies({
+    required String token,
+    required String userId,
+    required String responsibilityId,
+  }) async {
+    _isLoadingCompany = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _companies = await _transferWarehouseRepository.fetchUserCompanies(
+        token: token,
+        userId: userId,
+        responsibilityId: responsibilityId,
+      );
+    } catch (e) {
+      _errorMessage = e.toString();
+    } finally {
+      _isLoadingCompany = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadWarehouseCompany({
+    required String token,
+    required String unitBusinessId,
+  }) async {
+    // debugPrint('MASUK loadWarehouseCompany');
+    // debugPrint('Unit Business ID: $unitBusinessId');
+
+    _isLoadingWarehouse = true;
+    _warehouses = [];
+    notifyListeners();
+
+    try {
+      // debugPrint('CALL API fetchListWarehouse...');
+      final result = await _transferWarehouseRepository.fetchListWarehouse(
+        unitBusinessId: unitBusinessId,
+        token: token,
+      );
+
+      debugPrint(
+        'Total Warehouse Company dari Unit Business $unitBusinessId: ${result.length}',
+      );
+      _warehouses = result;
+    } catch (e, s) {
+      debugPrint('ERROR fetch warehouse: $e');
+      debugPrint('$s');
+    } finally {
+      _isLoadingWarehouse = false;
       notifyListeners();
     }
   }

@@ -1,7 +1,10 @@
+import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
+import 'package:bbs_gudang/features/list_item/presentation/pages/tambah_item_page.dart';
 import 'package:bbs_gudang/features/transfer_warehouse/presentation/pages/list_item_terpilih_page.dart';
-import 'package:bbs_gudang/features/transfer_warehouse/presentation/pages/tambah_item_page.dart';
+import 'package:bbs_gudang/features/transfer_warehouse/presentation/providers/transfer_warehouse_provider.dart';
 import 'package:bbs_gudang/features/transfer_warehouse/presentation/widgets/detail_item_terpilih.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class TambahTransferPage extends StatefulWidget {
   const TambahTransferPage({super.key});
@@ -11,13 +14,44 @@ class TambahTransferPage extends StatefulWidget {
 }
 
 class _TambahTransferPageState extends State<TambahTransferPage> {
-  // Variabel untuk menyimpan nilai input
+  String? selectedCompany;
   String? selectedGudangAwal;
   String? selectedGudangTujuan;
+
   final TextEditingController _catatanController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    final auth = context.read<AuthProvider>();
+
+    String? responsibilityId;
+    if (auth.user!.userDetails.isNotEmpty) {
+      final primaryDetail = auth.user!.userDetails.firstWhere(
+        (d) => d.isPrimary == true,
+        orElse: () => auth.user!.userDetails.first,
+      );
+      responsibilityId = primaryDetail.fResponsibility;
+    }
+
+    if (responsibilityId != null) {
+      Future.microtask(() {
+        context.read<TransferWarehouseProvider>().loadUserCompanies(
+          token: auth.token ?? "",
+          userId: auth.user?.id ?? "",
+          responsibilityId: responsibilityId!,
+        );
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final provider = context.watch<TransferWarehouseProvider>();
+    // debugPrint('Selected company: $selectedCompany');
+    // debugPrint('Warehouse count: ${provider.warehouses.length}');
+    final items = context.watch<TransferWarehouseProvider>().items;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -45,71 +79,43 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- HEADER DATE & STATUS ---
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today_outlined,
-                            color: Colors.grey[400],
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            "02 Agustus 2025",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 15,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.blue[50],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          "Draft",
-                          style: TextStyle(
-                            color: Colors.blue[700],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 25),
+                  _buildLabel("Company"),
+                  provider.isLoadingCompany
+                      ? const Center(child: CircularProgressIndicator())
+                      : _buildCompanyDropdown(provider),
 
-                  // --- INPUT GUDANG AWAL ---
+                  const SizedBox(height: 20),
+
                   _buildLabel("Gudang Awal"),
-                  _buildDropdownField(
-                    hint: "Pilih Gudang Awal",
+                  _buildWarehouseDropdown(
+                    provider: provider,
                     value: selectedGudangAwal,
-                    items: ["Gudang Utama", "Gudang Pembantu"],
-                    onChanged: (val) =>
-                        setState(() => selectedGudangAwal = val),
+                    hint: "Pilih Gudang Awal",
+                    onChanged: (val) {
+                      setState(() {
+                        selectedGudangAwal = val;
+                        if (selectedGudangTujuan == val) {
+                          selectedGudangTujuan = null;
+                        }
+                      });
+                    },
                   ),
+
                   const SizedBox(height: 20),
 
-                  // --- INPUT GUDANG TUJUAN ---
                   _buildLabel("Gudang Tujuan"),
-                  _buildDropdownField(
-                    hint: "Pilih Gudang Tujuan",
+                  _buildWarehouseDropdown(
+                    provider: provider,
                     value: selectedGudangTujuan,
-                    items: ["Gudang Retur", "Gudang Konsinyasi"],
-                    onChanged: (val) =>
-                        setState(() => selectedGudangTujuan = val),
+                    hint: "Pilih Gudang Tujuan",
+                    excludeId: selectedGudangAwal,
+                    onChanged: (val) {
+                      setState(() => selectedGudangTujuan = val);
+                    },
                   ),
+
                   const SizedBox(height: 20),
 
-                  // --- INPUT CATATAN ---
                   _buildLabel("Catatan Header"),
                   TextField(
                     controller: _catatanController,
@@ -117,51 +123,52 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
                     decoration: InputDecoration(
                       hintText: "Catatan",
                       hintStyle: TextStyle(color: Colors.grey[400]),
-                      filled: true,
-                      fillColor: Colors.white,
-                      enabledBorder: OutlineInputBorder(
+                      border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: Colors.green),
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
-                  // --- WIDGET DETAIL ITEM TERPILIH ---
                   DetailItemTerpilih(
-                    count: 2, // Angka ini bisa dinamis dari variabel state
+                    count: items.length,
                     onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const ListItemTerpilihPage()));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ListItemTerpilihPage(),
+                        ),
+                      );
                     },
                   ),
+
                   const SizedBox(height: 25),
 
-                  // --- BUTTON ADD ITEM ---
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder:  (_) => const TambahItem()));
+                      onPressed: () async {
+                        final token = context.read<AuthProvider>().token;
+
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TambahItem(token: token!),
+                          ),
+                        );
+
+                        if (result != null && result is List) {
+                          final items = List<Map<String, dynamic>>.from(result);
+
+                          context.read<TransferWarehouseProvider>().setItems(
+                            items,
+                          );
+                        }
+
                       },
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.green),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        "+ Add Item",
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      child: const Text("+ Add Item"),
                     ),
                   ),
                 ],
@@ -169,31 +176,59 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
             ),
           ),
 
-          // --- BOTTOM BUTTON ---
           Padding(
             padding: const EdgeInsets.all(20),
             child: SizedBox(
               width: double.infinity,
               height: 55,
               child: ElevatedButton(
-                onPressed: () {
-                  // Aksi lanjut
+                onPressed: () async {
+                  final provider = context.read<TransferWarehouseProvider>();
+                  final auth = context.read<AuthProvider>();
+
+                  if (provider.items.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Item belum dipilih')),
+                    );
+                    return;
+                  }
+
+                  if (selectedCompany == null ||
+                      selectedGudangAwal == null ||
+                      selectedGudangTujuan == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Lengkapi data terlebih dahulu'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  try {
+                    await provider.submitTransfer(
+                      token: auth.token!,
+                      unitBusinessId: selectedCompany!,
+                      sourceWarehouseId: selectedGudangAwal!,
+                      destinationWarehouseId: selectedGudangTujuan!,
+                      status:
+                          "DRAFT", // ganti POSTED kalau mau langsung posting
+                      notes: _catatanController.text,
+                    );
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Transfer berhasil disimpan'),
+                      ),
+                    );
+
+                    Navigator.pop(context, true);
+                  } catch (e) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(e.toString())));
+                  }
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4CAF50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  "Lanjut",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: const Text("Lanjut"),
               ),
             ),
           ),
@@ -202,44 +237,85 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
     );
   }
 
-  // Widget Helper untuk Label
+  // ================= HELPERS =================
+
+  Widget _buildCompanyDropdown(TransferWarehouseProvider provider) {
+    if (provider.isLoadingCompany) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (provider.companies.isEmpty) {
+      return const Text("Company tidak tersedia");
+    }
+
+    return DropdownButtonFormField<String>(
+      value: provider.companies.any((c) => c.id == selectedCompany)
+          ? selectedCompany
+          : null,
+      hint: const Text("Pilih Company"),
+      decoration: InputDecoration(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      ),
+      items: provider.companies
+          .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+          .toList(),
+      onChanged: (val) {
+        debugPrint('Company dipilih: $val');
+
+        if (val == null) return;
+
+        setState(() {
+          selectedCompany = val;
+          selectedGudangAwal = null;
+          selectedGudangTujuan = null;
+        });
+
+        if (val != null) {
+          // debugPrint("Masuk");
+          context.read<TransferWarehouseProvider>().loadWarehouseCompany(
+            unitBusinessId: val,
+            token: context.read<AuthProvider>().token!,
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildWarehouseDropdown({
+    required TransferWarehouseProvider provider,
+    required String? value,
+    required String hint,
+    String? excludeId,
+    required Function(String?) onChanged,
+  }) {
+    final isEnabled = selectedCompany != null && provider.warehouses.isNotEmpty;
+
+    return DropdownButtonFormField<String>(
+      value: provider.warehouses.any((w) => w.id == value) ? value : null,
+      hint: Text(hint),
+      isExpanded: true,
+      decoration: InputDecoration(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      ),
+      items: provider.warehouses
+          .where((w) => w.id != excludeId)
+          .map((w) => DropdownMenuItem(value: w.id, child: Text(w.name)))
+          .toList(),
+      onChanged: isEnabled ? onChanged : null, // 🔥 INI KUNCI
+    );
+  }
+
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         text,
         style: TextStyle(
-          color: Colors.grey[400],
+          color: Colors.grey[600],
           fontSize: 14,
           fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  // Widget Helper untuk Dropdown Kustom
-  Widget _buildDropdownField({
-    required String hint,
-    required String? value,
-    required List<String> items,
-    required Function(String?) onChanged,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          hint: Text(hint, style: TextStyle(color: Colors.grey[400])),
-          isExpanded: true,
-          icon: const Icon(Icons.arrow_drop_down, color: Colors.black87),
-          items: items.map((String item) {
-            return DropdownMenuItem(value: item, child: Text(item));
-          }).toList(),
-          onChanged: onChanged,
         ),
       ),
     );

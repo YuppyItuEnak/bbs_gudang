@@ -1,21 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:bbs_gudang/features/transfer_warehouse/presentation/providers/transfer_warehouse_provider.dart';
 
-class ListItemTerpilihPage extends StatefulWidget {
+class ListItemTerpilihPage extends StatelessWidget {
   const ListItemTerpilihPage({super.key});
 
   @override
-  State<ListItemTerpilihPage> createState() => _ListItemTerpilihPageState();
-}
-
-class _ListItemTerpilihPageState extends State<ListItemTerpilihPage> {
-  // Data dummy item yang sudah terpilih
-  final List<Map<String, dynamic>> selectedItems = [
-    {"nama": "Barang A", "kode": "Kode0001", "qty": 12},
-    {"nama": "Barang B", "kode": "Kode0002", "qty": 5},
-  ];
-
-  @override
   Widget build(BuildContext context) {
+    final items = context.watch<TransferWarehouseProvider>().items;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -35,95 +28,27 @@ class _ListItemTerpilihPageState extends State<ListItemTerpilihPage> {
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          // --- SEARCH BAR SECTION ---
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Cari",
-                        prefixIcon: Icon(Icons.search, color: Colors.grey),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: const Icon(
-                    Icons.tune,
-                    color: Colors.black87,
-                    size: 20,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // --- HEADER SECTION (Title & Add Button) ---
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Item Terpilih",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.black87,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    // Navigasi kembali ke halaman pilih item
-                  },
-                  child: const Text(
-                    "+ Add Item",
-                    style: TextStyle(
-                      color: Color(0xFF4CAF50),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // --- LIST SECTION ---
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: selectedItems.length,
+      body: items.isEmpty
+          ? const Center(child: Text("Belum ada item terpilih"))
+          : ListView.builder(
+              padding: const EdgeInsets.all(20),
+              itemCount: items.length,
               itemBuilder: (context, index) {
-                final item = selectedItems[index];
-                return _buildSelectedItemCard(index, item);
+                final item = items[index];
+                return _ItemCard(item: item);
               },
             ),
-          ),
-        ],
-      ),
     );
   }
+}
 
-  Widget _buildSelectedItemCard(int index, Map<String, dynamic> item) {
+class _ItemCard extends StatelessWidget {
+  final Map<String, dynamic> item;
+
+  const _ItemCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(15),
@@ -140,12 +65,12 @@ class _ListItemTerpilihPageState extends State<ListItemTerpilihPage> {
       ),
       child: Column(
         children: [
-          // Row atas: Nama Item & Tombol Hapus
+          // HEADER
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                item['nama'],
+                item['name'],
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF4CAF50),
@@ -154,9 +79,9 @@ class _ListItemTerpilihPageState extends State<ListItemTerpilihPage> {
               ),
               GestureDetector(
                 onTap: () {
-                  setState(() {
-                    selectedItems.removeAt(index);
-                  });
+                  context.read<TransferWarehouseProvider>().removeItem(
+                    item['id'],
+                  );
                 },
                 child: const Text(
                   "Hapus",
@@ -169,50 +94,48 @@ class _ListItemTerpilihPageState extends State<ListItemTerpilihPage> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          // Row bawah: Kode & Qty Selector
+          const SizedBox(height: 6),
+
+          // BODY
           Row(
             children: [
               Expanded(
                 child: Text(
-                  item['kode'],
+                  item['code'],
                   style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
                 ),
               ),
-              const Text(
-                "PCS",
-                style: TextStyle(color: Colors.grey, fontSize: 13),
-              ),
+              const Text("PCS"),
               const SizedBox(width: 10),
-              // Qty Selector
+
               Row(
                 children: [
-                  _buildQtyBtn(
+                  _qtyBtn(
                     icon: Icons.remove,
                     onTap: () {
                       if (item['qty'] > 1) {
-                        setState(() => item['qty']--);
+                        context.read<TransferWarehouseProvider>().updateQty(
+                          item['id'],
+                          item['qty'] - 1,
+                        );
                       }
                     },
                   ),
                   Container(
-                    width: 60,
-                    height: 35,
-                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    width: 50,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
                     child: Text(
                       item['qty'].toString(),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                  _buildQtyBtn(
+                  _qtyBtn(
                     icon: Icons.add,
                     onTap: () {
-                      setState(() => item['qty']++);
+                      context.read<TransferWarehouseProvider>().updateQty(
+                        item['id'],
+                        item['qty'] + 1,
+                      );
                     },
                   ),
                 ],
@@ -224,16 +147,16 @@ class _ListItemTerpilihPageState extends State<ListItemTerpilihPage> {
     );
   }
 
-  Widget _buildQtyBtn({required IconData icon, required VoidCallback onTap}) {
+  Widget _qtyBtn({required IconData icon, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: const Color(0xFF4CAF50),
           borderRadius: BorderRadius.circular(6),
         ),
-        child: Icon(icon, color: Colors.white, size: 20),
+        child: Icon(icon, color: Colors.white, size: 18),
       ),
     );
   }
