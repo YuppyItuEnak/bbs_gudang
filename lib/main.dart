@@ -1,6 +1,7 @@
 import 'package:bbs_gudang/features/home/presentation/pages/home_page.dart';
 import 'package:bbs_gudang/features/home/presentation/providers/history_gudang_provider.dart';
 import 'package:bbs_gudang/features/penerimaan_barang/presentation/providers/penerimaan_barang_provider.dart';
+import 'package:bbs_gudang/features/pengeluaran_barang/presentation/providers/pengeluaran_barang_provider.dart';
 import 'package:bbs_gudang/features/quotation/presentation/providers/product_group_provider.dart';
 import 'package:bbs_gudang/features/quotation/presentation/providers/product_provider.dart';
 import 'package:bbs_gudang/features/quotation/presentation/providers/quotation_provider.dart';
@@ -39,7 +40,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PenerimaanBarangProvider()),
         ChangeNotifierProvider(create: (_) => StockOpnameProvider()),
         ChangeNotifierProvider(create: (_) => StockAdjustmentProvider()),
-        
+        ChangeNotifierProvider(create: (_) => PengeluaranBarangProvider()),
       ],
       child: MaterialApp(
         title: 'MBG QL App',

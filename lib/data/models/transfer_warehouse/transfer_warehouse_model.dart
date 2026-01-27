@@ -1,3 +1,5 @@
+import 'package:bbs_gudang/data/models/transfer_warehouse/transfer_warehouse_detail.dart';
+
 class TransferWarehouseModel {
   final String id;
   final String unitBusinessId;
@@ -12,6 +14,7 @@ class TransferWarehouseModel {
   final UnitBusinessModel unitBusiness;
   final WarehouseModel sourceWarehouse;
   final WarehouseModel destinationWarehouse;
+  final List<TransferWarehouseDetail> details;
 
   TransferWarehouseModel({
     required this.id,
@@ -26,6 +29,7 @@ class TransferWarehouseModel {
     required this.unitBusiness,
     required this.sourceWarehouse,
     required this.destinationWarehouse,
+    required this.details,
   });
 
   factory TransferWarehouseModel.fromJson(Map<String, dynamic> json) {
@@ -44,6 +48,12 @@ class TransferWarehouseModel {
       destinationWarehouse: WarehouseModel.fromJson(
         json['destination_warehouse'],
       ),
+
+      details: json['t_inventory_transfer_warehouse_ds'] == null
+          ? []
+          : (json['t_inventory_transfer_warehouse_ds'] as List)
+                .map((e) => TransferWarehouseDetail.fromJson(e))
+                .toList(),
     );
   }
 }

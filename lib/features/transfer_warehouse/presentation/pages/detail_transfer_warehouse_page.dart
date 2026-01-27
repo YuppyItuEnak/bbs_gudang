@@ -1,7 +1,17 @@
+import 'package:bbs_gudang/data/models/transfer_warehouse/transfer_warehouse_detail.dart';
+import 'package:bbs_gudang/features/transfer_warehouse/presentation/providers/transfer_warehouse_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class DetailTransferWarehousePage extends StatefulWidget {
-  const DetailTransferWarehousePage({super.key});
+  final String id;
+  final String token;
+
+  const DetailTransferWarehousePage({
+    super.key,
+    required this.id,
+    required this.token,
+  });
 
   @override
   State<DetailTransferWarehousePage> createState() =>
@@ -10,11 +20,17 @@ class DetailTransferWarehousePage extends StatefulWidget {
 
 class _DetailTransferWarehousePageState
     extends State<DetailTransferWarehousePage> {
-  // Data Dummy untuk Item
-  final List<Map<String, String>> items = [
-    {"nama": "Barang A", "kode": "Kode0001", "qty": "12 PCS"},
-    {"nama": "Barang B", "kode": "Kode0002", "qty": "5 PCS"},
-  ];
+  @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      context.read<TransferWarehouseProvider>().fetchDetailTransferWarehouse(
+        token: widget.token,
+        id: widget.id,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,160 +53,223 @@ class _DetailTransferWarehousePageState
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --- HEADER: DATE & STATUS ---
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Consumer<TransferWarehouseProvider>(
+        builder: (context, provider, _) {
+          // 🔄 LOADING
+          if (provider.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          // ❌ ERROR
+          if (provider.errorMessage != null) {
+            return Center(
+              child: Text(
+                provider.errorMessage!,
+                style: const TextStyle(color: Colors.red),
+              ),
+            );
+          }
+
+          final data = provider.detailTransferWarehouse;
+
+          if (data == null) {
+            return const Center(child: Text("Data tidak ditemukan"));
+          }
+
+          return Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // --- HEADER: DATE & STATUS ---
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(
-                            Icons.calendar_today_outlined,
-                            color: Colors.grey[400],
-                            size: 18,
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today_outlined,
+                                color: Colors.grey[400],
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _formatDate(data.date),
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            "02 Agustus 2025",
+                          _buildStatusBadge(data.status),
+                        ],
+                      ),
+                      const SizedBox(height: 15),
+
+                      // --- TRANS TRANSACTION NUMBER ---
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "No. Transfer Warehouse",
                             style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            data.code,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
                               fontSize: 15,
                               color: Colors.black87,
                             ),
                           ),
                         ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFB300), // Warna Amber/Orange
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          "Posted",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
+                      const SizedBox(height: 20),
 
-                  // --- TRANS TRANSACTION NUMBER ---
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "No. Transfer Warehouse",
-                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                      // --- WAREHOUSE PATH CARD ---
+                      _buildWarehousePathCard(
+                        data.sourceWarehouse.name,
+                        data.destinationWarehouse.name,
                       ),
+                      const SizedBox(height: 20),
+
+                      // --- NOTES ---
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.edit_note,
+                            color: Colors.grey[400],
+                            size: 22,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Catatan",
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        data.notes ?? "-",
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(height: 25),
+
+                      // --- ITEM LIST SECTION ---
                       const Text(
-                        "TW-2501-0001",
+                        "Item Terpilih",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 16,
                           color: Colors.black87,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
+                      const SizedBox(height: 15),
 
-                  // --- WAREHOUSE PATH CARD ---
-                  _buildWarehousePathCard(),
-                  const SizedBox(height: 20),
-
-                  // --- NOTES ---
-                  Row(
-                    children: [
-                      Icon(Icons.edit_note, color: Colors.grey[400], size: 22),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Catatan",
-                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: data.details.length,
+                        itemBuilder: (context, index) {
+                          final item = data.details[index];
+                          return _buildItemDetailCard(item);
+                        },
                       ),
                     ],
                   ),
-                  const SizedBox(height: 25),
+                ),
+              ),
 
-                  // --- ITEM LIST SECTION ---
-                  const Text(
-                    "Item Terpilih",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.black87,
+              // --- BOTTOM BUTTON ---
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF4CAF50)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      "Kembali",
+                      style: TextStyle(
+                        color: Color(0xFF4CAF50),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 15),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      return _buildItemDetailCard(items[index]);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // --- BOTTOM BUTTON ---
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: OutlinedButton(
-                onPressed: () => Navigator.pop(context),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF4CAF50)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  "Kembali",
-                  style: TextStyle(
-                    color: Color(0xFF4CAF50),
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
                 ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
 
-  // Widget untuk alur Gudang Awal ke Tujuan
-  Widget _buildWarehousePathCard() {
+  // ================= HELPER UI =================
+
+  Widget _buildStatusBadge(String status) {
+    Color color;
+
+    switch (status.toLowerCase()) {
+      case 'posted':
+        color = const Color(0xFFFFB300);
+        break;
+      case 'draft':
+        color = Colors.grey;
+        break;
+      case 'approved':
+        color = Colors.green;
+        break;
+      default:
+        color = Colors.blueGrey;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        status,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWarehousePathCard(String source, String destination) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1FDF3), // Hijau sangat muda
+        color: const Color(0xFFF1FDF3),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildWarehouseLabel("Gudang Awal", "Gudang Utama", Colors.red),
+          _buildWarehouseLabel("Gudang Awal", source, Colors.red),
           _buildPathDivider(),
-          _buildWarehouseLabel("Gudang Tujuan", "Gudang Retur", Colors.green),
+          _buildWarehouseLabel("Gudang Tujuan", destination, Colors.green),
         ],
       ),
     );
@@ -219,12 +298,20 @@ class _DetailTransferWarehousePageState
           ],
         ),
         const SizedBox(height: 4),
-        Text(
-          name,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-            color: Colors.black87,
+        SizedBox(
+          width: 120, // batas lebar supaya tidak nabrak divider
+          child: Text(
+            name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: (dotColor == Colors.red)
+                ? TextAlign.left
+                : TextAlign.right,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: Colors.black87,
+            ),
           ),
         ),
       ],
@@ -241,8 +328,7 @@ class _DetailTransferWarehousePageState
     );
   }
 
-  // Widget untuk Kartu Detail Item
-  Widget _buildItemDetailCard(Map<String, String> item) {
+  Widget _buildItemDetailCard(TransferWarehouseDetail item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -251,26 +337,35 @@ class _DetailTransferWarehousePageState
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                item['nama']!,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: Colors.black87,
+          // KIRI
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.itemName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                item['kode']!,
-                style: TextStyle(color: Colors.grey[400], fontSize: 13),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  item.itemCode,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                ),
+              ],
+            ),
           ),
+
+          const SizedBox(width: 12),
+
+          // KANAN (QTY)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -278,7 +373,7 @@ class _DetailTransferWarehousePageState
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              item['qty']!,
+              "${item.qty} ${item.uom}",
               style: const TextStyle(
                 color: Color(0xFF4CAF50),
                 fontWeight: FontWeight.bold,
@@ -289,5 +384,30 @@ class _DetailTransferWarehousePageState
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return "${date.day.toString().padLeft(2, '0')} "
+        "${_monthName(date.month)} "
+        "${date.year}";
+  }
+
+  String _monthName(int month) {
+    const months = [
+      "Januari",
+      "Februari",
+      "Maret",
+      "April",
+      "Mei",
+      "Juni",
+      "Juli",
+      "Agustus",
+      "September",
+      "Oktober",
+      "November",
+      "Desember",
+    ];
+
+    return months[month - 1];
   }
 }

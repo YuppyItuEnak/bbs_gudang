@@ -9,11 +9,14 @@ class TransferWarehouseProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   List<TransferWarehouseModel> _listTransferWarehouse = [];
+  TransferWarehouseModel? _detailTransferWarehouse;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   List<TransferWarehouseModel> get listTransferWarehouse =>
       _listTransferWarehouse;
+  TransferWarehouseModel? get detailTransferWarehouse =>
+      _detailTransferWarehouse;
 
   Future<void> fetchListTransferWarehouse({required String token}) async {
     _isLoading = true;
@@ -25,6 +28,26 @@ class TransferWarehouseProvider extends ChangeNotifier {
           .fetchListTransferWarehouse(token: token);
 
       _listTransferWarehouse = result;
+    } catch (e) {
+      _errorMessage = e.toString();
+      debugPrint("❌ ERROR FETCH Transfer Warehouse: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchDetailTransferWarehouse({
+    required String token,
+    required String id,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _detailTransferWarehouse = await _transferWarehouseRepository
+          .fetchDetailTransferWarehouse(token: token, id: id);
     } catch (e) {
       _errorMessage = e.toString();
       debugPrint("❌ ERROR FETCH Transfer Warehouse: $e");

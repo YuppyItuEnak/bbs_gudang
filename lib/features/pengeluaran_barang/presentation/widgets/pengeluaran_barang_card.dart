@@ -1,7 +1,8 @@
+import 'package:bbs_gudang/data/models/pengeluaran_barang/pengeluaran_barang_model.dart';
 import 'package:flutter/material.dart';
 
 class PengeluaranBarangCard extends StatelessWidget {
-  final Map<String, String> data;
+  final PengeluaranBarangModel data;
   final VoidCallback? onTap;
 
   const PengeluaranBarangCard({super.key, required this.data, this.onTap});
@@ -26,7 +27,7 @@ class PengeluaranBarangCard extends StatelessWidget {
         child: IntrinsicHeight(
           child: Row(
             children: [
-              // Aksen garis biru di sebelah kiri
+              // Aksen garis biru kiri
               Container(width: 5, color: const Color(0xFF2196F3)),
               Expanded(
                 child: InkWell(
@@ -35,19 +36,19 @@ class PengeluaranBarangCard extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
-                        // Baris Atas: ID & Tanggal
+                        // 🔹 Baris Atas: ID & Tanggal
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              data['id'] ?? '-',
+                              data.code ?? "-", // ID PB
                               style: const TextStyle(
                                 color: Colors.grey,
                                 fontSize: 11,
                               ),
                             ),
                             Text(
-                              data['date'] ?? '-',
+                              data.date ?? "-", // tanggal
                               style: const TextStyle(
                                 color: Colors.grey,
                                 fontSize: 11,
@@ -56,42 +57,62 @@ class PengeluaranBarangCard extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        // Baris Tengah: Customer & Nomor Invoice (SIC)
+
+                        // 🔹 Baris Tengah: Customer & SIC
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              data['customer'] ?? '-',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: Color(0xFF424242),
+                            // CUSTOMER (KIRI)
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                data.customerModel?.name ?? "-",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: Color(0xFF424242),
+                                ),
                               ),
                             ),
-                            Text(
-                              data['sic_no'] ?? '-',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: Color(0xFF424242),
+
+                            const SizedBox(width: 8),
+
+                            // SO / SIC (KANAN)
+                            Expanded(
+                              flex: 1,
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  data.salesOrder?.code ?? "-",
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: Color(0xFF424242),
+                                  ),
+                                ),
                               ),
                             ),
                           ],
                         ),
+
                         const SizedBox(height: 4),
-                        // Baris Bawah: Nopol & Driver
+
+                        // 🔹 Baris Bawah: Nopol & Driver
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              data['nopol'] ?? '-',
+                              data.deliveryPlan?.nopol ?? "-", // nopol
                               style: const TextStyle(
                                 color: Colors.grey,
                                 fontSize: 11,
                               ),
                             ),
                             Text(
-                              data['driver'] ?? '-',
+                              data.deliveryPlan?.driver ?? "-", // driver
                               style: const TextStyle(
                                 color: Colors.grey,
                                 fontSize: 11,

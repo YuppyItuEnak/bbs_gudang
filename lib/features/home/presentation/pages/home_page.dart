@@ -1,5 +1,6 @@
 import 'package:bbs_gudang/data/services/home/history_gudang_repository.dart';
 import 'package:bbs_gudang/data/services/penerimaan_barang/penerimaan_barang_repository.dart';
+import 'package:bbs_gudang/data/services/pengeluaran_barang/pengeluaran_barang_repository.dart';
 import 'package:bbs_gudang/data/services/stock_adjustment/stock_adjustment_repository.dart';
 import 'package:bbs_gudang/data/services/stock_opname/stock_opname_repository.dart';
 import 'package:bbs_gudang/data/services/transfer_warehouse/transfer_warehouse_repository.dart';
@@ -110,9 +111,9 @@ class _HomePageState extends State<HomePage> {
             context,
             MaterialPageRoute(builder: (_) => const TransferWarehousePage()),
           );
-          // final cobaRepo = StockAdjustmentRepository();
+          // final cobaRepo = PengeluaranBarangRepository();
           // final token = context.read<AuthProvider>().token;
-          // final data = cobaRepo.getStockAdjustments(token: token!);
+          // final data = cobaRepo.fetchListPengeluaranBrg(token: token!);
           // print("Data Fetching Repo: $data");
         },
         backgroundColor: const Color(0xFFFFC107),

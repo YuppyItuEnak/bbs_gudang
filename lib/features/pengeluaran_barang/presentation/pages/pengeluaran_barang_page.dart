@@ -1,7 +1,10 @@
+import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_gudang/features/pengeluaran_barang/presentation/pages/detail_pengeluaran_brg_page.dart';
 import 'package:bbs_gudang/features/pengeluaran_barang/presentation/pages/tambah_pengeluaran_brg_page.dart';
+import 'package:bbs_gudang/features/pengeluaran_barang/presentation/widgets/pengeluaran_barang_card.dart';
+import 'package:bbs_gudang/features/pengeluaran_barang/presentation/providers/pengeluaran_barang_provider.dart';
 import 'package:flutter/material.dart';
-import '../widgets/pengeluaran_barang_card.dart';
+import 'package:provider/provider.dart';
 
 class PengeluaranBarangPage extends StatefulWidget {
   const PengeluaranBarangPage({super.key});
@@ -11,49 +14,25 @@ class PengeluaranBarangPage extends StatefulWidget {
 }
 
 class _PengeluaranBarangPageState extends State<PengeluaranBarangPage> {
-  // Data dummy sesuai gambar
-  final List<Map<String, String>> listPengeluaran = [
-    {
-      "id": "PB-001",
-      "customer": "Customer A",
-      "nopol": "W 9028 Y",
-      "date": "06 Desember 2024",
-      "sic_no": "SIC-001",
-      "driver": "Yanto",
-    },
-    {
-      "id": "PB-002",
-      "customer": "Customer B",
-      "nopol": "W 9028 Y",
-      "date": "06 Desember 2024",
-      "sic_no": "SIC-002",
-      "driver": "Yanto",
-    },
-    {
-      "id": "PB-003",
-      "customer": "Customer C",
-      "nopol": "W 9028 Y",
-      "date": "06 Desember 2024",
-      "sic_no": "SIC-003",
-      "driver": "Yanto",
-    },
-    {
-      "id": "PB-004",
-      "customer": "Customer D",
-      "nopol": "W 9028 Y",
-      "date": "06 Desember 2024",
-      "sic_no": "SIC-004",
-      "driver": "Yanto",
-    },
-    {
-      "id": "PB-005",
-      "customer": "Customer E",
-      "nopol": "W 9028 Y",
-      "date": "06 Desember 2024",
-      "sic_no": "SIC-005",
-      "driver": "Yanto",
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+
+    // Delay sedikit supaya context aman
+    Future.microtask(() {
+      final provider = Provider.of<PengeluaranBarangProvider>(
+        context,
+        listen: false,
+      );
+
+      // GANTI DENGAN TOKEN ASLI DARI LOGIN / STORAGE
+      final token = context.read<AuthProvider>().token;
+
+      if (token != null) {
+        provider.fetchListPengeluaranBrg(token: token);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,63 +55,123 @@ class _PengeluaranBarangPageState extends State<PengeluaranBarangPage> {
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          // Search Bar Section
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
+      body: Consumer<PengeluaranBarangProvider>(
+        builder: (context, provider, _) {
+          // 🔄 LOADING
+          if (provider.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          // ❌ ERROR
+          if (provider.errorMessage != null) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 48,
                     ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Cari",
-                        prefixIcon: Icon(Icons.search, color: Colors.grey),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 12),
+                    const SizedBox(height: 12),
+                    Text(
+                      provider.errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        final token = context.read<AuthProvider>().token;
+                        provider.fetchListPengeluaranBrg(token: token!);
+                      },
+                      child: const Text("Coba Lagi"),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // 📭 DATA KOSONG
+          if (provider.listPengeluaranBarang.isEmpty) {
+            return const Center(child: Text("Data pengeluaran barang kosong"));
+          }
+
+          // ✅ DATA ADA → TAMPILKAN LIST
+          return Column(
+            children: [
+              // Search Bar
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: const TextField(
+                          decoration: InputDecoration(
+                            hintText: "Cari",
+                            prefixIcon: Icon(Icons.search, color: Colors.grey),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: const Icon(Icons.tune, color: Colors.black87),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: const Icon(Icons.tune, color: Colors.black87),
-                ),
-              ],
-            ),
-          ),
+              ),
 
-          // List Content
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              itemCount: listPengeluaran.length,
-              itemBuilder: (context, index) {
-                return PengeluaranBarangCard(
-                  data: listPengeluaran[index],
-                  onTap: () {
-                    // Navigasi ke detail
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (context) => const DetailPengeluaranBrgPage(),
-                    ));
+              // LIST DATA
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  itemCount: provider.listPengeluaranBarang.length,
+                  itemBuilder: (context, index) {
+                    final item = provider.listPengeluaranBarang[index];
+
+                    return PengeluaranBarangCard(
+                      data: item, // 🔥 SEKARANG MODEL LANGSUNG
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DetailPengeluaranBrgPage(
+                               id: item.id,
+                            ),
+                          ),
+                        );
+                      },
+                    );
                   },
-                );
-              },
-            ),
-          ),
-        ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {

@@ -143,13 +143,16 @@ class _TransferWarehousePageState extends State<TransferWarehousePage> {
                         _buildTransferCard(
                           item.sourceWarehouse.name,
                           item.destinationWarehouse.name,
-                          item.status, 
+                          item.status,
                           () {
+                            final token = context.read<AuthProvider>().token;
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    const DetailTransferWarehousePage(),
+                                builder: (_) => DetailTransferWarehousePage(
+                                  id: item.id, // ← ID transfer warehouse
+                                  token: token!, // ← token login
+                                ),
                               ),
                             );
                           },
