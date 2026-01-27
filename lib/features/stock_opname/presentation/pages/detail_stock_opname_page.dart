@@ -1,26 +1,47 @@
+import 'dart:ffi';
+
+import 'package:bbs_gudang/data/models/stock_opname/stock_opname_detail.dart';
+import 'package:bbs_gudang/features/stock_opname/presentation/providers/stock_opname_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class DetailStockOpnamePage extends StatefulWidget {
-  const DetailStockOpnamePage({super.key});
+  final String opnameId;
+  final String token;
+
+  const DetailStockOpnamePage({
+    super.key,
+    required this.opnameId,
+    required this.token,
+  });
 
   @override
   State<DetailStockOpnamePage> createState() => _DetailStockOpnamePageState();
 }
 
 class _DetailStockOpnamePageState extends State<DetailStockOpnamePage> {
-  // Data dummy sesuai gambar
-  final List<Map<String, String>> selectedItems = [
-    {"nama": "Barang A", "kode": "Kode0001", "qty": "25"},
-    {"nama": "Barang B", "kode": "Kode0002", "qty": "15"},
-    {"nama": "Barang C", "kode": "Kode0003", "qty": "42"},
-  ];
+  @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      context.read<StockOpnameProvider>().fetchDetailOpnameReport(
+        token: widget.token,
+        opnameId: widget.opnameId,
+      );
+    });
+  }
+
+  String _formatDate(DateTime date) {
+    return "${date.day}-${date.month}-${date.year}";
+  }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<StockOpnameProvider>();
+
     return Scaffold(
-      backgroundColor: const Color(
-        0xFFF8F9FA,
-      ), // Background sedikit keabuan agar card putih kontras
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -38,97 +59,93 @@ class _DetailStockOpnamePageState extends State<DetailStockOpnamePage> {
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --- Section Header Info ---
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildHeaderIconText(
-                        Icons.calendar_today_outlined,
-                        "06 Desember 2025",
-                      ),
-                      _buildStatusBadge(),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _buildHeaderIconText(
-                    Icons.description_outlined,
-                    "OPC-2501-0001",
-                  ),
-                  const SizedBox(height: 12),
-                  _buildHeaderIconText(
-                    Icons.warehouse_outlined,
-                    "Gudang Utama",
-                  ),
-                  const SizedBox(height: 12),
-                  _buildHeaderIconText(Icons.edit_outlined, "Catatan"),
-
-                  const SizedBox(height: 30),
-
-                  // --- Section Title ---
-                  const Text(
-                    "Item Terpilih",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-
-                  // --- List of Items ---
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: selectedItems.length,
-                    itemBuilder: (context, index) {
-                      final item = selectedItems[index];
-                      return _buildReadOnlyItemCard(item);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // --- Bottom Button ---
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: OutlinedButton(
-                onPressed: () => Navigator.pop(context),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF4CAF50)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  "Kembali",
-                  style: TextStyle(
-                    color: Color(0xFF4CAF50),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+      body: _buildBody(provider),
     );
   }
 
-  // Widget Helper untuk Baris Info (Icon + Teks)
+  Widget _buildBody(StockOpnameProvider provider) {
+    if (provider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (provider.errorMessage != null) {
+      return Center(
+        child: Text(
+          provider.errorMessage!,
+          style: const TextStyle(color: Colors.red),
+        ),
+      );
+    }
+
+    final header = provider.listDetail;
+    if (header == null) {
+      return const Center(child: Text("Data kosong"));
+    }
+
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                /// HEADER INFO
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildHeaderIconText(
+                      Icons.calendar_today_outlined,
+                      _formatDate(header.date),
+                    ),
+                    _buildStatusBadge(header.status),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                _buildHeaderIconText(Icons.description_outlined, header.code),
+
+                const SizedBox(height: 12),
+
+                _buildHeaderIconText(
+                  Icons.warehouse_outlined,
+                  header.warehouse?.name ?? '-',
+                ),
+
+                const SizedBox(height: 12),
+
+                _buildHeaderIconText(
+                  Icons.edit_outlined,
+                  header.notes.isEmpty ? '-' : header.notes,
+                ),
+
+                const SizedBox(height: 30),
+
+                /// ITEM LIST
+                const Text(
+                  "Item Terpilih",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 15),
+
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: header.details.length,
+                  itemBuilder: (context, index) {
+                    return _buildReadOnlyItemCard(header.details[index]);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// ---------- UI HELPERS ----------
+
   Widget _buildHeaderIconText(IconData icon, String text) {
     return Row(
       children: [
@@ -139,17 +156,18 @@ class _DetailStockOpnamePageState extends State<DetailStockOpnamePage> {
     );
   }
 
-  // Badge Status Posted (Kuning)
-  Widget _buildStatusBadge() {
+  Widget _buildStatusBadge(String status) {
+    final color = status == 'POSTED' ? Colors.green : Colors.orange;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFC107), // Warna Amber/Kuning sesuai Posted
+        color: color,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Text(
-        "Posted",
-        style: TextStyle(
+      child: Text(
+        status,
+        style: const TextStyle(
           color: Colors.white,
           fontSize: 12,
           fontWeight: FontWeight.bold,
@@ -158,8 +176,7 @@ class _DetailStockOpnamePageState extends State<DetailStockOpnamePage> {
     );
   }
 
-  // Card Item Read Only (Mode Detail)
-  Widget _buildReadOnlyItemCard(Map<String, String> item) {
+  Widget _buildReadOnlyItemCard(StockOpnameDetailModel item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -177,32 +194,39 @@ class _DetailStockOpnamePageState extends State<DetailStockOpnamePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                item['nama']!,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: Colors.black87,
+          // Wrap your existing Column like this:
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.item?.name ?? '-',
+                  maxLines: 2,
+                  overflow:
+                      TextOverflow.ellipsis, // This will now work correctly!
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                item['kode']!,
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  item.itemCode,
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
           ),
+
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFE8F5E9), // Hijau sangat muda
+              color: const Color(0xFFE8F5E9),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              "${item['qty']} PCS",
+              "${item.opnameQty} ${item.item?.itemTypeName ?? '-'}",
               style: const TextStyle(
                 color: Color(0xFF4CAF50),
                 fontWeight: FontWeight.bold,

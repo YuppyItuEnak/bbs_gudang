@@ -1,6 +1,9 @@
+import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_gudang/features/transfer_warehouse/presentation/pages/detail_transfer_warehouse_page.dart';
 import 'package:bbs_gudang/features/transfer_warehouse/presentation/pages/tambah_transfer_page.dart';
+import 'package:bbs_gudang/features/transfer_warehouse/presentation/providers/transfer_warehouse_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class TransferWarehousePage extends StatefulWidget {
   const TransferWarehousePage({super.key});
@@ -10,22 +13,23 @@ class TransferWarehousePage extends StatefulWidget {
 }
 
 class _TransferWarehousePageState extends State<TransferWarehousePage> {
-  // Contoh data dummy untuk list
-  final List<Map<String, dynamic>> transferData = [
-    {
-      "date": "02 Agustus 2025",
-      "items": [
-        {"from": "Gudang Utama", "to": "Gudang Retur"},
-        {"from": "Gudang Utama", "to": "Gudang Konsinyasi"},
-      ],
-    },
-    {
-      "date": "01 Agustus 2025",
-      "items": [
-        {"from": "Gudang Utama", "to": "Gudang Retur"},
-      ],
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+
+    // Panggil API setelah widget siap
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<TransferWarehouseProvider>(
+        context,
+        listen: false,
+      );
+
+      final token = context.read<AuthProvider>().token;
+      if (token != null) {
+        provider.fetchListTransferWarehouse(token: token);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,43 +88,75 @@ class _TransferWarehousePageState extends State<TransferWarehousePage> {
             ),
           ),
 
-          // --- LIST SECTION ---
+          // --- LIST SECTION (FROM PROVIDER) ---
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: transferData.length,
-              itemBuilder: (context, index) {
-                final group = transferData[index];
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 20),
-                    Text(
-                      group['date'],
-                      style: const TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
+            child: Consumer<TransferWarehouseProvider>(
+              builder: (context, provider, _) {
+                // Loading State
+                if (provider.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                // Error State
+                if (provider.errorMessage != null) {
+                  return Center(
+                    child: Text(
+                      provider.errorMessage!,
+                      style: const TextStyle(color: Colors.red),
                     ),
-                    const SizedBox(height: 10),
-                    ...List.generate(
-                      group['items'].length,
-                      (i) => _buildTransferCard(
-                        group['items'][i]['from'],
-                        group['items'][i]['to'],
-                        () {
-                          // Aksi ketika kartu ditekan
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const DetailTransferWarehousePage(),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+                  );
+                }
+
+                // Empty State
+                if (provider.listTransferWarehouse.isEmpty) {
+                  return const Center(
+                    child: Text("Data transfer warehouse kosong"),
+                  );
+                }
+
+                // Data State
+                final data = provider.listTransferWarehouse;
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: data.length,
+                  itemBuilder: (context, index) {
+                    final item = data[index];
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 20),
+
+                        // DATE HEADER
+                        Text(
+                          _formatDate(item.date),
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        _buildTransferCard(
+                          item.sourceWarehouse.name,
+                          item.destinationWarehouse.name,
+                          item.status, 
+                          () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const DetailTransferWarehousePage(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    );
+                  },
                 );
               },
             ),
@@ -130,7 +166,6 @@ class _TransferWarehousePageState extends State<TransferWarehousePage> {
 
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Aksi tambah transfer
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const TambahTransferPage()),
@@ -142,14 +177,44 @@ class _TransferWarehousePageState extends State<TransferWarehousePage> {
     );
   }
 
-  // Widget Helper untuk Card Transfer
-  // Update parameter untuk menerima fungsi navigasi
-  Widget _buildTransferCard(String from, String to, VoidCallback onTap) {
+  // -----------------------------
+  // FORMAT DATE
+  // -----------------------------
+  String _formatDate(DateTime date) {
+    // Contoh output: 24 Januari 2026
+    return "${date.day} ${_monthName(date.month)} ${date.year}";
+  }
+
+  String _monthName(int month) {
+    const months = [
+      "Januari",
+      "Februari",
+      "Maret",
+      "April",
+      "Mei",
+      "Juni",
+      "Juli",
+      "Agustus",
+      "September",
+      "Oktober",
+      "November",
+      "Desember",
+    ];
+    return months[month - 1];
+  }
+
+  // -----------------------------
+  // CARD UI (TIDAK BERUBAH)
+  // -----------------------------
+  Widget _buildTransferCard(
+    String from,
+    String to,
+    String status,
+    VoidCallback onTap,
+  ) {
     return InkWell(
-      onTap: onTap, // Aksi ketika kartu ditekan
-      borderRadius: BorderRadius.circular(
-        15,
-      ), // Agar efek riak air (splash) mengikuti bentuk kartu
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(15),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(15),
@@ -164,77 +229,112 @@ class _TransferWarehousePageState extends State<TransferWarehousePage> {
             ),
           ],
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
           children: [
-            // Gudang Awal
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+            // -------------------
+            // HEADER ROW (STATUS)
+            // -------------------
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Transfer",
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                ),
+
+                // STATUS BADGE
+                _buildStatusBadge(status),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // -------------------
+            // MAIN CONTENT
+            // -------------------
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Gudang Awal
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.circle, color: Colors.red, size: 10),
-                      const SizedBox(width: 5),
+                      Row(
+                        children: [
+                          const Icon(Icons.circle, color: Colors.red, size: 10),
+                          const SizedBox(width: 5),
+                          Text(
+                            "Gudang Awal",
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
                       Text(
-                        "Gudang Awal",
-                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                        from,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    from,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                ),
 
-            // Divider Dots (Visual Alur)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Row(
-                children: [
-                  ...List.generate(3, (index) => _buildDot()),
-                  Icon(Icons.circle, size: 8, color: Colors.blue[600]),
-                  ...List.generate(3, (index) => _buildDot()),
-                ],
-              ),
-            ),
-
-            // Gudang Tujuan
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                // Divider Dots
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Row(
                     children: [
-                      Text(
-                        "Gudang Tujuan",
-                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                      ),
-                      const SizedBox(width: 5),
-                      const Icon(Icons.circle, color: Colors.green, size: 10),
+                      ...List.generate(3, (index) => _buildDot()),
+                      Icon(Icons.circle, size: 8, color: Colors.blue[600]),
+                      ...List.generate(3, (index) => _buildDot()),
                     ],
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    to,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.black87,
-                    ),
+                ),
+
+                // Gudang Tujuan
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            "Gudang Tujuan",
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          const Icon(
+                            Icons.circle,
+                            color: Colors.green,
+                            size: 10,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        to,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
@@ -242,7 +342,45 @@ class _TransferWarehousePageState extends State<TransferWarehousePage> {
     );
   }
 
-  // Helper kecil untuk titik-titik alur
+  Widget _buildStatusBadge(String status) {
+    Color bgColor;
+    Color textColor = Colors.white;
+
+    switch (status.toUpperCase()) {
+      case "DRAFT":
+        bgColor = Colors.grey;
+        break;
+      case "APPROVED":
+        bgColor = Colors.green;
+        break;
+      case "PROCESS":
+        bgColor = Colors.blue;
+        break;
+      case "REJECTED":
+        bgColor = Colors.red;
+        break;
+      default:
+        bgColor = Colors.black54;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: bgColor.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: bgColor),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          color: bgColor,
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
+        ),
+      ),
+    );
+  }
+
   Widget _buildDot() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 1),

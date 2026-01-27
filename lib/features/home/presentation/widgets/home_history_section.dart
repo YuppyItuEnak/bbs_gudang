@@ -1,24 +1,42 @@
+import 'package:bbs_gudang/data/models/home/history_gudang_model.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:bbs_gudang/features/home/presentation/providers/history_gudang_provider.dart';
 
 class HomeHistorySection extends StatelessWidget {
   final ScrollController scrollController;
 
   const HomeHistorySection({super.key, required this.scrollController});
 
+  String formatTanggalIndo(String rawDate) {
+    try {
+      // Support beberapa format backend
+      DateTime date;
+
+      if (rawDate.contains('/')) {
+        // contoh: 22/9/2025
+        final parts = rawDate.split('/');
+        date = DateTime(
+          int.parse(parts[2]),
+          int.parse(parts[1]),
+          int.parse(parts[0]),
+        );
+      } else {
+        // contoh: 2026-01-06 atau ISO
+        date = DateTime.parse(rawDate);
+      }
+
+      final formatter = DateFormat('dd MMMM yyyy', 'id_ID');
+      return formatter.format(date);
+    } catch (e) {
+      // fallback kalau parsing gagal
+      return rawDate;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // ... data dummy tetap sama ...
-    final List<Map<String, String>> historyData = [
-      {"code": "TW-250101-0001", "date": "04 Mei 2023", "type": "TW"},
-      {"code": "LPB-250101-0001", "date": "03 Mei 2023", "type": "LPB"},
-      {"code": "SO-250101-0001", "date": "02 Mei 2023", "type": "SO"},
-      {"code": "TW-250101-0002", "date": "01 Mei 2023", "type": "TW"},
-      {"code": "LPB-250101-0002", "date": "30 April 2023", "type": "LPB"},
-      {"code": "TW-250101-0003", "date": "29 April 2023", "type": "TW"},
-      {"code": "SO-250101-0002", "date": "28 April 2023", "type": "SO"},
-      {"code": "LPB-250101-0003", "date": "27 April 2023", "type": "LPB"},
-    ];
-
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -32,14 +50,12 @@ class HomeHistorySection extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // --- WRAPPER UNTUK HANDLE DRAG ---
-          // SingleChildScrollView mini ini memungkinkan area header ikut merespon drag
+          // ================= HEADER + HANDLE =================
           SingleChildScrollView(
             controller: scrollController,
             child: Column(
               children: [
                 const SizedBox(height: 12),
-                // Garis Abu-abu (Handle)
                 Container(
                   width: 40,
                   height: 4,
@@ -61,7 +77,9 @@ class HomeHistorySection extends StatelessWidget {
                         ),
                       ),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          // TODO: arahkan ke halaman full history
+                        },
                         child: Text(
                           "Lihat Semua",
                           style: TextStyle(
@@ -77,7 +95,7 @@ class HomeHistorySection extends StatelessWidget {
             ),
           ),
 
-          // Search Bar (Tetap di Column agar tidak scroll, tapi tidak merespon drag sheet)
+          // ================= SEARCH BAR =================
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: TextField(
@@ -97,37 +115,93 @@ class HomeHistorySection extends StatelessWidget {
           ),
           const SizedBox(height: 15),
 
-          // --- LIST DATA (RESPON DRAG & SCROLL) ---
+          // ================= LIST DATA FROM PROVIDER =================
           Expanded(
-            child: ListView.builder(
-              controller: scrollController, // Controller yang sama
-              physics: const ClampingScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 120),
-              itemCount: historyData.length,
-              itemBuilder: (context, index) {
-                final item = historyData[index];
-                Color iconColor = item['type'] == 'TW'
-                    ? Colors.blue
-                    : (item['type'] == 'LPB' ? Colors.green : Colors.redAccent);
+            child: Consumer<HistoryGudangProvider>(
+              builder: (context, provider, _) {
+                // --- LOADING ---
+                if (provider.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: iconColor.withOpacity(0.1),
-                    child: Icon(
-                      Icons.assignment_outlined,
-                      color: iconColor,
-                      size: 20,
+                // --- ERROR ---
+                if (provider.errorMessage != null) {
+                  return Center(
+                    child: Text(
+                      "Error: ${provider.errorMessage}",
+                      style: const TextStyle(color: Colors.red),
                     ),
-                  ),
-                  title: Text(
-                    item['code']!,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                  );
+                }
+
+                // --- EMPTY ---
+                if (provider.listHistory.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      "Belum ada histori gudang",
+                      style: TextStyle(color: Colors.grey),
                     ),
-                  ),
-                  subtitle: Text(item['date']!),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                  );
+                }
+
+                // --- DATA LIST ---
+                return ListView.builder(
+                  controller: scrollController,
+                  physics: const ClampingScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 120),
+                  itemCount: provider.listHistory.length,
+                  itemBuilder: (context, index) {
+                    final HistoryGudangModel item = provider.listHistory[index];
+
+                    // Tentukan warna icon berdasarkan transaction type
+                    Color iconColor;
+                    if (item.transactionType.contains("PURCHASE")) {
+                      iconColor = Colors.green;
+                    } else if (item.transactionType.contains("SALES")) {
+                      iconColor = Colors.redAccent;
+                    } else {
+                      iconColor = Colors.blue;
+                    }
+
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: iconColor.withOpacity(0.1),
+                        child: Icon(
+                          Icons.assignment_outlined,
+                          color: iconColor,
+                          size: 20,
+                        ),
+                      ),
+                      title: Text(
+                        item.transactionCode,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: Text(
+                        formatTanggalIndo(item.date),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            ".",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        // TODO: buka detail transaksi jika diperlukan
+                      },
+                    );
+                  },
                 );
               },
             ),

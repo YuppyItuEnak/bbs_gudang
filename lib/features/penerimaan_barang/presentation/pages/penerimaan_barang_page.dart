@@ -1,7 +1,11 @@
+import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_gudang/features/penerimaan_barang/presentation/pages/detail_penerimaan_barang_page.dart';
 import 'package:bbs_gudang/features/penerimaan_barang/presentation/pages/tambah_penerimaan_barang_page.dart';
+import 'package:bbs_gudang/features/penerimaan_barang/presentation/providers/penerimaan_barang_provider.dart';
 import 'package:bbs_gudang/features/penerimaan_barang/presentation/widgets/penereimaan_barang_card.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 class PenerimaanBarangPage extends StatefulWidget {
   const PenerimaanBarangPage({super.key});
@@ -11,32 +15,50 @@ class PenerimaanBarangPage extends StatefulWidget {
 }
 
 class _PenerimaanBarangPageState extends State<PenerimaanBarangPage> {
-  final List<Map<String, String>> penerimaanData = [
-    {
-      "po_no": "PB-2501-0003",
-      "si_no": "SI-2501-0003",
-      "vendor": "PT. Ekaprima",
-      "nopol": "W 8190 LO",
-      "driver": "Dwi",
-      "date": "08/12/2025",
-    },
-    {
-      "po_no": "PB-2501-0002",
-      "si_no": "SI-2501-0002",
-      "vendor": "PT. Abadi Jaya",
-      "nopol": "W 0910 HI",
-      "driver": "Eka",
-      "date": "07/12/2025",
-    },
-    {
-      "po_no": "PB-2501-0001",
-      "si_no": "SI-2501-0001",
-      "vendor": "PT. Jaya Abadi Sentosa",
-      "nopol": "W 9028 YA",
-      "driver": "Adi",
-      "date": "06/12/2025",
-    },
-  ];
+  final ScrollController _scrollController = ScrollController();
+  String? _token;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+
+    // Listener untuk infinite scroll
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 200) {
+        final provider = context.read<PenerimaanBarangProvider>();
+
+        if (_token != null && provider.hasMore && !provider.isLoading) {
+          provider.fetchPenerimaanBarang(
+            token: _token!,
+            loadMore: true,
+          );
+        }
+      }
+    });
+  }
+
+  Future<void> _init() async {
+    final token = context.read<AuthProvider>().token;
+
+    if (!mounted) return;
+
+    setState(() {
+      _token = token;
+    });
+
+    Provider.of<PenerimaanBarangProvider>(
+      context,
+      listen: false,
+    ).fetchPenerimaanBarang(token: token!, isRefresh: true);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,17 +85,75 @@ class _PenerimaanBarangPageState extends State<PenerimaanBarangPage> {
         children: [
           _buildSearchBar(),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              itemCount: penerimaanData.length,
-              itemBuilder: (context, index) {
-                // Menggunakan widget yang sudah dipisah
-                return PenerimaanBarangCard(
-                  data: penerimaanData[index],
-                  onTap: () {
-                    // Logika navigasi ke detail jika ada
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => DetailPenerimaanBarangPage()));
+            child: Consumer<PenerimaanBarangProvider>(
+              builder: (context, provider, _) {
+                // LOADING AWAL
+                if (provider.isLoading &&
+                    provider.listPenerimaanBarang.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (provider.errorMessage != null &&
+                    provider.listPenerimaanBarang.isEmpty) {
+                  return Center(child: Text(provider.errorMessage!));
+                }
+
+                if (provider.listPenerimaanBarang.isEmpty) {
+                  return const Center(
+                    child: Text("Data penerimaan barang kosong"),
+                  );
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    await provider.fetchPenerimaanBarang(
+                      token: _token!,
+                      isRefresh: true,
+                    );
                   },
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    itemCount:
+                        provider.listPenerimaanBarang.length +
+                        (provider.hasMore ? 1 : 0),
+
+                    itemBuilder: (context, index) {
+                      if (index >= provider.listPenerimaanBarang.length) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+
+                      final item = provider.listPenerimaanBarang[index];
+
+                      return PenerimaanBarangCard(
+                        data: {
+                          "po_no": item.code.toString(),
+                          "si_no": item.noSjSupplier ?? '-',
+                          "vendor": item.supplierName.toString(),
+                          "nopol": item.policeNumber ?? '-',
+                          "driver": item.driverName ?? '-',
+                          "date": item.date != null
+                              ? DateFormat('dd/MM/yyyy').format(item.date!)
+                              : '-',
+                        },
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  DetailPenerimaanBarangPage(id: item.id),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -82,7 +162,12 @@ class _PenerimaanBarangPageState extends State<PenerimaanBarangPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const TambahPenerimaanBarangPage()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const TambahPenerimaanBarangPage(),
+            ),
+          );
         },
         backgroundColor: const Color(0xFF4CAF50),
         child: const Icon(Icons.add, color: Colors.white, size: 30),

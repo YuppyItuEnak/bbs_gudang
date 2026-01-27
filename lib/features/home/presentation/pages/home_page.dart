@@ -1,5 +1,14 @@
+import 'package:bbs_gudang/data/services/home/history_gudang_repository.dart';
+import 'package:bbs_gudang/data/services/penerimaan_barang/penerimaan_barang_repository.dart';
+import 'package:bbs_gudang/data/services/stock_adjustment/stock_adjustment_repository.dart';
+import 'package:bbs_gudang/data/services/stock_opname/stock_opname_repository.dart';
+import 'package:bbs_gudang/data/services/transfer_warehouse/transfer_warehouse_repository.dart';
+import 'package:bbs_gudang/features/home/presentation/providers/history_gudang_provider.dart';
 import 'package:bbs_gudang/features/home/presentation/widgets/home_header_card.dart';
 import 'package:bbs_gudang/features/profile/presentation/pages/profile_page.dart';
+import 'package:bbs_gudang/features/stock_adjustment/presentation/providers/stock_adjustment_provider.dart';
+import 'package:bbs_gudang/features/stock_opname/presentation/providers/stock_opname_provider.dart'
+    show StockOpnameProvider;
 import 'package:bbs_gudang/features/transfer_warehouse/presentation/pages/transfer_warehouse_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -16,6 +25,33 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      final provider = Provider.of<HistoryGudangProvider>(
+        context,
+        listen: false,
+      );
+
+      final token = context.read<AuthProvider>().token;
+
+      if (token != null) {
+        provider.fetchHistoryGudang(token: token);
+
+        context.read<StockOpnameProvider>().fetchStockOpnameReport(
+          token: token,
+          startDate: '',
+          endDate: '',
+        );
+        context.read<StockAdjustmentProvider>().fetchStockAdjustments(
+          token: token,
+        );
+      }
+    });
+  }
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
@@ -74,6 +110,10 @@ class _HomePageState extends State<HomePage> {
             context,
             MaterialPageRoute(builder: (_) => const TransferWarehousePage()),
           );
+          // final cobaRepo = StockAdjustmentRepository();
+          // final token = context.read<AuthProvider>().token;
+          // final data = cobaRepo.getStockAdjustments(token: token!);
+          // print("Data Fetching Repo: $data");
         },
         backgroundColor: const Color(0xFFFFC107),
         elevation: 4,

@@ -1,6 +1,11 @@
+import 'package:bbs_gudang/data/models/stock_opname/stock_opname_model.dart';
+import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_gudang/features/stock_opname/presentation/pages/detail_stock_opname_page.dart';
 import 'package:bbs_gudang/features/stock_opname/presentation/pages/tambah_stck_opname_page.dart';
+import 'package:bbs_gudang/features/stock_opname/presentation/providers/stock_opname_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 class StockOpnamePage extends StatefulWidget {
   const StockOpnamePage({super.key});
@@ -10,12 +15,22 @@ class StockOpnamePage extends StatefulWidget {
 }
 
 class _StockOpnamePageState extends State<StockOpnamePage> {
-  // Data dummy untuk daftar Stock Opname
-  final List<Map<String, String>> _stockData = [
-    {"id": "OPC-2512-0001", "gudang": "Gudang Utama", "tanggal": "07/12/2025"},
-    {"id": "OPC-2512-0002", "gudang": "Gudang Utama", "tanggal": "06/12/2025"},
-    {"id": "OPC-2512-0003", "gudang": "Gudang Utama", "tanggal": "05/12/2025"},
-  ];
+  @override
+  void initState() {
+    super.initState();
+
+    /// Fetch data pertama kali
+    Future.microtask(() {
+      final token = context.read<AuthProvider>().token;
+      if (token == null) return;
+
+      context.read<StockOpnameProvider>().fetchStockOpnameReport(
+        token: token,
+        startDate: '',
+        endDate: '',
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +55,7 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
       ),
       body: Column(
         children: [
-          // Search Bar
+          /// SEARCH BAR
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Container(
@@ -67,22 +82,61 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
             ),
           ),
 
-          // List Stock Opname
+          /// LIST DATA
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              itemCount: _stockData.length,
-              itemBuilder: (context, index) {
-                final item = _stockData[index];
-                return _buildStockCard(item);
+            child: Consumer<StockOpnameProvider>(
+              builder: (context, provider, _) {
+                /// Loading awal
+                if (provider.isLoading && provider.reports.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                /// Error
+                if (provider.errorMessage != null) {
+                  return Center(
+                    child: Text(
+                      provider.errorMessage!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  );
+                }
+
+                /// Empty
+                if (provider.reports.isEmpty) {
+                  return const Center(child: Text("Data stock opname kosong"));
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    final token = context.read<AuthProvider>().token;
+                    await provider.fetchStockOpnameReport(
+                      token: token!,
+                      startDate: '',
+                      endDate: '',
+                      loadMore: false,
+                    );
+                  },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    itemCount: provider.reports.length,
+                    itemBuilder: (context, index) {
+                      final item = provider.reports[index];
+                      return _buildStockCard(context, item);
+                    },
+                  ),
+                );
               },
             ),
           ),
         ],
       ),
+
+      /// FLOATING BUTTON
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Tambah Stock Opname baru
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -91,25 +145,28 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
           );
         },
         backgroundColor: const Color(0xFF4CAF50),
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
-  Widget _buildStockCard(Map<String, String> item) {
+  /// CARD ITEM
+  Widget _buildStockCard(BuildContext context, StockOpnameModel item) {
+    final token = context.read<AuthProvider>().token;
+
     return InkWell(
-      // Aksi ketika card diklik
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const DetailStockOpnamePage(),
+            builder: (_) => DetailStockOpnamePage(
+              opnameId: item.id, // 🔥 WAJIB ID, bukan code
+              token: token!,
+            ),
           ),
         );
       },
-      borderRadius: BorderRadius.circular(
-        12,
-      ), // Agar efek splash sesuai bentuk card
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
         padding: const EdgeInsets.all(16),
@@ -117,24 +174,22 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
+            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            /// CODE
             Text(
-              item['id']!,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              item.code,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
+
             Row(
               children: [
-                // Badge Gudang
+                /// WAREHOUSE
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -152,8 +207,9 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                         color: Color(0xFF5C6BC0),
                       ),
                       const SizedBox(width: 4),
+                      
                       Text(
-                        item['gudang']!,
+                        item.warehouse?.name ?? '-',
                         style: const TextStyle(
                           color: Color(0xFF5C6BC0),
                           fontSize: 11,
@@ -163,17 +219,11 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                     ],
                   ),
                 ),
-                // Garis Penghubung
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 10),
-                    height: 1,
-                    color: Colors.grey.shade200,
-                  ),
-                ),
-                // Tanggal
+                const Spacer(),
+
+                /// DATE
                 Text(
-                  item['tanggal']!,
+                  DateFormat('dd MMM yyyy').format(item.date),
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
               ],

@@ -1,6 +1,10 @@
+import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_gudang/features/stock_adjustment/presentation/pages/detail_stck_adjustment_page.dart';
 import 'package:bbs_gudang/features/stock_adjustment/presentation/pages/tambah_stk_adjust_page.dart';
+import 'package:bbs_gudang/data/models/stock_adjustment/stock_adjustment_model.dart';
+import 'package:bbs_gudang/features/stock_adjustment/presentation/providers/stock_adjustment_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class StkAdjustmentPage extends StatefulWidget {
   const StkAdjustmentPage({super.key});
@@ -10,12 +14,39 @@ class StkAdjustmentPage extends StatefulWidget {
 }
 
 class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
-  // Data dummy untuk daftar Stock Adjustment sesuai gambar image_80df51.png
-  final List<Map<String, String>> _adjustmentData = [
-    {"id": "ADJ-2512-0001", "gudang": "Gudang Utama", "tanggal": "07/12/2025"},
-    {"id": "ADJ-2512-0002", "gudang": "Gudang Utama", "tanggal": "06/12/2025"},
-    {"id": "ADJ-2512-0001", "gudang": "Gudang Utama", "tanggal": "05/12/2025"},
-  ];
+  final ScrollController _scrollController = ScrollController();
+
+  /// GANTI DENGAN TOKEN ASLI
+
+  @override
+  void initState() {
+    super.initState();
+    final token = context.read<AuthProvider>().token;
+
+    /// fetch pertama
+    Future.microtask(() {
+      context.read<StockAdjustmentProvider>().fetchStockAdjustments(
+        token: token!,
+      );
+    });
+
+    /// infinite scroll
+    _scrollController.addListener(() {
+      final provider = context.read<StockAdjustmentProvider>();
+      if (_scrollController.position.pixels >=
+              _scrollController.position.maxScrollExtent - 100 &&
+          provider.hasMore &&
+          !provider.isLoading) {
+        provider.fetchStockAdjustments(token: token!, loadMore: true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +71,7 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
       ),
       body: Column(
         children: [
-          // Search Bar sesuai gambar
+          /// SEARCH BAR (belum difungsikan)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Container(
@@ -67,23 +98,57 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
             ),
           ),
 
-          // List Stock Adjustment
+          /// LIST DATA DARI PROVIDER
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              itemCount: _adjustmentData.length,
-              itemBuilder: (context, index) {
-                final item = _adjustmentData[index];
-                return _buildAdjustmentCard(item);
+            child: Consumer<StockAdjustmentProvider>(
+              builder: (context, provider, _) {
+                if (provider.isLoading && provider.data.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (provider.error != null) {
+                  return Center(child: Text(provider.error!));
+                }
+
+                if (provider.data.isEmpty) {
+                  return const Center(child: Text("Data kosong"));
+                }
+
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  itemCount: provider.data.length + (provider.hasMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == provider.data.length) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+
+                    final item = provider.data[index];
+                    return _buildAdjustmentCard(item);
+                  },
+                );
               },
             ),
           ),
         ],
       ),
+
+      /// FAB TAMBAH
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: () {
-          // Aksi tambah data baru
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const TambahStkAdjustPage()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const TambahStkAdjustPage(),
+            ),
+          );
         },
         backgroundColor: const Color(0xFF4CAF50),
         child: const Icon(Icons.add, color: Colors.white, size: 30),
@@ -91,11 +156,18 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
     );
   }
 
-  Widget _buildAdjustmentCard(Map<String, String> item) {
+  /// CARD ITEM
+  Widget _buildAdjustmentCard(StockAdjustmentModel item) {
     return InkWell(
       onTap: () {
-        // Navigasi ke detail adjustment jika ada
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const DetailStckAdjustmentPage()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            // Mengirimkan UUID item ke halaman detail
+            builder: (context) =>
+                DetailStckAdjustmentPage(adjustmentId: item.id),
+          ),
+        );
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -115,14 +187,16 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            /// CODE
             Text(
-              item['id']!,
+              item.code,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             const SizedBox(height: 12),
+
             Row(
               children: [
-                // Badge Gudang
+                /// GUDANG
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -141,7 +215,7 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        item['gudang']!,
+                        item.warehouse?.name ?? "-",
                         style: const TextStyle(
                           color: Color(0xFF5C6BC0),
                           fontSize: 11,
@@ -151,7 +225,7 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
                     ],
                   ),
                 ),
-                // Garis Penghubung (Spacer Line)
+
                 Expanded(
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 10),
@@ -159,9 +233,10 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
                     color: Colors.grey.shade100,
                   ),
                 ),
-                // Tanggal
+
+                /// TANGGAL
                 Text(
-                  item['tanggal']!,
+                  item.date.substring(0, 10),
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
               ],

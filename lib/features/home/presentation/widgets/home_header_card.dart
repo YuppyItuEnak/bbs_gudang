@@ -1,8 +1,11 @@
 import 'package:bbs_gudang/features/penerimaan_barang/presentation/pages/penerimaan_barang_page.dart';
 import 'package:bbs_gudang/features/pengeluaran_barang/presentation/pages/pengeluaran_barang_page.dart';
 import 'package:bbs_gudang/features/stock_adjustment/presentation/pages/stk_adjustment_page.dart';
+import 'package:bbs_gudang/features/stock_adjustment/presentation/providers/stock_adjustment_provider.dart';
 import 'package:bbs_gudang/features/stock_opname/presentation/pages/stock_opname_page.dart';
+import 'package:bbs_gudang/features/stock_opname/presentation/providers/stock_opname_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import 'home_menu_card.dart';
 import 'home_stock_info.dart';
@@ -94,36 +97,48 @@ class HomeHeaderCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                HomeStockInfo(
-                  count: "5 Items",
-                  label: "Overstock",
-                  icon: Icons.inventory_2,
-                  iconColor: Colors.blue,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const StockOpnamePage(),
-                      ),
+                /// OVERSTOCK → STOCK OPNAME
+                Consumer<StockOpnameProvider>(
+                  builder: (context, opnameProvider, _) {
+                    return HomeStockInfo(
+                      count: "${opnameProvider.reports.length} Items",
+                      label: "Overstock",
+                      icon: Icons.inventory_2,
+                      iconColor: Colors.blue,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const StockOpnamePage(),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
+
                 Container(
                   height: 30,
                   width: 1,
                   color: Colors.white.withOpacity(0.2),
                 ),
-                 HomeStockInfo(
-                  count: "3 Items",
-                  label: "Understock",
-                  icon: Icons.mail_outline,
-                  iconColor: Colors.red,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const StkAdjustmentPage(),
-                      ),
+
+                /// UNDERSTOCK → STOCK ADJUSTMENT
+                Consumer<StockAdjustmentProvider>(
+                  builder: (context, adjustmentProvider, _) {
+                    return HomeStockInfo(
+                      count: "${adjustmentProvider.data.length} Items",
+                      label: "Understock",
+                      icon: Icons.mail_outline,
+                      iconColor: Colors.red,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const StkAdjustmentPage(),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
