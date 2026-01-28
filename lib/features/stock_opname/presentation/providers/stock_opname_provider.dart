@@ -23,6 +23,8 @@ class StockOpnameProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get hasMore => _hasMore;
 
+  StockOpnameModel? result;
+
   void reset() {
     _reports = [];
     _page = 1;
@@ -42,9 +44,6 @@ class StockOpnameProvider extends ChangeNotifier {
     bool loadMore = false,
   }) async {
     if (_isLoading) return;
-
-    /// kalau backend tidak support pagination real,
-    /// loadMore bisa kamu matikan dulu
     if (!_hasMore && loadMore) return;
 
     _isLoading = true;
@@ -66,15 +65,28 @@ class StockOpnameProvider extends ChangeNotifier {
         warehouseIds: warehouseIds,
       );
 
-      /// 🔑 BACKEND BALIK FULL LIST
-      /// Kalau result kosong → berarti tidak ada data lagi
       if (result.isEmpty) {
         _hasMore = false;
       }
 
       _reports.addAll(result);
 
-      /// page tetap naik (biar siap kalau nanti backend pagination aktif)
+      /// ✅ SORT PALING PENTING
+      _reports.sort((a, b) {
+        // 1️⃣ sort by date DESC (null-safe)
+        final aDate = a.date ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bDate = b.date ?? DateTime.fromMillisecondsSinceEpoch(0);
+
+        final dateCompare = bDate.compareTo(aDate);
+        if (dateCompare != 0) return dateCompare;
+
+        // 2️⃣ kalau tanggal sama → sort by code number DESC
+        final aNum = int.tryParse(a.code.split('-').last) ?? 0;
+        final bNum = int.tryParse(b.code.split('-').last) ?? 0;
+
+        return bNum.compareTo(aNum);
+      });
+
       _page++;
     } catch (e) {
       _errorMessage = e.toString();
@@ -101,6 +113,40 @@ class StockOpnameProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // Future<void> submitStockOpname({
+  //   required String token,
+  //   required Map<String, dynamic> payload,
+  // }) async {
+  //   try {
+  //     await _opnameRepository.createStockOpname(token: token, payload: payload);
+  //   } catch (e) {
+  //     rethrow;
+  //   }
+  // }
+
+  Future<void> submitStockOpname({
+    required String token,
+    required Map<String, dynamic> payload,
+  }) async {
+    try {
+      // 🔹 1. Generate code dulu
+      final code = await _opnameRepository.generateStockOpnameCode(
+        token: token,
+      );
+
+      // 🔹 2. Inject code ke payload
+      payload['code'] = code;
+
+      // 🔹 3. Submit stock opname
+      result = await _opnameRepository.createStockOpname(
+        token: token,
+        payload: payload,
+      );
+    } catch (e) {
+      rethrow;
     }
   }
 }

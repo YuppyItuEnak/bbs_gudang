@@ -1,5 +1,7 @@
 import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_gudang/features/list_item/presentation/pages/tambah_item_page.dart';
+import 'package:bbs_gudang/features/stock_opname/presentation/providers/stock_opname_provider.dart';
+import 'package:bbs_gudang/features/transfer_warehouse/presentation/providers/transfer_warehouse_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -11,25 +13,105 @@ class TambahStckOpnamePage extends StatefulWidget {
 }
 
 class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
-  String? selectedGudang;
-  // List untuk menampung item yang sudah dipilih
-  List<Map<String, dynamic>> selectedItems = [];
+  String? selectedCompanyId;
+  String? selectedWarehouseId;
+  String? selectedUserPICId;
 
-  // Fungsi untuk navigasi ke halaman pilih item
+  final TextEditingController _notesController = TextEditingController();
+  final List<Map<String, dynamic>> selectedItems = [];
 
-  void _navigateToSelectItem() async {
-    // Berpindah ke halaman List Item dan menunggu hasil (result)
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+
+      String? responsibilityId;
+      if (auth.user!.userDetails.isNotEmpty) {
+        final primary = auth.user!.userDetails.firstWhere(
+          (d) => d.isPrimary == true,
+          orElse: () => auth.user!.userDetails.first,
+        );
+        responsibilityId = primary.fResponsibility;
+      }
+
+      context.read<TransferWarehouseProvider>().loadUserCompanies(
+        token: auth.token!,
+        userId: auth.user!.id,
+        responsibilityId: responsibilityId!,
+      );
+
+      context.read<AuthProvider>().fetchUserPIC(token: auth.token!);
+    });
+  }
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  bool get isFormValid =>
+      selectedCompanyId != null &&
+      selectedWarehouseId != null &&
+      selectedUserPICId != null &&
+      selectedItems.isNotEmpty;
+
+  Future<void> _navigateToSelectItem() async {
     final token = context.read<AuthProvider>().token;
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) =>  TambahItem(token: token!)),
+      MaterialPageRoute(builder: (_) => TambahItem(token: token!)),
     );
 
-    // Jika user memilih barang, tambahkan ke list
-    if (result != null && result is Map<String, dynamic>) {
+    if (result != null && result is List) {
       setState(() {
-        selectedItems.add(result);
+        for (final item in result) {
+          final index = selectedItems.indexWhere((e) => e['id'] == item['id']);
+          if (index != -1) {
+            selectedItems[index]['qty'] += item['qty'];
+          } else {
+            selectedItems.add(item);
+          }
+        }
       });
+    }
+  }
+
+  Future<void> _submitStockOpname(String status) async {
+    final auth = context.read<AuthProvider>();
+    final provider = context.read<StockOpnameProvider>();
+
+    final payload = {
+      "unit_bussiness_id": selectedCompanyId,
+      "warehouse_id": selectedWarehouseId,
+      "pic_id": selectedUserPICId,
+      "date": DateTime.now().toIso8601String().split('T').first,
+      "notes": _notesController.text,
+      "status": status,
+      "details": selectedItems.map((item) {
+        return {
+          "item_id": item['id'],
+          "current_on_hand_quantity": 0,
+          "opname_qty": item['qty'],
+        };
+      }).toList(),
+    };
+
+    await provider.submitStockOpname(token: auth.token!, payload: payload);
+
+    if (!mounted) return;
+
+    if (provider.result != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Stock Opname ${provider.result!.code} ($status) berhasil disimpan',
+          ),
+        ),
+      );
+      Navigator.pop(context, true);
     }
   }
 
@@ -43,11 +125,7 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
         leading: const BackButton(color: Colors.black),
         title: const Text(
           "Stock Opname",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         centerTitle: true,
       ),
@@ -59,23 +137,24 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildHeaderInfo(),
                   const SizedBox(height: 20),
-                  const Text(
-                    "Gudang",
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
-                  ),
+                  const Text("Company", style: TextStyle(color: Colors.grey)),
                   const SizedBox(height: 8),
-                  _buildGudangSelector(),
+                  _buildCompanyDropdown(),
                   const SizedBox(height: 15),
-                  _buildCatatanInput(),
+                  const Text("Gudang", style: TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 8),
+                  _buildWarehouseDropdown(),
+                  const SizedBox(height: 15),
+                  const Text("User PIC", style: TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 8),
+                  _buildUserPICDropdown(),
+                  const SizedBox(height: 15),
+                  _buildNotesInput(),
                   const SizedBox(height: 25),
-
-                  // LOGIKA DINAMIS:
-                  if (selectedItems.isEmpty)
-                    _buildInitialAddButton() // Tampilan awal (Gambar image_82214c.png)
-                  else
-                    _buildItemListSection(), // Tampilan setelah isi (Gambar image_814f10.png)
+                  selectedItems.isEmpty
+                      ? _buildInitialAddButton()
+                      : _buildItemListSection(),
                 ],
               ),
             ),
@@ -86,87 +165,108 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
     );
   }
 
-  // --- WIDGET COMPONENTS ---
+  // ===================== WIDGETS =====================
 
-  Widget _buildHeaderInfo() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Row(
-          children: [
-            Icon(Icons.calendar_today_outlined, size: 18, color: Colors.blue),
-            SizedBox(width: 10),
-            Text("06 Desember 2025"),
-          ],
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0F3FF),
-            borderRadius: BorderRadius.circular(8),
+  Widget _buildCompanyDropdown() {
+    return Consumer<TransferWarehouseProvider>(
+      builder: (_, provider, __) {
+        return _dropdownContainer(
+          DropdownButton<String>(
+            value: selectedCompanyId,
+            hint: const Text("Pilih Company"),
+            isExpanded: true,
+            items: provider.companies
+                .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+                .toList(),
+            onChanged: (val) {
+              setState(() {
+                selectedCompanyId = val;
+                selectedWarehouseId = null;
+              });
+              context.read<TransferWarehouseProvider>().loadWarehouseCompany(
+                token: context.read<AuthProvider>().token!,
+                unitBusinessId: val!,
+              );
+            },
           ),
-          child: const Text(
-            "Draft",
-            style: TextStyle(
-              color: Color(0xFF5C6BC0),
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
+        );
+      },
+    );
+  }
+
+  Widget _buildWarehouseDropdown() {
+    return Consumer<TransferWarehouseProvider>(
+      builder: (_, provider, __) {
+        if (selectedCompanyId == null) {
+          return _disabledDropdown("Pilih Company terlebih dahulu");
+        }
+
+        return _dropdownContainer(
+          DropdownButton<String>(
+            value: selectedWarehouseId,
+            hint: const Text("Pilih Gudang"),
+            isExpanded: true,
+            items: provider.warehouses
+                .map((w) => DropdownMenuItem(value: w.id, child: Text(w.name)))
+                .toList(),
+            onChanged: (val) => setState(() => selectedWarehouseId = val),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUserPICDropdown() {
+    return Consumer<AuthProvider>(
+      builder: (_, provider, __) {
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (provider.userPIC.isEmpty) {
+          return _disabledDropdown("Data User PIC kosong");
+        }
+
+        return DropdownButtonFormField<String>(
+          value: selectedUserPICId,
+          menuMaxHeight: 300,
+          decoration: InputDecoration(
+            hintText: "Pilih User PIC",
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 15,
+              vertical: 12,
             ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           ),
-        ),
-      ],
+          items: provider.userPIC
+              .map(
+                (u) => DropdownMenuItem(
+                  value: u.id,
+                  child: Text(u?.name ?? '-', overflow: TextOverflow.ellipsis),
+                ),
+              )
+              .toList(),
+          onChanged: (val) => setState(() => selectedUserPICId = val),
+        );
+      },
     );
   }
 
-  Widget _buildGudangSelector() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
+  Widget _buildNotesInput() {
+    return TextField(
+      controller: _notesController,
+      maxLines: 3,
+      decoration: InputDecoration(
+        hintText: "Catatan (opsional)",
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedGudang,
-          hint: const Text("Pilih Gudang"),
-          isExpanded: true,
-          items: [
-            "Gudang Utama",
-            "Gudang B",
-          ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-          onChanged: (val) => setState(() => selectedGudang = val),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCatatanInput() {
-    return const Row(
-      children: [
-        Icon(Icons.edit_outlined, size: 18, color: Colors.blue),
-        SizedBox(width: 10),
-        Text("Catatan", style: TextStyle(color: Colors.black54)),
-      ],
     );
   }
 
   Widget _buildInitialAddButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton(
-        onPressed: _navigateToSelectItem,
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFF4CAF50)),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-        ),
-        child: const Text(
-          "+ Add Item",
-          style: TextStyle(
-            color: Color(0xFF4CAF50),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+    return OutlinedButton(
+      onPressed: _navigateToSelectItem,
+      child: const Text("+ Add Item"),
     );
   }
 
@@ -174,169 +274,89 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              "Item Terpilih",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        const Text("Items", style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+        ...selectedItems.map((item) {
+          return Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(color: Colors.grey.shade300),
             ),
-            GestureDetector(
-              onTap: _navigateToSelectItem,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.add, color: Colors.white, size: 14),
-                    SizedBox(width: 4),
-                    Text(
-                      "Add Item",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+            child: ListTile(
+              title: Text(
+                item['name'],
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              subtitle: Text(item['code']),
+              trailing: Text(
+                "Qty: ${item['qty']}",
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 15),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: selectedItems.length,
-          itemBuilder: (context, index) {
-            final item = selectedItems[index];
-            return _buildItemCard(item, index);
-          },
+          );
+        }),
+        const SizedBox(height: 10),
+        OutlinedButton(
+          onPressed: _navigateToSelectItem,
+          child: const Text("+ Add Item"),
         ),
       ],
-    );
-  }
-
-  Widget _buildItemCard(Map<String, dynamic> item, int index) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.blue.withOpacity(0.1)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      item['nama'],
-                      style: const TextStyle(
-                        color: Color(0xFF4CAF50),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () =>
-                          setState(() => selectedItems.removeAt(index)),
-                      child: const Text(
-                        "Hapus",
-                        style: TextStyle(color: Colors.red, fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  item['kode'],
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          const Text("PCS", style: TextStyle(color: Colors.grey, fontSize: 12)),
-          const SizedBox(width: 8),
-          _buildQtyControl(index),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQtyControl(int index) {
-    return Row(
-      children: [
-        _qtyBtn(Icons.remove, () {
-          if (selectedItems[index]['qty'] > 1) {
-            setState(() => selectedItems[index]['qty']--);
-          }
-        }),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          margin: const EdgeInsets.symmetric(horizontal: 5),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            "${selectedItems[index]['qty']}",
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-        _qtyBtn(Icons.add, () {
-          setState(() => selectedItems[index]['qty']++);
-        }),
-      ],
-    );
-  }
-
-  Widget _qtyBtn(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: const Color(0xFF4CAF50),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Icon(icon, color: Colors.white, size: 16),
-      ),
     );
   }
 
   Widget _buildBottomButton() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () {},
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4CAF50),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 15),
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Colors.grey.shade300)),
         ),
-        child: Text(
-          selectedItems.isEmpty ? "Lanjut" : "Simpan",
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: isFormValid
+                    ? () => _submitStockOpname("DRAFT")
+                    : null,
+                child: const Text("Save as Draft"),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: isFormValid
+                    ? () => _submitStockOpname("POSTED")
+                    : null,
+                child: const Text("Post"),
+              ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _dropdownContainer(Widget child) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 15),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: DropdownButtonHideUnderline(child: child),
+    );
+  }
+
+  Widget _disabledDropdown(String text) {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(text, style: const TextStyle(color: Colors.grey)),
     );
   }
 }

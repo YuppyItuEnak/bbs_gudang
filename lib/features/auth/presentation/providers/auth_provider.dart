@@ -21,6 +21,9 @@ class AuthProvider with ChangeNotifier {
   String? get error => _error;
   bool get isAuthenticated => _token != null;
 
+  List<User> _userPIC = [];
+  List<User> get userPIC => _userPIC;
+
   Future<void> login(String username, String password) async {
     _isLoading = true;
     _error = null;
@@ -154,12 +157,15 @@ class AuthProvider with ChangeNotifier {
     SharedPreferences prefs,
   ) async {
     try {
-      final uri = Uri.parse(
-        '${ApiConstants.baseUrl}/dynamic/m_sales_area_d_sales',
-      ).replace(queryParameters: {
-        'where': 'sales_id=$salesId',
-        'include': 'm_sales_area,m_sales_area>m_unit_bussiness',
-      });
+      final uri =
+          Uri.parse(
+            '${ApiConstants.baseUrl}/dynamic/m_sales_area_d_sales',
+          ).replace(
+            queryParameters: {
+              'where': 'sales_id=$salesId',
+              'include': 'm_sales_area,m_sales_area>m_unit_bussiness',
+            },
+          );
 
       final response = await http.get(
         uri,
@@ -184,6 +190,19 @@ class AuthProvider with ChangeNotifier {
       if (kDebugMode) {
         print('Failed to fetch unit business id: $e');
       }
+    }
+  }
+
+  Future<void> fetchUserPIC({required String token}) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      _userPIC = await _authRepository.fetchUserPIC(token: token);
+    } catch (e) {
+      throw Exception('Gagal mengambil data User PIC');
+    }finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 }

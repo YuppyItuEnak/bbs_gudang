@@ -212,7 +212,7 @@ class _DetailStockOpnamePageState extends State<DetailStockOpnamePage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  item.itemCode,
+                  item.item?.code ?? '-',
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],

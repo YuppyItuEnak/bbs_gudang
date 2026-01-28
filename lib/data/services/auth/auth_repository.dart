@@ -99,7 +99,8 @@ class AuthRepository {
 
           if (user.userMobile != true) {
             throw Exception(
-                'user anda tidak diijinkan menggunakan aplikasi ini');
+              'user anda tidak diijinkan menggunakan aplikasi ini',
+            );
           }
 
           return user;
@@ -162,6 +163,36 @@ class AuthRepository {
         print('❌ Error changing password: $e');
       }
       throw Exception('Failed to change password: $e');
+    }
+  }
+
+  Future<List<User>> fetchUserPIC({required String token}) async {
+    try {
+      final uri = Uri.parse("$baseUrl/dynamic/user_default").replace(
+        queryParameters: {
+          'selectfield': 'id,name',
+          'no_pagination': 'true',
+        },
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        final List data = body['data'];
+        print("Total User: ${data.length}");
+        return data.map((e) => User.fromJson(e)).toList();
+      } else {
+        throw Exception('Gagal mengambil data User PIC');
+      }
+    } catch (e) {
+      throw Exception('Gagal mengambil data User PIC');
     }
   }
 }

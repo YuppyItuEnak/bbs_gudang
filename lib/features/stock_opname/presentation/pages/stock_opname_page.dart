@@ -19,7 +19,6 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
   void initState() {
     super.initState();
 
-    /// Fetch data pertama kali
     Future.microtask(() {
       final token = context.read<AuthProvider>().token;
       if (token == null) return;
@@ -36,6 +35,8 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+
+      /// ================= APP BAR =================
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -45,68 +46,61 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
         ),
         title: const Text(
           "Stock Opname",
-          style: TextStyle(
-            color: Colors.black87,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          /// SEARCH BAR
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.grey.shade100),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 10,
-                  ),
-                ],
-              ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  hintText: "Cari",
-                  prefixIcon: Icon(Icons.search, color: Colors.grey),
-                  suffixIcon: Icon(Icons.tune, color: Colors.black87),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 12),
+
+      /// ================= BODY =================
+      body: Consumer<StockOpnameProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoading && provider.reports.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (provider.reports.isEmpty) {
+            return const Center(child: Text("Data stock opname kosong"));
+          }
+
+          return Column(
+            children: [
+              /// 🔍 SEARCH BAR
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const TextField(
+                          decoration: InputDecoration(
+                            icon: Icon(Icons.search),
+                            hintText: "Cari",
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.tune),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ),
 
-          /// LIST DATA
-          Expanded(
-            child: Consumer<StockOpnameProvider>(
-              builder: (context, provider, _) {
-                /// Loading awal
-                if (provider.isLoading && provider.reports.isEmpty) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                /// Error
-                if (provider.errorMessage != null) {
-                  return Center(
-                    child: Text(
-                      provider.errorMessage!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  );
-                }
-
-                /// Empty
-                if (provider.reports.isEmpty) {
-                  return const Center(child: Text("Data stock opname kosong"));
-                }
-
-                return RefreshIndicator(
+              /// 📄 LIST
+              Expanded(
+                child: RefreshIndicator(
                   onRefresh: () async {
                     final token = context.read<AuthProvider>().token;
                     await provider.fetchStockOpnameReport(
@@ -117,40 +111,44 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                     );
                   },
                   child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
+                    padding: const EdgeInsets.all(16),
                     itemCount: provider.reports.length,
                     itemBuilder: (context, index) {
-                      final item = provider.reports[index];
-                      return _buildStockCard(context, item);
+                      return _buildStockCard(context, provider.reports[index]);
                     },
                   ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-
-      /// FLOATING BUTTON
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const TambahStckOpnamePage(),
-            ),
+                ),
+              ),
+            ],
           );
         },
+      ),
+
+      /// ➕ FAB
+      floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF4CAF50),
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add),
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const TambahStckOpnamePage()),
+          );
+
+          if (result == true) {
+            final token = context.read<AuthProvider>().token;
+            await context.read<StockOpnameProvider>().fetchStockOpnameReport(
+              token: token!,
+              startDate: '',
+              endDate: '',
+              loadMore: true,
+            );
+          }
+        },
       ),
     );
   }
 
-  /// CARD ITEM
+  /// ================= CARD ITEM =================
   Widget _buildStockCard(BuildContext context, StockOpnameModel item) {
     final token = context.read<AuthProvider>().token;
 
@@ -159,76 +157,107 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => DetailStockOpnamePage(
-              opnameId: item.id, // 🔥 WAJIB ID, bukan code
-              token: token!,
-            ),
+            builder: (_) =>
+                DetailStockOpnamePage(opnameId: item.id, token: token!),
           ),
         );
       },
-      borderRadius: BorderRadius.circular(12),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 15),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// CODE
-            Text(
-              item.code,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-
+            /// CODE + STATUS
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                /// WAREHOUSE
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0F3FF),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.warehouse_outlined,
-                        size: 14,
-                        color: Color(0xFF5C6BC0),
-                      ),
-                      const SizedBox(width: 4),
-                      
-                      Text(
-                        item.warehouse?.name ?? '-',
-                        style: const TextStyle(
-                          color: Color(0xFF5C6BC0),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                Text(
+                  item.code,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
                   ),
                 ),
-                const Spacer(),
+                _statusBadge(item.status),
+              ],
+            ),
+            const SizedBox(height: 8),
 
-                /// DATE
+            /// WAREHOUSE + DATE
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.warehouse, size: 16, color: Colors.blue),
+                    const SizedBox(width: 6),
+                    Text(
+                      item.warehouse?.name ?? '-',
+                      style: const TextStyle(color: Colors.blue, fontSize: 12),
+                    ),
+                  ],
+                ),
                 Text(
-                  DateFormat('dd MMM yyyy').format(item.date),
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  item.date != null
+                      ? DateFormat('dd/MM/yyyy').format(item.date!)
+                      : '-',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// ================= STATUS BADGE =================
+  Widget _statusBadge(String status) {
+    Color bg;
+    Color text;
+
+    switch (status) {
+      case 'DRAFT':
+        bg = Colors.orange.withOpacity(0.15);
+        text = Colors.orange;
+        break;
+      case 'SUBMITTED':
+        bg = Colors.blue.withOpacity(0.15);
+        text = Colors.blue;
+        break;
+      case 'POSTED':
+        bg = Colors.green.withOpacity(0.15);
+        text = Colors.green;
+        break;
+      default:
+        bg = Colors.grey.withOpacity(0.15);
+        text = Colors.grey;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          color: text,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );

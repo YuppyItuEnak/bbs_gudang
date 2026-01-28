@@ -1,9 +1,9 @@
 import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_gudang/features/list_item/presentation/pages/tambah_item_page.dart';
+import 'package:bbs_gudang/features/stock_adjustment/presentation/providers/stock_adjustment_provider.dart';
+import 'package:bbs_gudang/features/transfer_warehouse/presentation/providers/transfer_warehouse_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// Pastikan path import ini benar sesuai struktur project Anda
-// import 'package:bbs_gudang/features/transfer_warehouse/presentation/pages/tambah_item_page.dart';
 
 class TambahStkAdjustPage extends StatefulWidget {
   const TambahStkAdjustPage({super.key});
@@ -13,43 +13,60 @@ class TambahStkAdjustPage extends StatefulWidget {
 }
 
 class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
-  String? selectedGudang;
-  final TextEditingController _referensiController = TextEditingController();
-  final TextEditingController _catatanController = TextEditingController();
+  String? selectedCompanyId;
+  String? selectedWarehouseId;
+  String? selectedOpnameId;
 
-  // List untuk menampung item yang sudah dipilih
+  final TextEditingController _catatanController = TextEditingController();
   List<Map<String, dynamic>> selectedItems = [];
 
-  // Fungsi navigasi ke pilih item (Logika sama dengan Stock Opname)
-  // Fungsi untuk navigasi ke halaman pilih item
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      final provider = context.read<TransferWarehouseProvider>();
+
+      String? responsibilityId;
+      if (auth.user!.userDetails.isNotEmpty) {
+        final primary = auth.user!.userDetails.firstWhere(
+          (e) => e.isPrimary == true,
+          orElse: () => auth.user!.userDetails.first,
+        );
+        responsibilityId = primary.fResponsibility;
+      }
+
+      provider.loadUserCompanies(
+        token: auth.token!,
+        userId: auth.user!.id,
+        responsibilityId: responsibilityId!,
+      );
+    });
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(backgroundColor: Colors.red, content: Text(msg)));
+  }
+
   void _navigateToSelectItem() async {
-    // 1. Berpindah ke halaman List Item dan menunggu hasil (result)
-    // Pastikan class 'TambahItem' sudah di-import di bagian atas
-    final token = context.read<AuthProvider>().token;
+    final token = context.read<AuthProvider>().token!;
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) =>  TambahItem(token: token!,)),
+      MaterialPageRoute(builder: (_) => TambahItem(token: token)),
     );
 
-    // 2. Logika setelah kembali dari halaman TambahItem
-    if (result != null && result is Map<String, dynamic>) {
+    if (result != null && result is List) {
       setState(() {
-        // Cek apakah item sudah ada di list berdasarkan kode barang
-        int existingIndex = selectedItems.indexWhere(
-          (item) => item['kode'] == result['kode'],
-        );
-
-        if (existingIndex != -1) {
-          // Jika sudah ada, cukup tambahkan quantity-nya
-          selectedItems[existingIndex]['qty'] += (result['qty'] ?? 1);
-        } else {
-          // Jika belum ada, masukkan sebagai item baru
-          // Pastikan data result memiliki key: nama, kode, dan qty
-          selectedItems.add({
-            "nama": result['nama'],
-            "kode": result['kode'],
-            "qty": result['qty'] ?? 1,
-          });
+        for (final item in result) {
+          final index = selectedItems.indexWhere((e) => e['id'] == item['id']);
+          if (index != -1) {
+            selectedItems[index]['qty'] += item['qty'];
+          } else {
+            selectedItems.add(item);
+          }
         }
       });
     }
@@ -58,18 +75,11 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xffF8F9FB),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: const BackButton(color: Colors.black),
         title: const Text(
           "Stock Adjustment",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -77,40 +87,27 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildHeaderInfo(),
-                  const SizedBox(height: 20),
+                  _sectionTitle("Company"),
+                  _buildCompanySelector(),
+                  const SizedBox(height: 16),
 
-                  // Field Gudang
-                  const Text(
-                    "Gudang",
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
-                  ),
-                  const SizedBox(height: 8),
+                  _sectionTitle("Gudang"),
                   _buildGudangSelector(),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 16),
 
-                  // Field Referensi (Sesuai gambar image_80d7ac.png)
-                  const Text(
-                    "Referensi",
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildReferensiInput(),
-                  const SizedBox(height: 15),
+                  _sectionTitle("Referensi Opname"),
+                  _buildOpnameDropdown(),
+                  const SizedBox(height: 16),
 
-                  // Field Catatan
-                  _buildCatatanInput(),
-                  const SizedBox(height: 25),
+                  _sectionTitle("Catatan"),
+                  _buildTextInput(_catatanController, "Catatan"),
+                  const SizedBox(height: 24),
 
-                  // LOGIKA DINAMIS:
-                  if (selectedItems.isEmpty)
-                    _buildInitialAddButton() // Tampilan awal (Kosong)
-                  else
-                    _buildItemListSection(), // Tampilan setelah ada item
+                  _buildItemSection(),
                 ],
               ),
             ),
@@ -121,119 +118,136 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
     );
   }
 
-  // --- WIDGET COMPONENTS ---
+  // ===============================
+  // COMPANY
+  // ===============================
+  Widget _buildCompanySelector() {
+    return Consumer<TransferWarehouseProvider>(
+      builder: (_, provider, __) {
+        if (provider.isLoadingCompany) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-  Widget _buildHeaderInfo() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Row(
-          children: [
-            Icon(Icons.calendar_today_outlined, size: 18, color: Colors.blue),
-            SizedBox(width: 10),
-            Text("06 Desember 2025"),
-          ],
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0F3FF),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Text(
-            "Draft",
-            style: TextStyle(
-              color: Color(0xFF5C6BC0),
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
-        ),
-      ],
+        return _buildDropdown(
+          value: selectedCompanyId,
+          hint: "Pilih Company",
+          items: provider.companies
+              .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+              .toList(),
+          onChanged: (val) {
+            setState(() {
+              selectedCompanyId = val;
+              selectedWarehouseId = null;
+              selectedOpnameId = null;
+              selectedItems.clear();
+            });
+
+            context.read<StockAdjustmentProvider>().clear();
+
+            provider.loadWarehouseCompany(
+              token: context.read<AuthProvider>().token!,
+              unitBusinessId: val!,
+            );
+          },
+        );
+      },
     );
   }
 
+  // ===============================
+  // GUDANG
+  // ===============================
   Widget _buildGudangSelector() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedGudang,
-          hint: const Text("Pilih Gudang"),
-          isExpanded: true,
-          items: [
-            "Gudang Utama",
-            "Gudang B",
-          ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-          onChanged: (val) => setState(() => selectedGudang = val),
-        ),
-      ),
+    return Consumer<TransferWarehouseProvider>(
+      builder: (_, provider, __) {
+        if (provider.isLoadingWarehouse) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return _buildDropdown(
+          value: selectedWarehouseId,
+          hint: "Pilih Gudang",
+          items: provider.warehouses
+              .map((w) => DropdownMenuItem(value: w.id, child: Text(w.name)))
+              .toList(),
+          onChanged: selectedCompanyId == null
+              ? null
+              : (val) {
+                  setState(() {
+                    selectedWarehouseId = val;
+                    selectedOpnameId = null;
+                  });
+
+                  final opnameProvider = context
+                      .read<StockAdjustmentProvider>();
+
+                  opnameProvider.clear();
+
+                  opnameProvider.loadOpnameReference(
+                    token: context.read<AuthProvider>().token!,
+                    unitBusinessId: selectedCompanyId!,
+                    warehouseId: val!,
+                  );
+                },
+        );
+      },
     );
   }
 
-  Widget _buildReferensiInput() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: TextField(
-        controller: _referensiController,
-        decoration: const InputDecoration(
-          hintText: "Tuliskan nomer referensi",
-          hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
-          border: InputBorder.none,
-        ),
-      ),
+  // ===============================
+  // OPNAME
+  // ===============================
+  Widget _buildOpnameDropdown() {
+    return Consumer<StockAdjustmentProvider>(
+      builder: (_, provider, __) {
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return _buildDropdown(
+          value: selectedOpnameId,
+          hint: "Pilih Referensi Opname",
+          items: provider.opnames
+              .map<DropdownMenuItem<String>>(
+                (o) => DropdownMenuItem(value: o['id'], child: Text(o['code'])),
+              )
+              .toList(),
+          onChanged: selectedWarehouseId == null
+              ? null
+              : (val) {
+                  setState(() => selectedOpnameId = val);
+
+                  final selected = provider.opnames.firstWhere(
+                    (e) => e['id'] == val,
+                  );
+
+                  provider.setSelectedOpname(selected);
+                },
+        );
+      },
     );
   }
 
-  Widget _buildCatatanInput() {
-    return Row(
-      children: [
-        const Icon(Icons.edit_outlined, size: 18, color: Colors.blue),
-        const SizedBox(width: 10),
-        Expanded(
-          child: TextField(
-            controller: _catatanController,
-            decoration: const InputDecoration(
-              hintText: "Catatan",
-              hintStyle: TextStyle(color: Colors.black54),
-              border: InputBorder.none,
-            ),
+  // ===============================
+  // ITEM
+  // ===============================
+  Widget _buildItemSection() {
+    if (selectedItems.isEmpty) {
+      return Center(
+        child: OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: Colors.green),
+            minimumSize: const Size(double.infinity, 48),
+          ),
+          onPressed: _navigateToSelectItem,
+          child: const Text(
+            "+ Add Item",
+            style: TextStyle(color: Colors.green),
           ),
         ),
-      ],
-    );
-  }
+      );
+    }
 
-  Widget _buildInitialAddButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton(
-        onPressed: _navigateToSelectItem,
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFF4CAF50)),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        child: const Text(
-          "+ Add Item",
-          style: TextStyle(
-            color: Color(0xFF4CAF50),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildItemListSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -242,163 +256,167 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
           children: [
             const Text(
               "Item Terpilih",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            GestureDetector(
-              onTap: _navigateToSelectItem,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.add, color: Colors.white, size: 14),
-                    SizedBox(width: 4),
-                    Text(
-                      "Add Item",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            TextButton(
+              onPressed: _navigateToSelectItem,
+              child: const Text("+ Add Item"),
             ),
           ],
         ),
-        const SizedBox(height: 15),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: selectedItems.length,
-          itemBuilder: (context, index) {
-            final item = selectedItems[index];
-            return _buildItemCard(item, index);
-          },
+        const SizedBox(height: 8),
+        ...selectedItems.map(
+          (item) => Card(
+            elevation: 1,
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              title: Text(
+                item['name'],
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(item['code']),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.remove),
+                    onPressed: () {
+                      if (item['qty'] > 1) {
+                        setState(() => item['qty']--);
+                      }
+                    },
+                  ),
+                  Text(item['qty'].toString()),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: () => setState(() => item['qty']++),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildItemCard(Map<String, dynamic> item, int index) {
+  // ===============================
+  // SAVE
+  // ===============================
+  Widget _buildBottomButton() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: SizedBox(
+        width: double.infinity,
+        height: 48,
+        child: ElevatedButton(
+          child: const Text("Simpan"),
+          onPressed: () async {
+            if (selectedCompanyId == null) {
+              _showError("Company belum dipilih");
+              return;
+            }
+            if (selectedWarehouseId == null) {
+              _showError("Gudang belum dipilih");
+              return;
+            }
+            if (selectedOpnameId == null) {
+              _showError("Referensi opname belum dipilih");
+              return;
+            }
+            if (selectedItems.isEmpty) {
+              _showError("Item belum ditambahkan");
+              return;
+            }
+
+            final auth = context.read<AuthProvider>();
+            final provider = context.read<StockAdjustmentProvider>();
+
+            final canSubmit = await provider.checkCanSubmit(
+              token: auth.token!,
+              authUserId: auth.user!.id,
+              menuId: '4ad48011-9a08-4073-bde0-10f88bfebc81',
+              unitBusinessId: selectedCompanyId,
+            );
+
+            if (!canSubmit) {
+              _showError(provider.error ?? 'Tidak bisa submit');
+              return;
+            }
+
+            final payload = {
+              "unit_bussiness_id": selectedCompanyId,
+              "warehouse_id": selectedWarehouseId,
+              "opname_id": selectedOpnameId,
+              "notes": _catatanController.text,
+              "submitted_by": auth.user!.id,
+              "approval_id": provider.approvalId,
+            };
+
+            await provider.createAdjustment(
+              token: auth.token!,
+              payload: payload,
+            );
+
+            provider.reset();
+            selectedItems.clear();
+
+            Navigator.pop(context, true);
+          },
+        ),
+      ),
+    );
+  }
+
+  // ===============================
+  // UI HELPER
+  // ===============================
+  Widget _sectionTitle(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        text,
+        style: const TextStyle(color: Colors.grey, fontSize: 13),
+      ),
+    );
+  }
+
+  Widget _buildDropdown({
+    required String? value,
+    required String hint,
+    required List<DropdownMenuItem<String>> items,
+    required ValueChanged<String?>? onChanged,
+  }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.blue.withOpacity(0.1)),
+        border: Border.all(color: Colors.grey.shade300),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      item['nama'],
-                      style: const TextStyle(
-                        color: Color(0xFF4CAF50),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () =>
-                          setState(() => selectedItems.removeAt(index)),
-                      child: const Text(
-                        "Hapus",
-                        style: TextStyle(color: Colors.red, fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  item['kode'],
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          const Text("PCS", style: TextStyle(color: Colors.grey, fontSize: 12)),
-          const SizedBox(width: 8),
-          _buildQtyControl(index),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQtyControl(int index) {
-    return Row(
-      children: [
-        _qtyBtn(Icons.remove, () {
-          if (selectedItems[index]['qty'] > 1) {
-            setState(() => selectedItems[index]['qty']--);
-          }
-        }),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          margin: const EdgeInsets.symmetric(horizontal: 5),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            "${selectedItems[index]['qty']}",
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: value,
+          hint: Text(hint),
+          items: items,
+          onChanged: onChanged,
         ),
-        _qtyBtn(Icons.add, () {
-          setState(() => selectedItems[index]['qty']++);
-        }),
-      ],
-    );
-  }
-
-  Widget _qtyBtn(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: const Color(0xFF4CAF50),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Icon(icon, color: Colors.white, size: 16),
       ),
     );
   }
 
-  Widget _buildBottomButton() {
+  Widget _buildTextInput(TextEditingController controller, String hint) {
     return Container(
-      padding: const EdgeInsets.all(20),
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () {},
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4CAF50),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 15),
-        ),
-        child: Text(
-          selectedItems.isEmpty ? "Lanjut" : "Simpan",
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(hintText: hint, border: InputBorder.none),
       ),
     );
   }

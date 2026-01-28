@@ -19,6 +19,16 @@ class StockAdjustmentProvider extends ChangeNotifier {
   String? get error => _error;
   bool get hasMore => _hasMore;
 
+  List<Map<String, dynamic>> _opnames = [];
+  Map<String, dynamic>? _selectedOpname;
+
+  List<Map<String, dynamic>> get opnames => _opnames;
+  Map<String, dynamic>? get selectedOpname => _selectedOpname;
+
+  bool _isCheckingApproval = false;
+  bool get isCheckingApproval => _isCheckingApproval;
+  String? approvalId;
+
   void reset() {
     _data.clear();
     _page = 1;
@@ -70,10 +80,7 @@ class StockAdjustmentProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _detailData = await _repo.fetchDetailAdjustment(
-        token: token,
-        id: id,
-      );
+      _detailData = await _repo.fetchDetailAdjustment(token: token, id: id);
       _error = null;
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');
@@ -82,5 +89,101 @@ class StockAdjustmentProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> loadOpnameReference({
+    required String token,
+    required String unitBusinessId,
+    required String warehouseId,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    _opnames = [];
+    _selectedOpname = null;
+    notifyListeners();
+
+    try {
+      final result = await _repo.fetchOpnameReferance(
+        unitBusinessId: unitBusinessId,
+        warehouseId: warehouseId,
+        token: token,
+      );
+
+      _opnames = result;
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> checkCanSubmit({
+    required String token,
+    required String authUserId,
+    required String menuId,
+    String? unitBusinessId,
+  }) async {
+    _isCheckingApproval = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final result = await _repo.checkCanSubmit(
+        token: token,
+        authUserId: authUserId,
+        menuId: menuId,
+        unitBusinessId: unitBusinessId,
+      );
+
+      final canSubmit = result['can_submit'] == true;
+
+      if (!canSubmit) {
+        _error = result['message'] ?? 'Tidak bisa submit';
+        return false;
+      }
+
+      approvalId = result['approval_id'];
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      return false;
+    } finally {
+      _isCheckingApproval = false;
+      notifyListeners();
+    }
+  }
+
+  String? adjustmentId;
+  String? adjustmentCode;
+
+  Future<void> createAdjustment({
+    required String token,
+    required Map<String, dynamic> payload,
+  }) async {
+    try {
+      final result = await _repo.createStockAdjustment(
+        token: token,
+        payload: payload,
+      );
+
+      adjustmentId = result['id'];
+      adjustmentCode = result['code'];
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// set dropdown selected value
+  void setSelectedOpname(Map<String, dynamic>? value) {
+    _selectedOpname = value;
+    notifyListeners();
+  }
+
+  void clear() {
+    _opnames = [];
+    _selectedOpname = null;
+    _error = null;
+    notifyListeners();
   }
 }

@@ -51,13 +51,14 @@ class StockAdjustmentRepository {
     required String id,
   }) async {
     try {
-      final uri = Uri.parse("$baseUrl/dynamic/t_inventory_s_adjustment/$id").replace(
-        queryParameters: {
-          'include':{
-            't_inventory_s_adjustment_d>t_inventory_s_adjustment,t_inventory_s_adjustment_d>m_item,t_inventory_s_adjustment_d>m_item_group,m_unit_bussiness,t_inventory_s_opname,m_warehouse,user_default,m_coa'
-          }
-        }
-      );
+      final uri = Uri.parse("$baseUrl/dynamic/t_inventory_s_adjustment/$id")
+          .replace(
+            queryParameters: {
+              'include': {
+                't_inventory_s_adjustment_d>t_inventory_s_adjustment,t_inventory_s_adjustment_d>m_item,t_inventory_s_adjustment_d>m_item_group,m_unit_bussiness,t_inventory_s_opname,m_warehouse,user_default,m_coa',
+              },
+            },
+          );
 
       final response = await http.get(
         uri,
@@ -77,5 +78,91 @@ class StockAdjustmentRepository {
     } catch (e) {
       throw Exception("StockAdjustment Error: $e");
     }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchOpnameReferance({
+    required String token,
+    required String unitBusinessId,
+    required String warehouseId,
+  }) async {
+    final uri = Uri.parse('$baseUrl/dynamic/t_inventory_s_opname').replace(
+      queryParameters: {
+        'include': 't_inventory_s_opname_d',
+        'selectfield': 'id,code',
+        'filter_column_status': 'POSTED',
+        'filter_column_unit_bussiness_id': unitBusinessId,
+        'filter_column_warehouse_id': warehouseId,
+      },
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed load opname');
+    }
+
+    final body = json.decode(response.body);
+
+    final List list = body['data'] ?? [];
+
+    return list.map<Map<String, dynamic>>((e) {
+      return {'id': e['id'], 'code': e['code']};
+    }).toList();
+  }
+
+  Future<Map<String, dynamic>> checkCanSubmit({
+    required String token,
+    required String authUserId,
+    required String menuId,
+    String? unitBusinessId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/fn/t_inventory_s_adjustment_approval/checkCanSubmit'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'auth_user_id': authUserId,
+        'menu_id': menuId,
+        'unit_bussiness_id': unitBusinessId,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Gagal cek approval');
+    }
+
+    return data;
+  }
+
+  Future<Map<String, dynamic>> createStockAdjustment({
+    required String token,
+    required Map<String, dynamic> payload,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/dynamic/t_inventory_s_adjustment/with-details'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(payload),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200 || data['status'] != 'success') {
+      throw Exception(data['message'] ?? 'Gagal simpan stock adjustment');
+    }
+
+    return data['data'];
   }
 }

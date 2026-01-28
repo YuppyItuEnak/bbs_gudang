@@ -16,7 +16,7 @@ class StockOpnameDetailModel {
   factory StockOpnameDetailModel.fromJson(Map<String, dynamic> json) {
     return StockOpnameDetailModel(
       id: json['id'] ?? '',
-      itemCode: json['item_code'] ?? '',
+      itemCode: json['code'] ?? '',
       opnameQty: json['opname_qty'] ?? 0,
       currentQty: json['current_on_hand_quantity'] ?? 0,
       item: json['stockOpnameDetailItem'] != null
