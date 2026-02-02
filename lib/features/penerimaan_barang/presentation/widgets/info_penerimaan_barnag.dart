@@ -1,92 +1,390 @@
+import 'package:bbs_gudang/data/models/penerimaan_barang/available_po_model.dart';
+import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
+import 'package:bbs_gudang/features/transfer_warehouse/presentation/providers/transfer_warehouse_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../providers/penerimaan_barang_provider.dart';
 
-class InfoPenerimaanBarang extends StatelessWidget {
+class InfoPenerimaanBarang extends StatefulWidget {
   const InfoPenerimaanBarang({super.key});
+
+  @override
+  State<InfoPenerimaanBarang> createState() => _InfoPenerimaanBarangState();
+}
+
+class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      final tw = context.read<TransferWarehouseProvider>();
+
+      // Load PO list
+      context.read<PenerimaanBarangProvider>().fetchListPO(token: auth.token!);
+
+      String? responsibilityId;
+      if (auth.user!.userDetails.isNotEmpty) {
+        final primary = auth.user!.userDetails.firstWhere(
+          (d) => d.isPrimary == true,
+          orElse: () => auth.user!.userDetails.first,
+        );
+        responsibilityId = primary.fResponsibility;
+      }
+
+      // Load Company list
+      tw.loadUserCompanies(
+        token: auth.token!,
+        userId: auth.user!.id!,
+        responsibilityId: responsibilityId!,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Date & Status
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.calendar_today, size: 18, color: Colors.grey),
-                  SizedBox(width: 8),
-                  Text("06 Agustus 2025", style: TextStyle(fontSize: 14)),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text("Draft", style: TextStyle(color: Colors.blue)),
-              ),
-            ],
-          ),
+          _header(),
           const SizedBox(height: 20),
 
-          _buildLabel("Tipe Barang"),
-          _buildDropdown("Finish Good"),
+          _label("No. PO"),
+          _poDropdown(),
 
-          _buildLabel("Supplier"),
-          _buildDropdown("Supplier A"),
+          _label("Company"),
+          _buildCompanyDropdown(),
 
-          _buildLabel("No. PO"),
-          _buildDropdown("PO-01N-2304-0001"),
+          _label("No. PB"),
+          Consumer<PenerimaanBarangProvider>(
+            builder: (_, p, __) {
+              if (p.isLoadingPbCode) {
+                return _customField(
+                  text: "Generate No PB...",
+                  isPlaceholder: true,
+                );
+              }
 
-          _buildLabel("Tgl Invoice Supplier"),
-          _buildTextField("DD/MM/YYYY", suffixIcon: Icons.calendar_month),
+              if (p.pbCodeError != null) {
+                return _customField(
+                  text: "Gagal generate No PB",
+                  isPlaceholder: true,
+                );
+              }
 
-          _buildLabel("No. SJ Supplier"),
-          _buildTextField("SJ-001"),
+              return _customField(
+                text: p.pbCode ?? "-",
+                isPlaceholder: p.pbCode == null,
+              );
+            },
+          ),
 
-          _buildLabel("No. Invoice Supplier"),
-          _buildTextField("SIS-001"),
+          _label("Warehouse"),
+          _buildWarehouseDropdown(),
 
-          _buildLabel("Nomor Polisi"),
-          _buildTextField("W 9028 Y"),
+          _label("Supplier"),
+          _supplierField(),
 
-          _buildLabel("Nama Supir"),
-          _buildTextField("Yatno"),
+          _label("No. PR"),
+          _prField(),
 
-          _buildLabel("Catatan Header"),
-          _buildTextField("Catatan", maxLines: 3),
-          
-          const SizedBox(height: 100), // Space for bottom button
+          _label("Grup Item"),
+          _itemGroupField(),
+
+          _label("Tgl Invoice Supplier"),
+          _invoiceDatePicker(),
+
+          _label("No. SJ Supplier"),
+          _textInput(
+            (v) => context.read<PenerimaanBarangProvider>().setSupplierSjNo(v),
+            "SJ-001",
+          ),
+
+          _label("No. Invoice Supplier"),
+          _textInput(
+            (v) => context
+                .read<PenerimaanBarangProvider>()
+                .setSupplierInvoiceNo(v),
+            "INV-001",
+          ),
+
+          _label("Nomor Polisi"),
+          _textInput(
+            (v) => context.read<PenerimaanBarangProvider>().setPoliceNo(v),
+            "W 9028 Y",
+          ),
+
+          _label("Nama Supir"),
+          _textInput(
+            (v) => context.read<PenerimaanBarangProvider>().setDriverName(v),
+            "Yatno",
+          ),
+
+          _label("Catatan Header"),
+          _textInput(
+            (v) => context.read<PenerimaanBarangProvider>().setHeaderNote(v),
+            "Catatan",
+            maxLines: 3,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildLabel(String text) {
+  // ================= HEADER =================
+
+  Widget _header() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.calendar_today, size: 18, color: Colors.grey),
+            const SizedBox(width: 8),
+            Text(DateFormat('dd MMMM yyyy', 'id_ID').format(DateTime.now())),
+          ],
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Text("Draft", style: TextStyle(color: Colors.blue)),
+        ),
+      ],
+    );
+  }
+
+  // ================= PO DROPDOWN =================
+
+  Widget _poDropdown() {
+    return Consumer<PenerimaanBarangProvider>(
+      builder: (_, provider, __) {
+        if (provider.isLoadingPO) return _loadingBox();
+        if (provider.listPO.isEmpty) return _emptyBox("Data PO kosong");
+
+        return GestureDetector(
+          onTap: () async {
+            final value = await showModalBottomSheet<AvailablePoModel>(
+              context: context,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              builder: (_) => _poBottomSheet(provider.listPO),
+            );
+
+            if (value != null) {
+              final auth = context.read<AuthProvider>();
+              final p = context.read<PenerimaanBarangProvider>();
+
+              p.setSelectedPO(value);
+              p.setPurchaseOrderId(value.id);
+              p.setCodePenerimaanBarang(value.code);
+          
+              p.resetPoAutoFill();
+
+              if (value.id != null) {
+                p.loadPoDetail(token: auth.token!, poId: value.id);
+              }
+            }
+          },
+          child: _customField(
+            text: provider.selectedPO?.code ?? "Pilih No. PO",
+            isPlaceholder: provider.selectedPO == null,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _poBottomSheet(List<AvailablePoModel> list) {
+    return ListView.separated(
+      itemCount: list.length,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (_, i) {
+        final po = list[i];
+        return ListTile(
+          title: Text(po.code ?? '-'),
+          onTap: () => Navigator.pop(context, po),
+        );
+      },
+    );
+  }
+
+  // ================= COMPANY DROPDOWN =================
+
+  Widget _buildCompanyDropdown() {
+    return Consumer2<TransferWarehouseProvider, PenerimaanBarangProvider>(
+      builder: (_, tw, pb, __) {
+        if (tw.isLoadingCompany) return _loadingBox();
+        if (tw.companies.isEmpty) return _emptyBox("Company tidak tersedia");
+
+        return _dropdownContainer(
+          DropdownButton<String>(
+            value: pb.unitBusinessId,
+            hint: const Text("Pilih Company"),
+            isExpanded: true,
+            items: tw.companies.map((c) {
+              return DropdownMenuItem(value: c.id, child: Text(c.name));
+            }).toList(),
+
+            onChanged: (val) async {
+              if (val == null) return;
+
+              final auth = context.read<AuthProvider>();
+
+              // ===== SET COMPANY =====
+              pb.setUnitBusinessId(val);
+              pb.setUnitBusinessName(
+                tw.companies.firstWhere((c) => c.id == val).name,
+              );
+
+              debugPrint("Unit Business: ${pb.unitBusinessId} - ${pb.warehouseName}");
+              debugPrint("PB: ${pb.pbCode}");
+              // ===== RESET DEPENDENT =====
+              pb.setWarehouseId(null);
+              pb.resetPbCode();
+
+              // ===== LOAD WAREHOUSE =====
+              context.read<TransferWarehouseProvider>().loadWarehouseCompany(
+                token: auth.token!,
+                unitBusinessId: val,
+              );
+
+              // ===== AUTO GENERATE NO PB =====
+              await pb.generateNoPB(token: auth.token!, unitBusinessId: val);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  // ================= WAREHOUSE DROPDOWN =================
+
+  Widget _buildWarehouseDropdown() {
+    return Consumer2<TransferWarehouseProvider, PenerimaanBarangProvider>(
+      builder: (_, tw, pb, __) {
+        if (pb.unitBusinessId == null) {
+          return _customField(
+            text: "Pilih Company terlebih dahulu",
+            isPlaceholder: true,
+          );
+        }
+
+        if (tw.isLoadingWarehouse) return _loadingBox();
+        if (tw.warehouses.isEmpty) return _emptyBox("Warehouse kosong");
+
+        return _dropdownContainer(
+          DropdownButton<String>(
+            value: pb.warehouseId,
+            hint: const Text("Pilih Warehouse"),
+            isExpanded: true,
+            items: tw.warehouses.map((w) {
+              return DropdownMenuItem(value: w.id, child: Text(w.name));
+            }).toList(),
+
+            onChanged: (val) {
+              pb.setWarehouseId(val);
+              pb.setWarehouseName(
+                val!.isEmpty
+                    ? null
+                    : tw.warehouses.firstWhere((c) => c.id == val).name,
+              );
+              debugPrint("WAREHOUSE DIPILIH: $val - ${pb.warehouseName}");
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  // ================= AUTOFILL FIELDS =================
+
+  Widget _supplierField() {
+    return Consumer<PenerimaanBarangProvider>(
+      builder: (_, p, __) {
+        return _customField(
+          text: p.isLoadingPoDetail
+              ? "Memuat..."
+              : p.supplierName ?? "Auto dari PO",
+          isPlaceholder: p.supplierName == null,
+        );
+      },
+    );
+  }
+
+  Widget _prField() {
+    return Consumer<PenerimaanBarangProvider>(
+      builder: (_, p, __) {
+        return _customField(
+          text: p.isLoadingPoDetail ? "Memuat..." : p.prCode ?? "Auto dari PO",
+          isPlaceholder: p.prCode == null,
+        );
+      },
+    );
+  }
+
+  Widget _itemGroupField() {
+    return Consumer<PenerimaanBarangProvider>(
+      builder: (_, p, __) {
+        return _customField(
+          text: p.isLoadingPoDetail
+              ? "Memuat..."
+              : p.itemGroup ?? "Auto dari PR",
+          isPlaceholder: p.itemGroup == null,
+        );
+      },
+    );
+  }
+
+  Widget _invoiceDatePicker() {
+    return Consumer<PenerimaanBarangProvider>(
+      builder: (_, p, __) {
+        return GestureDetector(
+          onTap: () async {
+            final date = await showDatePicker(
+              context: context,
+              initialDate: DateTime.now(),
+              firstDate: DateTime(2020),
+              lastDate: DateTime(2100),
+            );
+
+            if (date != null) {
+              p.setInvoiceDate(date);
+            }
+          },
+          child: _customField(
+            text: p.invoiceDate == null
+                ? "Pilih tanggal"
+                : DateFormat('dd/MM/yyyy').format(p.invoiceDate!),
+            isPlaceholder: p.invoiceDate == null,
+            icon: Icons.calendar_month,
+          ),
+        );
+      },
+    );
+  }
+
+  // ================= UI HELPERS =================
+
+  Widget _label(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8, top: 15),
-      child: Text(text, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Text(text, style: const TextStyle(color: Colors.grey)),
     );
   }
 
-  Widget _buildTextField(String hint, {IconData? suffixIcon, int maxLines = 1}) {
-    return TextField(
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        hintText: hint,
-        suffixIcon: suffixIcon != null ? Icon(suffixIcon, color: Colors.black87) : null,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade200)),
-      ),
-    );
-  }
-
-  Widget _buildDropdown(String value) {
+  Widget _customField({
+    required String text,
+    bool isPlaceholder = false,
+    IconData? icon,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
@@ -97,10 +395,79 @@ class InfoPenerimaanBarang extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
-          const Icon(Icons.arrow_drop_down),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: isPlaceholder ? Colors.grey : Colors.black87,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Icon(icon ?? Icons.arrow_drop_down, color: Colors.grey),
         ],
       ),
+    );
+  }
+
+  Widget _textInput(
+    Function(String) onChanged,
+    String hint, {
+    int maxLines = 1,
+  }) {
+    return TextField(
+      maxLines: maxLines,
+      onChanged: onChanged,
+      decoration: _inputDecoration(hint),
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+    );
+  }
+
+  Widget _dropdownContainer(Widget child) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 15),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: DropdownButtonHideUnderline(child: child),
+    );
+  }
+
+  Widget _loadingBox() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: const Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  Widget _emptyBox(String text) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Text(text, style: const TextStyle(color: Colors.grey)),
     );
   }
 }

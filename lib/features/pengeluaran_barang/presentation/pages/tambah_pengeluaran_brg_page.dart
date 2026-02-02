@@ -1,7 +1,12 @@
+import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_gudang/features/pengeluaran_barang/presentation/pages/edit_pengeluaran_brg_form.dart';
 import 'package:bbs_gudang/features/pengeluaran_barang/presentation/pages/tambah_item_pengeluaran_page.dart';
+import 'package:bbs_gudang/features/pengeluaran_barang/presentation/providers/pengeluaran_barang_provider.dart'
+    show PengeluaranBarangProvider;
 import 'package:bbs_gudang/features/pengeluaran_barang/presentation/widgets/tmbh_pengeluaran_input_field.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../widgets/item_pengeluaran_tile.dart';
 
 class TambahPengeluaranBrgPage extends StatefulWidget {
@@ -13,6 +18,57 @@ class TambahPengeluaranBrgPage extends StatefulWidget {
 }
 
 class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
+  // CONTROLLERS FOR AUTO FILL
+  final companyCtrl = TextEditingController();
+  final deliveryAreaCtrl = TextEditingController();
+  final expeditionTypeCtrl = TextEditingController();
+  final licensePlateCtrl = TextEditingController();
+  final totalWeightCtrl = TextEditingController();
+  final dateCtrl = TextEditingController();
+  final expeditionCtrl = TextEditingController();
+  final vehicleCtrl = TextEditingController();
+  final totalAmountCtrl = TextEditingController();
+  final driverCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      final token = context.read<AuthProvider>().token;
+      if (token != null) {
+        context.read<PengeluaranBarangProvider>().fetchDeliveryPlanCode(
+          token: token,
+        );
+      }
+    });
+  }
+
+  /// 🔄 AUTO FILL FROM DETAIL DP
+  void _autoFill(PengeluaranBarangProvider pb) {
+    final detail = pb.detailDPCode;
+    if (detail == null) return;
+
+    final firstDetail = detail.details?.isNotEmpty == true
+        ? detail.details!.first
+        : null;
+
+    companyCtrl.text = detail.unitBussiness?.name ?? '';
+    deliveryAreaCtrl.text = detail.deliveryArea?.code ?? '';
+    licensePlateCtrl.text = detail.nopol ?? '';
+    totalWeightCtrl.text = detail.weight?.toString() ?? '';
+    dateCtrl.text = detail.date != null
+        ? DateFormat('dd/MM/yyyy').format(detail.date!)
+        : '';
+
+    vehicleCtrl.text = detail.vehicle?.name ?? '';
+    totalAmountCtrl.text = detail.total?.toString() ?? '';
+    driverCtrl.text = detail.driver ?? '';
+
+    // ✅ EXPEDITION dari SALES ORDER di DETAILS
+    expeditionCtrl.text = firstDetail?.salesOrder?.expeditionType ?? '';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -34,157 +90,199 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const TmbhPengeluaranInputField(
-                    label: "No. Pengeluaran Barang",
-                    hint: "PBO-001",
-                    enabled: false,
-                    fillColor: Color(0xFFF5F5F5),
-                  ),
-                  const TmbhPengeluaranInputField(
-                    label: "Tanggal",
-                    hint: "DD/MM/YYYY",
-                    suffixIcon: Icons.calendar_today_outlined,
-                  ),
-                  const TmbhPengeluaranInputField(
-                    label: "Tipe Barang",
-                    hint: "Finish Good",
-                    isDropdown: true,
-                  ),
-                  const TmbhPengeluaranInputField(
-                    label: "Customer",
-                    hint: "Customer A",
-                    isDropdown: true,
-                  ),
-                  const TmbhPengeluaranInputField(
-                    label: "Tgl Invoice",
-                    hint: "DD/MM/YYYY",
-                    suffixIcon: Icons.calendar_today_outlined,
-                  ),
-                  const TmbhPengeluaranInputField(
-                    label: "No. Surat Jalan",
-                    hint: "SJ-001",
-                  ),
-                  const TmbhPengeluaranInputField(
-                    label: "No. Invoice",
-                    hint: "SIC-001",
-                  ),
-                  const TmbhPengeluaranInputField(
-                    label: "Nomor Polisi",
-                    hint: "W 9028 Y",
-                  ),
-                  const TmbhPengeluaranInputField(
-                    label: "Nama Supir",
-                    hint: "Yatno",
-                  ),
-                  const TmbhPengeluaranInputField(
-                    label: "Catatan Header",
-                    hint: "Catatan",
-                    maxLines: 3,
-                  ),
 
-                  const SizedBox(height: 25),
-                  const Text(
-                    "Detail Pengeluaran Barang",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    "Item",
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
-                  ),
-                  const SizedBox(height: 10),
+      body: Consumer<PengeluaranBarangProvider>(
+        builder: (context, pb, _) {
+          // Trigger autofill when detail loaded
+          _autoFill(pb);
 
-                  const ItemPengeluaranTile(
-                    noSo: "SO-001",
-                    namaBarang: "Barang A",
-                    qty: "2 roll",
-                    qtySo: "100",
-                    qtyDikirim: "80",
-                    sisa: "20",
-                  ),
-                  ItemPengeluaranTile(
-                    noSo: "SO-002",
-                    namaBarang: "Barang B",
-                    qty: "2 roll",
-                    qtySo: "100",
-                    qtyDikirim: "20",
-                    sisa: "80",
-                    isSwiped: true,
-                    onEditTap: () {
-                      // Navigasi ke halaman edit
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EditPengeluaranBrgForm(),
+          final selectedId = pb.selectedDeliveryPlanId;
+
+          final uniqueList = {
+            for (var e in pb.listDeliveryPlanCode) e.id: e,
+          }.values.toList();
+
+          return Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      /// ===== NO DP DROPDOWN =====
+                      const SizedBox(height: 10),
+                      const Text(
+                        "No. Pengeluaran Barang",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                      const SizedBox(height: 6),
 
-                  const SizedBox(height: 15),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const TambahItemPengeluaranPage(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text("Add Item"),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.orange,
-                        side: const BorderSide(color: Colors.orange),
-                        shape: RoundedRectangleBorder(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5F5),
                           borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade300),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            key: ValueKey(selectedId),
+                            isExpanded: true,
+                            hint: const Text("Pilih Delivery Plan"),
+
+                            value: uniqueList.any((e) => e.id == selectedId)
+                                ? selectedId
+                                : null,
+
+                            items: uniqueList.map((e) {
+                              return DropdownMenuItem<String>(
+                                value: e.id,
+                                child: Text(e.code),
+                              );
+                            }).toList(),
+
+                            onChanged: (value) async {
+                              if (value == null) return;
+
+                              pb.setSelectedDeliveryPlanId(value);
+
+                              final token = context.read<AuthProvider>().token;
+
+                              if (token != null) {
+                                await pb.fetchDetailDPCode(
+                                  token: token,
+                                  id: value,
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      /// ===== AUTO GENERATED FIELDS =====
+                      TmbhPengeluaranInputField(
+                        label: "Company",
+                        controller: companyCtrl,
+                        hint: "Company",
+                      ),
+
+                      TmbhPengeluaranInputField(
+                        label: "Delivery Area",
+                        controller: deliveryAreaCtrl,
+                        hint: "Delivery Area",
+                      ),
+
+                      TmbhPengeluaranInputField(
+                        label: "Expedition Type",
+                        controller: expeditionTypeCtrl,
+                        hint: "Expedition Type",
+                      ),
+
+                      TmbhPengeluaranInputField(
+                        label: "License Plate",
+                        controller: licensePlateCtrl,
+                        hint: "License Plate",
+                      ),
+
+                      TmbhPengeluaranInputField(
+                        label: "Total Weight",
+                        controller: totalWeightCtrl,
+                        hint: "Total Weight",
+                      ),
+
+                      TmbhPengeluaranInputField(
+                        label: "Date",
+                        controller: dateCtrl,
+                        hint: "DD/MM/YYYY",
+                        suffixIcon: Icons.calendar_today_outlined,
+                      ),
+
+                      TmbhPengeluaranInputField(
+                        label: "Expedition",
+                        controller: expeditionCtrl,
+                        hint: "Expedition",
+                      ),
+
+                      TmbhPengeluaranInputField(
+                        label: "Vehicle",
+                        controller: vehicleCtrl,
+                        hint: "Vehicle",
+                      ),
+
+                      TmbhPengeluaranInputField(
+                        label: "Total Amount",
+                        controller: totalAmountCtrl,
+                        hint: "Total Amount",
+                      ),
+
+                      TmbhPengeluaranInputField(
+                        label: "Driver",
+                        controller: driverCtrl,
+                        hint: "Driver",
+                      ),
+
+                      const SizedBox(height: 25),
+
+                      /// ===== DETAIL ITEMS =====
+                      const Text(
+                        "Detail Pengeluaran Barang",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      const ItemPengeluaranTile(
+                        noSo: "SO-001",
+                        namaBarang: "Barang A",
+                        qty: "2 roll",
+                        qtySo: "100",
+                        qtyDikirim: "80",
+                        sisa: "20",
+                      ),
+
+                      const SizedBox(height: 30),
+                    ],
+                  ),
+                ),
+              ),
+
+              /// ===== SAVE BUTTON =====
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4CAF50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      "Simpan",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 30),
-                ],
-              ),
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4CAF50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  "Simpan",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
                 ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

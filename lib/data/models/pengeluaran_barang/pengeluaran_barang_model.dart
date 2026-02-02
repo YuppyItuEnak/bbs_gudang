@@ -67,18 +67,18 @@ class PengeluaranBarangModel {
 
   factory PengeluaranBarangModel.fromJson(Map<String, dynamic> json) {
     return PengeluaranBarangModel(
-      id: json['id'],
-      deliveryPlanId: json['delivery_plan_id'],
-      date: json['date'],
-      status: json['status'],
-      unitBussinessId: json['unit_bussiness_id'],
-      code: json['code'],
-      printCount: json['print_count'],
-      customerId: json['customer_id'],
-      topId: json['top_id'],
-      shipTo: json['ship_to'],
+      id: json['id'] ?? '',
+      deliveryPlanId: json['delivery_plan_id'] ?? '',
+      date: json['date'] ?? '',
+      status: json['status'] ?? 0,
+      unitBussinessId: json['unit_bussiness_id'] ?? '',
+      code: json['code'] ?? '',
+      printCount: json['print_count'] ?? 0,
+      customerId: json['customer_id'] ?? '',
+      topId: json['top_id'] ?? '',
+      shipTo: json['ship_to'] ?? '',
       npwp: json['npwp'] ?? '',
-      soId: json['so_id'],
+      soId: json['so_id'] ?? '',
 
       unitBussiness: json['unit_bussiness'],
       customer: json['customer'],
@@ -87,13 +87,14 @@ class PengeluaranBarangModel {
       notes: json['notes'],
 
       siUsed: json['si_used'] ?? false,
-      createdBy: json['created_by'],
+      createdBy: json['created_by'] ?? '',
       updatedBy: json['updated_by'],
-      pengeluaranBrgDetail: json['t_surat_jalan_ds'] == null
-          ? []
-          : (json['t_surat_jalan_ds'] as List)
-                .map((e) => PengeluaranBarangDetail.fromJson(e))
-                .toList(),
+
+      pengeluaranBrgDetail:
+          (json['t_surat_jalan_ds'] as List?)
+              ?.map((e) => PengeluaranBarangDetail.fromJson(e))
+              .toList() ??
+          [],
 
       jurnalAmount: json['jurnal_amount'] == null
           ? null
@@ -150,17 +151,21 @@ class SalesOrderModel {
 
   factory SalesOrderModel.fromJson(Map<String, dynamic> json) {
     return SalesOrderModel(
-      id: json['id'],
-      code: json['code'],
-      date: json['date'],
-      estDate: json['est_date'],
-      status: json['status'],
-      dpp: (json['dpp'] as num).toInt(),
-      totalDisc: (json['total_disc'] as num).toInt(),
-      ppn: (json['ppn'] as num).toInt(),
-      grandTotal: (json['grand_total'] as num).toInt(),
-      customerName: json['customer_name'],
-      shipToName: json['ship_to_name'],
+      id: json['id'] ?? '',
+      code: json['code'] ?? '',
+      date: json['date'] ?? '',
+      estDate: json['est_date'] ?? '',
+      status: json['status'] ?? 0,
+      dpp: json['dpp'] == null ? 0 : (json['dpp'] as num).toInt(),
+      totalDisc: json['total_disc'] == null
+          ? 0
+          : (json['total_disc'] as num).toInt(),
+      ppn: json['ppn'] == null ? 0 : (json['ppn'] as num).toInt(),
+      grandTotal: json['grand_total'] == null
+          ? 0
+          : (json['grand_total'] as num).toInt(),
+      customerName: json['customer_name'] ?? '',
+      shipToName: json['ship_to_name'] ?? '',
     );
   }
 }
@@ -182,11 +187,11 @@ class UnitBussinessModel {
 
   factory UnitBussinessModel.fromJson(Map<String, dynamic> json) {
     return UnitBussinessModel(
-      id: json['id'],
-      code: json['code'],
-      name: json['name'],
-      address: json['address'] ?? '',
-      status: json['status'],
+      id: json['id'] ?? '',
+      code: json['code'] ?? '',
+      name: json['name'] ?? '',
+      address: json['address'],
+      status: json['status'] ?? false,
     );
   }
 }
@@ -251,12 +256,11 @@ class DeliveryPlanModel {
 
   factory DeliveryPlanModel.fromJson(Map<String, dynamic> json) {
     return DeliveryPlanModel(
-      id: json['id'],
-      code: json['code'],
-      date: json['date'],
-      status: json['status'],
-      total: (json['total'] as num).toInt(),
-
+      id: json['id'] ?? '',
+      code: json['code'] ?? '',
+      date: json['date'] ?? '',
+      status: json['status'] ?? 0,
+      total: json['total'] == null ? 0 : (json['total'] as num).toInt(),
       driver: json['driver'],
       unitBussiness: json['unit_bussiness'],
       deliveryArea: json['delivery_area'],

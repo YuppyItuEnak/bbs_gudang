@@ -1,12 +1,7 @@
 class PenerimaanBarangDetailModel {
   final String id;
-  final String? itemId;
-  final String? itemCode;
-  final String? itemName;
   final int? qtyReceipt;
   final int? qtyReceived;
-  final String? itemUom;
-  final String? itemPrice;
   final String? notes;
 
   final PbDetailItemModel? item;
@@ -15,13 +10,8 @@ class PenerimaanBarangDetailModel {
 
   PenerimaanBarangDetailModel({
     required this.id,
-    this.itemId,
-    this.itemCode,
-    this.itemName,
     this.qtyReceipt,
     this.qtyReceived,
-    this.itemUom,
-    this.itemPrice,
     this.notes,
     this.item,
     this.prDetail,
@@ -31,13 +21,8 @@ class PenerimaanBarangDetailModel {
   factory PenerimaanBarangDetailModel.fromJson(Map<String, dynamic> json) {
     return PenerimaanBarangDetailModel(
       id: json['id'] ?? '',
-      itemId: json['item_id'],
-      itemCode: json['item_code'],
-      itemName: json['item_name'],
       qtyReceipt: json['qty_receipt'],
       qtyReceived: json['qty_received'],
-      itemUom: json['item_uom'],
-      itemPrice: json['item_price'],
       notes: json['notes'],
 
       item: json['pbDetailItem'] != null
@@ -50,12 +35,12 @@ class PenerimaanBarangDetailModel {
 
       poDetail: json['pbDetailPurchaseOrderDetail'] != null
           ? PbDetailPurchaseOrderDetailModel.fromJson(
-              json['pbDetailPurchaseOrderDetail'])
+              json['pbDetailPurchaseOrderDetail'],
+            )
           : null,
     );
   }
 }
-
 
 class PbDetailItemModel {
   final String id;
@@ -86,7 +71,6 @@ class PbDetailItemModel {
   }
 }
 
-
 class PbDetailPrDetailModel {
   final String id;
   final int? qty;
@@ -113,7 +97,6 @@ class PbDetailPrDetailModel {
   }
 }
 
-
 class PbDetailPurchaseOrderDetailModel {
   final String id;
   final int? qty;
@@ -133,8 +116,7 @@ class PbDetailPurchaseOrderDetailModel {
     this.uom,
   });
 
-  factory PbDetailPurchaseOrderDetailModel.fromJson(
-      Map<String, dynamic> json) {
+  factory PbDetailPurchaseOrderDetailModel.fromJson(Map<String, dynamic> json) {
     return PbDetailPurchaseOrderDetailModel(
       id: json['id'] ?? '',
       qty: json['qty'],

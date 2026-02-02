@@ -1,4 +1,4 @@
-import 'package:bbs_gudang/data/models/penerimaan_barang/penerimaan_barang_detail.dart';
+import 'penerimaan_barang_detail.dart';
 
 class PenerimaanBarangModel {
   final String id;
@@ -24,7 +24,9 @@ class PenerimaanBarangModel {
   final String? driverName;
 
   final DateTime? dateSjSupplier;
+
   final String? warehouseId;
+  final String? warehouseName;
 
   final String? postedBy;
   final DateTime? postedAt;
@@ -38,8 +40,8 @@ class PenerimaanBarangModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
-  final List<PenerimaanBarangDetailModel>?
-  details; // List of PenerimaanBarangDetailModel>
+  final PbPurchaseOrderModel? purchaseOrder;
+  final List<PenerimaanBarangDetailModel> details;
 
   PenerimaanBarangModel({
     required this.id,
@@ -59,6 +61,7 @@ class PenerimaanBarangModel {
     this.driverName,
     this.dateSjSupplier,
     this.warehouseId,
+    this.warehouseName,
     this.postedBy,
     this.postedAt,
     this.createdBy,
@@ -67,17 +70,19 @@ class PenerimaanBarangModel {
     this.itemGroupCoa,
     this.createdAt,
     this.updatedAt,
-    this.details,
+    this.purchaseOrder,
+    this.details = const [],
   });
 
   factory PenerimaanBarangModel.fromJson(Map<String, dynamic> json) {
     return PenerimaanBarangModel(
-      id: json['id']?.toString() ?? '',
+      id: json['id'] ?? '',
 
-      unitBussinessId: json['unit_bussiness_id'],
-      unitBussinessName: json['unit_bussiness_name'],
+      unitBussinessId: json['pbCompany']?['id'] ?? json['unit_bussiness_id'],
+      unitBussinessName:
+          json['pbCompany']?['name'] ?? json['unit_bussiness_name'],
+
       code: json['code'],
-
       itemTypeId: json['item_type_id'],
       purchaseOrderId: json['purchase_order_id'],
 
@@ -86,7 +91,6 @@ class PenerimaanBarangModel {
       notes: json['notes'],
 
       status: json['status'],
-
       date: json['date'] != null ? DateTime.tryParse(json['date']) : null,
 
       supplierId: json['supplier_id'],
@@ -99,7 +103,8 @@ class PenerimaanBarangModel {
           ? DateTime.tryParse(json['date_sj_supplier'])
           : null,
 
-      warehouseId: json['warehouse_id'],
+      warehouseId: json['pbWarehouse']?['id'],
+      warehouseName: json['pbWarehouse']?['name'],
 
       postedBy: json['posted_by'],
       postedAt: json['posted_at'] != null
@@ -119,11 +124,51 @@ class PenerimaanBarangModel {
       updatedAt: json['updatedAt'] != null
           ? DateTime.tryParse(json['updatedAt'])
           : null,
-      details: json['pbDetailPenerimaanBarangs'] != null
-          ? (json['pbDetailPenerimaanBarangs'] as List)
-                .map((e) => PenerimaanBarangDetailModel.fromJson(e))
-                .toList()
-          : [],
+
+      purchaseOrder: json['pbPurchaseOrder'] != null
+          ? PbPurchaseOrderModel.fromJson(json['pbPurchaseOrder'])
+          : null,
+
+      details:
+          (json['pbDetailPenerimaanBarangs'] as List<dynamic>?)
+              ?.map((e) => PenerimaanBarangDetailModel.fromJson(e))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class PbPurchaseOrderModel {
+  final String id;
+  final String? code;
+  final String? supplierName;
+  final String? currency;
+  final String? paymentType;
+  final String? taxType;
+  final String? total;
+  final String? grandTotal;
+
+  PbPurchaseOrderModel({
+    required this.id,
+    this.code,
+    this.supplierName,
+    this.currency,
+    this.paymentType,
+    this.taxType,
+    this.total,
+    this.grandTotal,
+  });
+
+  factory PbPurchaseOrderModel.fromJson(Map<String, dynamic> json) {
+    return PbPurchaseOrderModel(
+      id: json['id'] ?? '',
+      code: json['code'],
+      supplierName: json['supplier_name'],
+      currency: json['currency'],
+      paymentType: json['payment_type'],
+      taxType: json['tax_type'],
+      total: json['total'],
+      grandTotal: json['grand_total'],
     );
   }
 }

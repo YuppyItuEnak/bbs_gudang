@@ -305,67 +305,119 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
   // ===============================
   Widget _buildBottomButton() {
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: SizedBox(
-        width: double.infinity,
-        height: 48,
-        child: ElevatedButton(
-          child: const Text("Simpan"),
-          onPressed: () async {
-            if (selectedCompanyId == null) {
-              _showError("Company belum dipilih");
-              return;
-            }
-            if (selectedWarehouseId == null) {
-              _showError("Gudang belum dipilih");
-              return;
-            }
-            if (selectedOpnameId == null) {
-              _showError("Referensi opname belum dipilih");
-              return;
-            }
-            if (selectedItems.isEmpty) {
-              _showError("Item belum ditambahkan");
-              return;
-            }
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      child: Row(
+        children: [
+          /// SAVE STOCK ADJUSTMENT (DRAFT)
+          Expanded(
+            child: SizedBox(
+              height: 52,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF4CAF50)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () async {
+                  await _submitAdjustment(sendApproval: false);
+                },
+                child: const Text(
+                  "Save Stock Adjustment",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF4CAF50),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
 
-            final auth = context.read<AuthProvider>();
-            final provider = context.read<StockAdjustmentProvider>();
+          const SizedBox(width: 12),
 
-            final canSubmit = await provider.checkCanSubmit(
-              token: auth.token!,
-              authUserId: auth.user!.id,
-              menuId: '4ad48011-9a08-4073-bde0-10f88bfebc81',
-              unitBusinessId: selectedCompanyId,
-            );
-
-            if (!canSubmit) {
-              _showError(provider.error ?? 'Tidak bisa submit');
-              return;
-            }
-
-            final payload = {
-              "unit_bussiness_id": selectedCompanyId,
-              "warehouse_id": selectedWarehouseId,
-              "opname_id": selectedOpnameId,
-              "notes": _catatanController.text,
-              "submitted_by": auth.user!.id,
-              "approval_id": provider.approvalId,
-            };
-
-            await provider.createAdjustment(
-              token: auth.token!,
-              payload: payload,
-            );
-
-            provider.reset();
-            selectedItems.clear();
-
-            Navigator.pop(context, true);
-          },
-        ),
+          /// SEND APPROVAL
+          Expanded(
+            child: SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4CAF50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () async {
+                  await _submitAdjustment(sendApproval: true);
+                },
+                child: const Text(
+                  "Send Approval",
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  Future<void> _submitAdjustment({required bool sendApproval}) async {
+    if (selectedCompanyId == null) {
+      _showError("Company belum dipilih");
+      return;
+    }
+    if (selectedWarehouseId == null) {
+      _showError("Gudang belum dipilih");
+      return;
+    }
+    if (selectedOpnameId == null) {
+      _showError("Referensi opname belum dipilih");
+      return;
+    }
+    if (selectedItems.isEmpty) {
+      _showError("Item belum ditambahkan");
+      return;
+    }
+
+    final auth = context.read<AuthProvider>();
+    final provider = context.read<StockAdjustmentProvider>();
+
+    /// hanya cek approval kalau user klik SEND APPROVAL
+    if (sendApproval) {
+      final canSubmit = await provider.checkCanSubmit(
+        token: auth.token!,
+        authUserId: auth.user!.id,
+        menuId: '4ad48011-9a08-4073-bde0-10f88bfebc81',
+        unitBusinessId: selectedCompanyId,
+      );
+
+      if (!canSubmit) {
+        _showError(provider.error ?? 'Tidak bisa submit approval');
+        return;
+      }
+    }
+
+    final payload = {
+      "unit_bussiness_id": selectedCompanyId,
+      "warehouse_id": selectedWarehouseId,
+      "opname_id": selectedOpnameId,
+      "notes": _catatanController.text,
+      "submitted_by": auth.user!.id,
+      "approval_id": sendApproval ? provider.approvalId : null,
+      "status": sendApproval ? "SUBMITTED" : "DRAFT",
+    };
+
+    await provider.createAdjustment(token: auth.token!, payload: payload);
+
+    provider.reset();
+    selectedItems.clear();
+
+    Navigator.pop(context, true);
   }
 
   // ===============================

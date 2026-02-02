@@ -168,11 +168,18 @@ class _TransferWarehousePageState extends State<TransferWarehousePage> {
       ),
 
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const TambahTransferPage()),
           );
+
+          if (result == true) {
+            final token = context.read<AuthProvider>().token;
+            context
+                .read<TransferWarehouseProvider>()
+                .fetchListTransferWarehouse(token: token!, refresh: true);
+          }
         },
         backgroundColor: const Color(0xFF4CAF50),
         child: const Icon(Icons.add, color: Colors.white, size: 30),

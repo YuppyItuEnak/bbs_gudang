@@ -21,13 +21,12 @@ class _DetailPenerimaanBarangPageState
     super.initState();
 
     final token = context.read<AuthProvider>().token;
+    if (token == null) return;
 
-    Future.microtask(() {
-      context.read<PenerimaanBarangProvider>().fetchDetail(
-        token: token!,
-        id: widget.id,
-      );
-    });
+    context.read<PenerimaanBarangProvider>().fetchDetail(
+      token: token,
+      id: widget.id,
+    );
   }
 
   @override
@@ -108,14 +107,14 @@ class _DetailPenerimaanBarangPageState
                             final d = details[index];
 
                             return _buildDetailItemCard(
-                              po: d.poDetail!.itemCode ?? '-',
-                              pp: d.prDetail!.itemCode ?? '-',
-                              namaBarang: d.itemName ?? '-',
-                              qtyUnit: d.itemUom ?? '-',
-                              qtyPo: d.qtyReceipt?.toString() ?? '0',
-                              qtyDiterima: d.qtyReceived.toString(),
-                              sisaQty: d.prDetail!.qty.toString() ?? '0',
-                              harga: d.itemPrice ?? '0',
+                              po: d.poDetail?.itemCode ?? '-',
+                              pp: d.prDetail?.itemCode ?? '-',
+                              namaBarang: d.item?.name ?? '-',
+                              qtyUnit: d.poDetail?.uom ?? '-',
+                              qtyPo: d.poDetail?.qty.toString() ?? '0',
+                              qtyDiterima: d.qtyReceipt.toString(),
+                              sisaQty: d.prDetail?.qty.toString() ?? '0',
+                              harga: d.poDetail?.price ?? '0',
                             );
                           },
                         ),
@@ -215,7 +214,9 @@ class _DetailPenerimaanBarangPageState
         const SizedBox(height: 15),
         Row(
           children: [
-            Expanded(child: _buildInfoText("Gudang", item.warehouseId ?? '-')),
+            Expanded(
+              child: _buildInfoText("Gudang", item.warehouseName ?? '-'),
+            ),
             Expanded(child: _buildInfoText("Catatan", item.notes ?? '-')),
           ],
         ),

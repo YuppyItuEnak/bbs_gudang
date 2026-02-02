@@ -1,3 +1,6 @@
+import 'package:bbs_gudang/data/services/penerimaan_barang/penerimaan_barang_repository.dart';
+import 'package:bbs_gudang/data/services/pengeluaran_barang/pengeluaran_barang_repository.dart';
+import 'package:bbs_gudang/data/services/purchase_request/purchase_request_repository.dart';
 import 'package:bbs_gudang/features/home/presentation/providers/history_gudang_provider.dart';
 import 'package:bbs_gudang/features/home/presentation/widgets/home_header_card.dart';
 import 'package:bbs_gudang/features/profile/presentation/pages/profile_page.dart';
@@ -105,10 +108,10 @@ class _HomePageState extends State<HomePage> {
             context,
             MaterialPageRoute(builder: (_) => const TransferWarehousePage()),
           );
-          // final cobaRepo = ItemBarangRepository();
+          // final cobaRepo = PengeluaranBarangRepository();
           // final token = context.read<AuthProvider>().token;
-          // final data = cobaRepo.fetchListBarang(token: token!);
-          // print("Data Fetching Repo: $data");
+          // final data = cobaRepo.fetchDeliveryPlanCode(token: token!);
+          // print("Data Fetching Repo: ${data}");
         },
         backgroundColor: const Color(0xFFFFC107),
         elevation: 4,

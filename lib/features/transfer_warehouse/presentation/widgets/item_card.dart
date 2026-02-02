@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class ItemCard extends StatelessWidget {
+class ItemCard extends StatefulWidget {
   final String nama;
   final String kode;
   final int initialQty;
@@ -15,8 +15,31 @@ class ItemCard extends StatelessWidget {
   });
 
   @override
+  State<ItemCard> createState() => _ItemCardState();
+}
+
+class _ItemCardState extends State<ItemCard> {
+  late int qty;
+
+  @override
+  void initState() {
+    super.initState();
+    qty = widget.initialQty;
+  }
+
+  void _updateQty(int newQty) {
+    if (newQty < 0) return;
+
+    setState(() {
+      qty = newQty;
+    });
+
+    widget.onQtyChanged(qty); // 🔥 update ke parent
+  }
+
+  @override
   Widget build(BuildContext context) {
-    bool isSelected = initialQty > 0;
+    bool isSelected = qty > 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -43,7 +66,7 @@ class ItemCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  nama,
+                  widget.nama,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.green,
@@ -52,20 +75,15 @@ class ItemCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  kode,
-                  style: TextStyle(
-                    color: Colors.grey.shade400,
-                    fontSize: 13,
-                  ),
+                  widget.kode,
+                  style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
                 ),
               ],
             ),
           ),
-          const Text(
-            "PCS",
-            style: TextStyle(color: Colors.grey, fontSize: 13),
-          ),
+          const Text("PCS", style: TextStyle(color: Colors.grey, fontSize: 13)),
           const SizedBox(width: 10),
+
           // --- Qty Selector ---
           Row(
             children: [
@@ -73,9 +91,10 @@ class ItemCard extends StatelessWidget {
                 icon: Icons.remove,
                 color: isSelected ? Colors.green : Colors.blue.shade100,
                 onTap: () {
-                  if (initialQty > 0) onQtyChanged(initialQty - 1);
+                  if (qty > 0) _updateQty(qty - 1);
                 },
               ),
+
               Container(
                 width: 60,
                 height: 35,
@@ -86,14 +105,15 @@ class ItemCard extends StatelessWidget {
                   border: Border.all(color: Colors.grey.shade300),
                 ),
                 child: Text(
-                  initialQty.toString(),
+                  qty.toString(),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
+
               _buildQtyBtn(
                 icon: Icons.add,
                 color: Colors.green,
-                onTap: () => onQtyChanged(initialQty + 1),
+                onTap: () => _updateQty(qty + 1),
               ),
             ],
           ),

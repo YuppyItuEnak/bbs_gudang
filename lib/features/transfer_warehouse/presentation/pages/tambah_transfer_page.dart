@@ -48,9 +48,7 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TransferWarehouseProvider>();
-    // debugPrint('Selected company: $selectedCompany');
-    // debugPrint('Warehouse count: ${provider.warehouses.length}');
-    final items = context.watch<TransferWarehouseProvider>().items;
+    final items = provider.items;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -149,6 +147,12 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
                     width: double.infinity,
                     height: 50,
                     child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF4CAF50)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                       onPressed: () async {
                         final token = context.read<AuthProvider>().token;
 
@@ -160,15 +164,18 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
                         );
 
                         if (result != null && result is List) {
-                          final items = List<Map<String, dynamic>>.from(result);
-
                           context.read<TransferWarehouseProvider>().setItems(
-                            items,
+                            List<Map<String, dynamic>>.from(result),
                           );
                         }
-
                       },
-                      child: const Text("+ Add Item"),
+                      child: const Text(
+                        "+ Add Item",
+                        style: TextStyle(
+                          color: Color(0xFF4CAF50),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -176,65 +183,112 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
             ),
           ),
 
+          /// ================= BOTTOM BUTTON =================
           Padding(
-            padding: const EdgeInsets.all(20),
-            child: SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                onPressed: () async {
-                  final provider = context.read<TransferWarehouseProvider>();
-                  final auth = context.read<AuthProvider>();
-
-                  if (provider.items.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Item belum dipilih')),
-                    );
-                    return;
-                  }
-
-                  if (selectedCompany == null ||
-                      selectedGudangAwal == null ||
-                      selectedGudangTujuan == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Lengkapi data terlebih dahulu'),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Row(
+              children: [
+                /// SAVE AS DRAFT
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF4CAF50)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    );
-                    return;
-                  }
-
-                  try {
-                    await provider.submitTransfer(
-                      token: auth.token!,
-                      unitBusinessId: selectedCompany!,
-                      sourceWarehouseId: selectedGudangAwal!,
-                      destinationWarehouseId: selectedGudangTujuan!,
-                      status:
-                          "DRAFT", // ganti POSTED kalau mau langsung posting
-                      notes: _catatanController.text,
-                    );
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Transfer berhasil disimpan'),
+                      onPressed: () async {
+                        await _submit(context, status: "DRAFT");
+                      },
+                      child: const Text(
+                        "Save as Draft",
+                        style: TextStyle(
+                          color: Color(0xFF4CAF50),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    );
+                    ),
+                  ),
+                ),
 
-                    Navigator.pop(context, true);
-                  } catch (e) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(e.toString())));
-                  }
-                },
-                child: const Text("Lanjut"),
-              ),
+                const SizedBox(width: 12),
+
+                /// POSTED
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4CAF50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () async {
+                        await _submit(context, status: "POSTED");
+                      },
+                      child: const Text(
+                        "Posted",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  //Function untuk menyimpan transfer
+  Future<void> _submit(BuildContext context, {required String status}) async {
+    final provider = context.read<TransferWarehouseProvider>();
+    final auth = context.read<AuthProvider>();
+
+    if (provider.items.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Item belum dipilih')));
+      return;
+    }
+
+    if (selectedCompany == null ||
+        selectedGudangAwal == null ||
+        selectedGudangTujuan == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lengkapi data terlebih dahulu')),
+      );
+      return;
+    }
+
+    try {
+      await provider.submitTransfer(
+        token: auth.token!,
+        unitBusinessId: selectedCompany!,
+        sourceWarehouseId: selectedGudangAwal!,
+        destinationWarehouseId: selectedGudangTujuan!,
+        status: status,
+        notes: _catatanController.text,
+      );
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Transfer berhasil disimpan')));
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
   }
 
   // ================= HELPERS =================
