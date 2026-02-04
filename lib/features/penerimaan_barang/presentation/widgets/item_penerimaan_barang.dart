@@ -5,7 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class ItemPenerimaanBarang extends StatefulWidget {
-  const ItemPenerimaanBarang({super.key});
+  final bool isEdit;
+  final bool allowAdd;
+
+  const ItemPenerimaanBarang({
+    super.key,
+    this.isEdit = false,
+    this.allowAdd = true,
+  });
 
   @override
   State<ItemPenerimaanBarang> createState() => _ItemPenerimaanBarangState();
@@ -29,53 +36,51 @@ class _ItemPenerimaanBarangState extends State<ItemPenerimaanBarang> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
 
-              /// ADD ITEM BUTTON
-              TextButton.icon(
-                onPressed: () async {
-                  final token = context.read<AuthProvider>().token;
-                  final poId = provider.selectedPO?.id;
+              if (widget.allowAdd)
+                TextButton.icon(
+                  onPressed: () async {
+                    final token = context.read<AuthProvider>().token;
+                    final poId = provider.selectedPO?.id;
 
-                  if (token == null || poId == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Pilih PO terlebih dahulu")),
+                    if (token == null || poId == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Pilih PO terlebih dahulu"),
+                        ),
+                      );
+                      return;
+                    }
+
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AddItemPBPage(token: token, poId: poId),
+                      ),
                     );
-                    return;
-                  }
 
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AddItemPBPage(token: token, poId: poId),
-                    ),
-                  );
-
-                  if (result != null && result is List) {
-
-                    print("result: ${result}");
-                    provider.setSelectedItems(
-                      result.cast<Map<String, dynamic>>(),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text("Add Item"),
-                style: TextButton.styleFrom(foregroundColor: Colors.green),
-              ),
+                    if (result != null && result is List) {
+                      provider.setSelectedItems(
+                        result.cast<Map<String, dynamic>>(),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text("Add Item"),
+                  style: TextButton.styleFrom(foregroundColor: Colors.green),
+                ),
             ],
           ),
         ),
 
-        /// LIST ITEM RESULT
+        /// LIST ITEM
         Expanded(
           child: provider.selectedItems.isEmpty
               ? const Center(child: Text("Belum ada item dipilih"))
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: provider.selectedItems.length,
-                  itemBuilder: (context, index) {
+                  itemBuilder: (_, index) {
                     final item = provider.selectedItems[index];
-                    print("item: ${item}");
-
                     return _buildItemCard(
                       provider: provider,
                       name: item["item_name"] ?? "-",
@@ -90,7 +95,6 @@ class _ItemPenerimaanBarangState extends State<ItemPenerimaanBarang> {
     );
   }
 
-  /// ITEM CARD UI
   Widget _buildItemCard({
     required PenerimaanBarangProvider provider,
     required String name,
@@ -118,19 +122,19 @@ class _ItemPenerimaanBarangState extends State<ItemPenerimaanBarang> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              GestureDetector(
-                onTap: () => provider.removeItem(index),
-                child: const Text(
-                  "Hapus",
-                  style: TextStyle(color: Colors.red, fontSize: 12),
+              if (!widget.isEdit)
+                GestureDetector(
+                  onTap: () => provider.removeItem(index),
+                  child: const Text(
+                    "Hapus",
+                    style: TextStyle(color: Colors.red, fontSize: 12),
+                  ),
                 ),
-              ),
             ],
           ),
 
           const SizedBox(height: 5),
 
-          /// CODE + COUNTER
           Row(
             children: [
               Text(
@@ -141,38 +145,23 @@ class _ItemPenerimaanBarangState extends State<ItemPenerimaanBarang> {
               _buildCounter(provider, index),
             ],
           ),
-
-          const Divider(height: 20),
-
-          /// NOTE PLACEHOLDER
-          const Row(
-            children: [
-              Icon(Icons.edit, size: 14, color: Colors.blue),
-              SizedBox(width: 8),
-              Text(
-                "Catatan",
-                style: TextStyle(color: Colors.grey, fontSize: 13),
-              ),
-            ],
-          ),
         ],
       ),
     );
   }
 
-  /// COUNTER BUTTON
   Widget _buildCounter(PenerimaanBarangProvider provider, int index) {
     final qty = provider.selectedItems[index]["qty_receipt"] ?? 1;
 
     return Row(
       children: [
         IconButton(
-          icon: const Icon(Icons.remove, color: Colors.blue),
+          icon: const Icon(Icons.remove),
           onPressed: () => provider.decreaseQty(index),
         ),
         Text("$qty", style: const TextStyle(fontWeight: FontWeight.bold)),
         IconButton(
-          icon: const Icon(Icons.add, color: Colors.green),
+          icon: const Icon(Icons.add),
           onPressed: () => provider.increaseQty(index),
         ),
       ],

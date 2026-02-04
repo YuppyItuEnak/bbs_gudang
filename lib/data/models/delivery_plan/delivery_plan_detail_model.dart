@@ -65,6 +65,12 @@ class DeliveryPlanDetailModel {
   });
 
   factory DeliveryPlanDetailModel.fromJson(Map<String, dynamic> json) {
+    debugPrint("🧪 DETAIL ID: ${json['id']}");
+    debugPrint("🧪 RAW ITEMS KEY: ${json['t_delivery_plan_d_items']}");
+    debugPrint(
+      "🧪 ITEMS TYPE: ${json['t_delivery_plan_d_items']?.runtimeType}",
+    );
+
     return DeliveryPlanDetailModel(
       id: json['id'] ?? '',
       deliveryPlanId: json['delivery_plan_id'] ?? '',
@@ -101,7 +107,7 @@ class DeliveryPlanDetailItemModel {
   final String id;
   final String itemId;
   final int qtySo;
-  final int qtyDp;
+  int qtyDp;
   final int amount;
   final int price;
   final double weight;
@@ -220,6 +226,7 @@ class CustomerModel {
 class SalesOrderModel {
   final String id;
   final String code;
+  final String? top_id;
   final DateTime? date;
   final String? expedition;
   final String? expeditionType;
@@ -228,6 +235,7 @@ class SalesOrderModel {
   SalesOrderModel({
     required this.id,
     required this.code,
+    this.top_id,
     this.date,
     this.expedition,
     this.expeditionType,
@@ -238,8 +246,8 @@ class SalesOrderModel {
     return SalesOrderModel(
       id: json['id'] ?? '',
       code: json['code'] ?? '',
+      top_id: json['top_id'],
       date: DateTime.tryParse(json['date'] ?? ''),
-
       expedition: json['expedition'],
       expeditionType: json['expedition_type'],
       customerName: json['customer_name'],

@@ -6,24 +6,49 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../widgets/item_penerimaan_barang.dart';
 
-class TambahPenerimaanBarangPage extends StatefulWidget {
-  const TambahPenerimaanBarangPage({super.key});
+class EditPenerimaanBarangPage extends StatefulWidget {
+  final String pbId;
+
+  const EditPenerimaanBarangPage({super.key, required this.pbId});
 
   @override
-  State<TambahPenerimaanBarangPage> createState() =>
-      _TambahPenerimaanBarangPageState();
+  State<EditPenerimaanBarangPage> createState() =>
+      _EditPenerimaanBarangPageState();
 }
 
-class _TambahPenerimaanBarangPageState
-    extends State<TambahPenerimaanBarangPage> {
+class _EditPenerimaanBarangPageState extends State<EditPenerimaanBarangPage> {
   bool isSubmitting = false;
 
-  Future<void> _submitPB({
+  @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      final token = context.read<AuthProvider>().token;
+      if (token == null) return;
+
+      context.read<PenerimaanBarangProvider>().fetchDetail(
+        token: token,
+        id: widget.pbId,
+      );
+    });
+  }
+
+  num _parseNum(dynamic v, [num defaultValue = 0]) {
+    if (v == null) return defaultValue;
+    if (v is num) return v;
+    return num.tryParse(v.toString()) ?? defaultValue;
+  }
+
+  Future<void> _submitEditPB({
     required BuildContext context,
     required String status, // DRAFT / POSTED
   }) async {
     final provider = context.read<PenerimaanBarangProvider>();
-    final token = context.read<AuthProvider>().token;
+    final auth = context.read<AuthProvider>();
+    final token = auth.token;
+    final userId = auth.user?.id;
+
     if (token == null) return;
 
     setState(() => isSubmitting = true);
@@ -34,44 +59,67 @@ class _TambahPenerimaanBarangPageState
           : DateFormat('yyyy-MM-dd').format(provider.invoiceDate!);
 
       final payload = {
+        "unit_bussiness_id": provider.unitBusinessId,
+        "unit_bussiness_name": provider.unitBusinessName,
+        "code": provider.pbCode,
+        "item_group_coa_id": provider.itemGroupCoaId,
+        "item_group_coa": provider.itemGroup,
+        "purchase_order_id": provider.data?.purchaseOrderId,
+        "police_number": provider.policeNo,
+        "no_sj_supplier": provider.supplierSjNo,
+        "notes": provider.headerNote,
+        "date": dateStr,
         "supplier_id": provider.supplierId,
         "supplier_name": provider.supplierName,
         "purchase_request_id": provider.purchaseRequestId,
-        "purchase_order_id": provider.purchaseOrderId,
-        "unit_bussiness_id": provider.unitBusinessId,
-        "unit_bussiness_name": provider.unitBusinessName,
-        "warehouse_id": provider.warehouseId,
-        "item_group_coa_id": provider.itemGroupCoaId,
-        "item_group_coa": provider.itemGroup,
-        "police_number": provider.policeNo,
         "driver_name": provider.driverName,
-        "no_sj_supplier": provider.supplierSjNo,
-        "notes": provider.headerNote,
-        "code": provider.pbCode,
-
-        /// 🔥 STATUS DINAMIS
+        "date_sj_supplier": dateStr,
+        "warehouse_id": provider.warehouseId,
         "status": status,
 
-        "date": dateStr,
-        "date_sj_supplier": dateStr,
+        /// 🔥 WAJIB SAAT POSTED
+        if (status == "POSTED") ...{
+          "posted_by": userId,
+          "updatedBy": userId,
+          "posted_at": DateTime.now().toIso8601String(),
+        },
 
+        /// DETAIL ITEM
         "t_penerimaan_barang_d": provider.selectedItems.map((item) {
+          print("EDIT MODE PO: ${provider.selectedPO?.code}");
+          print("EDIT MODE PO ID: ${provider.purchaseOrderId}");
+
+          final price = _parseNum(item["price"]);
+          final qty = _parseNum(item["qty_received"] ?? item["qty_receipt"], 0);
+
           return {
+            "id": item["id"],
             "purchase_order_id": provider.purchaseOrderId,
             "purchase_order_d_id": item["purchase_order_d_id"],
-            "purchase_request_d_id": item["purchase_request_d_id"],
+
+            "purchase_request_d_id":
+                (item["purchase_request_d_id"] == null ||
+                    item["purchase_request_d_id"].toString().isEmpty)
+                ? null
+                : item["purchase_request_d_id"],
+
             "item_id": item["item_id"],
-            "item_code": item["code"],
+            "item_code": item["item_code"],
             "item_name": item["item_name"],
-            "item_type": item["item_type"],
-            "qty_received": item["qty_received"],
-            "qty_receipt": item["qty_receipt"],
+            "item_type": item["item_type"]?.toString().toLowerCase(),
+
+            "qty_received": qty,
+            "qty_receipt": qty,
             "qty_closing": 0,
+
             "item_uom_id": item["item_uom_id"],
             "item_uom": item["item_uom"],
-            "price": item["price"],
-            "item_price": item["item_price"],
-            "total": item["total"],
+
+            "price": price,
+            "item_price": price,
+            "unitCost": price,
+            "total": price * qty,
+
             "coa_inventory_id": item["coa_inventory_id"],
             "coa_unbilled_id": item["coa_unbilled_id"],
             "coa_purchase_return_id": item["coa_purchase_return_id"],
@@ -83,14 +131,18 @@ class _TambahPenerimaanBarangPageState
       debugPrint("📦 SUBMIT PB [$status]");
       debugPrint(payload.toString());
 
-      await provider.submitPenerimaanBarang(token: token, payload: payload);
+      await provider.postPenerimaanBarang(
+        token: token,
+        pbId: widget.pbId,
+        payload: payload,
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             status == "POSTED"
-                ? "Berhasil POST Penerimaan Barang"
-                : "Berhasil simpan sebagai DRAFT",
+                ? "Penerimaan Barang berhasil di-POST"
+                : "Penerimaan Barang berhasil disimpan (DRAFT)",
           ),
         ),
       );
@@ -108,7 +160,10 @@ class _TambahPenerimaanBarangPageState
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PenerimaanBarangProvider>();
-    final token = context.read<AuthProvider>().token;
+
+    if (provider.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return DefaultTabController(
       length: 2,
@@ -122,19 +177,14 @@ class _TambahPenerimaanBarangPageState
             onPressed: () => Navigator.pop(context),
           ),
           title: const Text(
-            "Penerimaan Barang",
-            style: TextStyle(
-              color: Colors.black87,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            "Edit Penerimaan Barang",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           centerTitle: true,
           bottom: const TabBar(
             labelColor: Colors.green,
             unselectedLabelColor: Colors.grey,
             indicatorColor: Colors.green,
-            indicatorSize: TabBarIndicatorSize.tab,
             tabs: [
               Tab(text: "Info"),
               Tab(text: "Item"),
@@ -143,49 +193,54 @@ class _TambahPenerimaanBarangPageState
         ),
         body: Stack(
           children: [
-            TabBarView(
-              children: [InfoPenerimaanBarang(), ItemPenerimaanBarang()],
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 90),
+                child: TabBarView(
+                  children: [
+                    InfoPenerimaanBarang(
+                      readOnlyPo: true,
+                      readOnlySupplier: true,
+                      readOnlyPr: true,
+                      readOnlyItemGroup: true,
+                    ),
+                    ItemPenerimaanBarang(isEdit: true, allowAdd: false),
+                  ],
+                ),
+              ),
             ),
-
-            /// BUTTON SIMPAN
             Align(
               alignment: Alignment.bottomCenter,
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Row(
                   children: [
-                    /// 💾 SAVE (DRAFT)
                     Expanded(
                       child: ElevatedButton(
                         onPressed: isSubmitting
                             ? null
-                            : () =>
-                                  _submitPB(context: context, status: "DRAFT"),
+                            : () => _submitEditPB(
+                                context: context,
+                                status: "DRAFT",
+                              ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          "Save",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: const Text("Save"),
                       ),
                     ),
-
                     const SizedBox(width: 12),
-
-                    /// 🚀 POSTED
                     Expanded(
                       child: ElevatedButton(
                         onPressed: isSubmitting
                             ? null
-                            : () =>
-                                  _submitPB(context: context, status: "POSTED"),
+                            : () => _submitEditPB(
+                                context: context,
+                                status: "POSTED",
+                              ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           shape: RoundedRectangleBorder(
@@ -196,13 +251,7 @@ class _TambahPenerimaanBarangPageState
                             ? const CircularProgressIndicator(
                                 color: Colors.white,
                               )
-                            : const Text(
-                                "Posted",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                            : const Text("Posted"),
                       ),
                     ),
                   ],

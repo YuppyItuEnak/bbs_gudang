@@ -1,4 +1,6 @@
 import 'package:bbs_gudang/data/models/transfer_warehouse/transfer_warehouse_detail.dart';
+import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
+import 'package:bbs_gudang/features/transfer_warehouse/presentation/pages/edit_transfer_warehouse.dart';
 import 'package:bbs_gudang/features/transfer_warehouse/presentation/providers/transfer_warehouse_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -59,6 +61,8 @@ class _DetailTransferWarehousePageState
           if (provider.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
+
+          final header = provider.detailTransferWarehouse!;
 
           // ❌ ERROR
           if (provider.errorMessage != null) {
@@ -193,26 +197,83 @@ class _DetailTransferWarehousePageState
               // --- BOTTOM BUTTON ---
               Padding(
                 padding: const EdgeInsets.all(20),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF4CAF50)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                child: Row(
+                  children: [
+                    /// ✏️ EDIT — HANYA JIKA DRAFT
+                    if (header.status == "DRAFT")
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            // TODO: arahkan ke halaman edit PB
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EditTransferWarehousePage(
+                                  transferId: header.id!,
+                                ),
+                              ),
+                            );
+
+                            // Jika result adalah true, artinya ada perubahan data (submit berhasil)
+                            if (result == true) {
+                              if (mounted) {
+                                final auth = context.read<AuthProvider>();
+                                final provider = context
+                                    .read<TransferWarehouseProvider>();
+
+                                // 🔥 KUNCI: Refresh Detail agar UI di halaman ini langsung berubah
+                                await provider.fetchDetailTransferWarehouse(
+                                  token: auth.token!,
+                                  id: widget.id,
+                                );
+
+                                // Refresh juga list di halaman utama (opsional tapi disarankan)
+                                provider.fetchListTransferWarehouse(
+                                  token: auth.token!,
+                                );
+                              }
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            "Edit",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    if (header.status == "DRAFT") const SizedBox(width: 12),
+
+                    /// 🔙 KEMBALI — SELALU ADA
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF4CAF50)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          "Kembali",
+                          style: TextStyle(
+                            color: Color(0xFF4CAF50),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
                     ),
-                    child: const Text(
-                      "Kembali",
-                      style: TextStyle(
-                        color: Color(0xFF4CAF50),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ],

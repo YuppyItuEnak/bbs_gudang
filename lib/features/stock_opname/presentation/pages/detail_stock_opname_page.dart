@@ -1,6 +1,8 @@
 import 'dart:ffi';
 
 import 'package:bbs_gudang/data/models/stock_opname/stock_opname_detail.dart';
+import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
+import 'package:bbs_gudang/features/stock_opname/presentation/pages/edit_stock_opname.dart';
 import 'package:bbs_gudang/features/stock_opname/presentation/providers/stock_opname_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -138,6 +140,89 @@ class _DetailStockOpnamePageState extends State<DetailStockOpnamePage> {
                 ),
               ],
             ),
+          ),
+        ),
+
+        Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              /// ✏️ EDIT — HANYA JIKA DRAFT
+              if (header.status == "DRAFT")
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      // TODO: arahkan ke halaman edit PB
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              EditStockOpnamePage(opnameId: header.id),
+                        ),
+                      );
+
+                      if (result == true) {
+                        if (!mounted) return;
+
+                        // 3. PANGGIL ULANG API detail agar UI di halaman ini langsung berubah
+                        final auth = context.read<AuthProvider>();
+                        context
+                            .read<StockOpnameProvider>()
+                            .fetchDetailOpnameReport(
+                              token: auth.token!,
+                              opnameId: widget.opnameId,
+                            );
+
+                        // 4. (Opsional) Tetap panggil refresh list utama jika diperlukan
+                        context
+                            .read<StockOpnameProvider>()
+                            .fetchStockOpnameReport(
+                              token: auth.token!,
+                              startDate: '',
+                              endDate: '',
+                            );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      "Edit",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+
+              if (header.status == "DRAFT") const SizedBox(width: 12),
+
+              /// 🔙 KEMBALI — SELALU ADA
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF4CAF50)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    "Kembali",
+                    style: TextStyle(
+                      color: Color(0xFF4CAF50),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],

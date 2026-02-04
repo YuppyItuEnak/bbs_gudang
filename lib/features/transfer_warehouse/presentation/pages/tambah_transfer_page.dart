@@ -19,11 +19,14 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
   String? selectedGudangTujuan;
 
   final TextEditingController _catatanController = TextEditingController();
+  DateTime selectedDate = DateTime.now();
+  final TextEditingController _dateController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     final auth = context.read<AuthProvider>();
+    _dateController.text = "${selectedDate.toLocal()}".split(' ')[0];
 
     String? responsibilityId;
     if (auth.user!.userDetails.isNotEmpty) {
@@ -111,6 +114,26 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
                       setState(() => selectedGudangTujuan = val);
                     },
                   ),
+
+                  const SizedBox(height: 20),
+                  // Di dalam Column SingleChildScrollView
+                  _buildLabel("Date"),
+                  TextField(
+                    controller: _dateController,
+                    readOnly: true,
+                    onTap: () => _selectDate(context),
+                    decoration: InputDecoration(
+                      hintText: "Pilih Tanggal",
+                      suffixIcon: const Icon(
+                        Icons.calendar_today,
+                        color: Color(0xFF4CAF50),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
 
                   const SizedBox(height: 20),
 
@@ -276,7 +299,7 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
         sourceWarehouseId: selectedGudangAwal!,
         destinationWarehouseId: selectedGudangTujuan!,
         status: status,
-        notes: _catatanController.text,
+        notes: _catatanController.text, date: _dateController.text,
       );
 
       ScaffoldMessenger.of(
@@ -334,6 +357,21 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
         }
       },
     );
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+        _dateController.text = "${picked.toLocal()}".split(' ')[0];
+      });
+    }
   }
 
   Widget _buildWarehouseDropdown({

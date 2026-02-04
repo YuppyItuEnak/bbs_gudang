@@ -149,4 +149,31 @@ class StockOpnameProvider extends ChangeNotifier {
       rethrow;
     }
   }
+
+  Future<bool> updateStockOpname({
+    required String token,
+    required String opnameId,
+    required Map<String, dynamic> payload,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _opnameRepository.updateStckOpname(
+        token: token,
+        opnameId: opnameId,
+        payload: payload,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+      return true; // Berhasil
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst("Exception: ", "");
+      _isLoading = false;
+      notifyListeners();
+      return false; // Gagal
+    }
+  }
 }

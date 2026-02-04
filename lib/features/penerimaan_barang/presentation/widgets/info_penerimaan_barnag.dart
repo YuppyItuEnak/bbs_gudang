@@ -7,7 +7,18 @@ import 'package:provider/provider.dart';
 import '../providers/penerimaan_barang_provider.dart';
 
 class InfoPenerimaanBarang extends StatefulWidget {
-  const InfoPenerimaanBarang({super.key});
+  final bool readOnlyPo;
+  final bool readOnlySupplier;
+  final bool readOnlyPr;
+  final bool readOnlyItemGroup;
+
+  const InfoPenerimaanBarang({
+    super.key,
+    this.readOnlyPo = false,
+    this.readOnlySupplier = false,
+    this.readOnlyPr = false,
+    this.readOnlyItemGroup = false,
+  });
 
   @override
   State<InfoPenerimaanBarang> createState() => _InfoPenerimaanBarangState();
@@ -22,7 +33,6 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
       final auth = context.read<AuthProvider>();
       final tw = context.read<TransferWarehouseProvider>();
 
-      // Load PO list
       context.read<PenerimaanBarangProvider>().fetchListPO(token: auth.token!);
 
       String? responsibilityId;
@@ -34,7 +44,6 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
         responsibilityId = primary.fResponsibility;
       }
 
-      // Load Company list
       tw.loadUserCompanies(
         token: auth.token!,
         userId: auth.user!.id!,
@@ -51,7 +60,6 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _header(),
-          const SizedBox(height: 20),
 
           _label("No. PO"),
           _poDropdown(),
@@ -60,28 +68,7 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
           _buildCompanyDropdown(),
 
           _label("No. PB"),
-          Consumer<PenerimaanBarangProvider>(
-            builder: (_, p, __) {
-              if (p.isLoadingPbCode) {
-                return _customField(
-                  text: "Generate No PB...",
-                  isPlaceholder: true,
-                );
-              }
-
-              if (p.pbCodeError != null) {
-                return _customField(
-                  text: "Gagal generate No PB",
-                  isPlaceholder: true,
-                );
-              }
-
-              return _customField(
-                text: p.pbCode ?? "-",
-                isPlaceholder: p.pbCode == null,
-              );
-            },
-          ),
+          _pbCode(),
 
           _label("Warehouse"),
           _buildWarehouseDropdown(),
@@ -143,7 +130,7 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
       children: [
         Row(
           children: [
-            Icon(Icons.calendar_today, size: 18, color: Colors.grey),
+            const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
             const SizedBox(width: 8),
             Text(DateFormat('dd MMMM yyyy', 'id_ID').format(DateTime.now())),
           ],
@@ -160,42 +147,41 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
     );
   }
 
-  // ================= PO DROPDOWN =================
+  // ================= PO =================
 
   Widget _poDropdown() {
     return Consumer<PenerimaanBarangProvider>(
-      builder: (_, provider, __) {
-        if (provider.isLoadingPO) return _loadingBox();
-        if (provider.listPO.isEmpty) return _emptyBox("Data PO kosong");
+      builder: (_, p, __) {
+        if (p.isLoadingPO) return _loadingBox();
+        if (p.listPO.isEmpty) return _emptyBox("Data PO kosong");
+
+        if (widget.readOnlyPo) {
+          return _customField(text: p.selectedPO?.code ?? "-");
+        }
 
         return GestureDetector(
           onTap: () async {
-            final value = await showModalBottomSheet<AvailablePoModel>(
+            final po = await showModalBottomSheet<AvailablePoModel>(
               context: context,
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
-              builder: (_) => _poBottomSheet(provider.listPO),
+              builder: (_) => _poBottomSheet(p.listPO),
             );
 
-            if (value != null) {
+            if (po != null) {
               final auth = context.read<AuthProvider>();
-              final p = context.read<PenerimaanBarangProvider>();
-
-              p.setSelectedPO(value);
-              p.setPurchaseOrderId(value.id);
-              p.setCodePenerimaanBarang(value.code);
-          
               p.resetPoAutoFill();
+              p.setSelectedPO(po);
+              p.setPurchaseOrderId(po.id);
+              p.setCodePenerimaanBarang(po.code);
 
-              if (value.id != null) {
-                p.loadPoDetail(token: auth.token!, poId: value.id);
-              }
+              p.loadPoDetail(token: auth.token!, poId: po.id);
             }
           },
           child: _customField(
-            text: provider.selectedPO?.code ?? "Pilih No. PO",
-            isPlaceholder: provider.selectedPO == null,
+            text: p.selectedPO?.code ?? "Pilih No. PO",
+            isPlaceholder: p.selectedPO == null,
           ),
         );
       },
@@ -203,60 +189,48 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
   }
 
   Widget _poBottomSheet(List<AvailablePoModel> list) {
-    return ListView.separated(
+    return ListView.builder(
       itemCount: list.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (_, i) {
         final po = list[i];
         return ListTile(
-          title: Text(po.code ?? '-'),
+          title: Text(po.code ?? "-"),
           onTap: () => Navigator.pop(context, po),
         );
       },
     );
   }
 
-  // ================= COMPANY DROPDOWN =================
+  // ================= COMPANY =================
 
   Widget _buildCompanyDropdown() {
     return Consumer2<TransferWarehouseProvider, PenerimaanBarangProvider>(
       builder: (_, tw, pb, __) {
         if (tw.isLoadingCompany) return _loadingBox();
-        if (tw.companies.isEmpty) return _emptyBox("Company tidak tersedia");
+        if (tw.companies.isEmpty) return _emptyBox("Company kosong");
 
         return _dropdownContainer(
           DropdownButton<String>(
             value: pb.unitBusinessId,
             hint: const Text("Pilih Company"),
             isExpanded: true,
-            items: tw.companies.map((c) {
-              return DropdownMenuItem(value: c.id, child: Text(c.name));
-            }).toList(),
-
+            items: tw.companies
+                .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+                .toList(),
             onChanged: (val) async {
               if (val == null) return;
 
               final auth = context.read<AuthProvider>();
-
-              // ===== SET COMPANY =====
               pb.setUnitBusinessId(val);
               pb.setUnitBusinessName(
-                tw.companies.firstWhere((c) => c.id == val).name,
+                tw.companies.firstWhere((e) => e.id == val).name,
               );
 
-              debugPrint("Unit Business: ${pb.unitBusinessId} - ${pb.warehouseName}");
-              debugPrint("PB: ${pb.pbCode}");
-              // ===== RESET DEPENDENT =====
-              pb.setWarehouseId(null);
               pb.resetPbCode();
+              pb.setWarehouseId(null);
 
-              // ===== LOAD WAREHOUSE =====
-              context.read<TransferWarehouseProvider>().loadWarehouseCompany(
-                token: auth.token!,
-                unitBusinessId: val,
-              );
+              tw.loadWarehouseCompany(token: auth.token!, unitBusinessId: val);
 
-              // ===== AUTO GENERATE NO PB =====
               await pb.generateNoPB(token: auth.token!, unitBusinessId: val);
             },
           ),
@@ -265,7 +239,7 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
     );
   }
 
-  // ================= WAREHOUSE DROPDOWN =================
+  // ================= WAREHOUSE =================
 
   Widget _buildWarehouseDropdown() {
     return Consumer2<TransferWarehouseProvider, PenerimaanBarangProvider>(
@@ -285,18 +259,14 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
             value: pb.warehouseId,
             hint: const Text("Pilih Warehouse"),
             isExpanded: true,
-            items: tw.warehouses.map((w) {
-              return DropdownMenuItem(value: w.id, child: Text(w.name));
-            }).toList(),
-
+            items: tw.warehouses
+                .map((w) => DropdownMenuItem(value: w.id, child: Text(w.name)))
+                .toList(),
             onChanged: (val) {
               pb.setWarehouseId(val);
               pb.setWarehouseName(
-                val!.isEmpty
-                    ? null
-                    : tw.warehouses.firstWhere((c) => c.id == val).name,
+                tw.warehouses.firstWhere((e) => e.id == val).name,
               );
-              debugPrint("WAREHOUSE DIPILIH: $val - ${pb.warehouseName}");
             },
           ),
         );
@@ -304,42 +274,30 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
     );
   }
 
-  // ================= AUTOFILL FIELDS =================
+  // ================= READ ONLY FIELDS =================
 
   Widget _supplierField() {
     return Consumer<PenerimaanBarangProvider>(
-      builder: (_, p, __) {
-        return _customField(
-          text: p.isLoadingPoDetail
-              ? "Memuat..."
-              : p.supplierName ?? "Auto dari PO",
-          isPlaceholder: p.supplierName == null,
-        );
-      },
+      builder: (_, p, __) => _customField(text: p.supplierName ?? "-"),
     );
   }
 
   Widget _prField() {
     return Consumer<PenerimaanBarangProvider>(
-      builder: (_, p, __) {
-        return _customField(
-          text: p.isLoadingPoDetail ? "Memuat..." : p.prCode ?? "Auto dari PO",
-          isPlaceholder: p.prCode == null,
-        );
-      },
+      builder: (_, p, __) => _customField(text: p.prCode ?? "-"),
     );
   }
 
   Widget _itemGroupField() {
     return Consumer<PenerimaanBarangProvider>(
-      builder: (_, p, __) {
-        return _customField(
-          text: p.isLoadingPoDetail
-              ? "Memuat..."
-              : p.itemGroup ?? "Auto dari PR",
-          isPlaceholder: p.itemGroup == null,
-        );
-      },
+      builder: (_, p, __) => _customField(text: p.itemGroup ?? "-"),
+    );
+  }
+
+  Widget _pbCode() {
+    return Consumer<PenerimaanBarangProvider>(
+      builder: (_, p, __) =>
+          _customField(text: p.pbCode ?? "-", isPlaceholder: p.pbCode == null),
     );
   }
 
@@ -354,10 +312,7 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
               firstDate: DateTime(2020),
               lastDate: DateTime(2100),
             );
-
-            if (date != null) {
-              p.setInvoiceDate(date);
-            }
+            if (date != null) p.setInvoiceDate(date);
           },
           child: _customField(
             text: p.invoiceDate == null
@@ -373,12 +328,10 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
 
   // ================= UI HELPERS =================
 
-  Widget _label(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 8),
-      child: Text(text, style: const TextStyle(color: Colors.grey)),
-    );
-  }
+  Widget _label(String text) => Padding(
+    padding: const EdgeInsets.only(top: 16, bottom: 8),
+    child: Text(text, style: const TextStyle(color: Colors.grey)),
+  );
 
   Widget _customField({
     required String text,
@@ -386,21 +339,19 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
     IconData? icon,
   }) {
     return Container(
-      width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
             child: Text(
               text,
               style: TextStyle(
-                fontWeight: FontWeight.w500,
                 color: isPlaceholder ? Colors.grey : Colors.black87,
+                fontWeight: FontWeight.w500,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -419,55 +370,33 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
     return TextField(
       maxLines: maxLines,
       onChanged: onChanged,
-      decoration: _inputDecoration(hint),
-    );
-  }
-
-  InputDecoration _inputDecoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: Colors.grey.shade200),
+      decoration: InputDecoration(
+        hintText: hint,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 15,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
-  Widget _dropdownContainer(Widget child) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: DropdownButtonHideUnderline(child: child),
-    );
-  }
+  Widget _dropdownContainer(Widget child) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 15),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: Colors.grey.shade300),
+    ),
+    child: DropdownButtonHideUnderline(child: child),
+  );
 
-  Widget _loadingBox() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: const Center(child: CircularProgressIndicator()),
-    );
-  }
+  Widget _loadingBox() => const Padding(
+    padding: EdgeInsets.all(12),
+    child: Center(child: CircularProgressIndicator()),
+  );
 
-  Widget _emptyBox(String text) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Text(text, style: const TextStyle(color: Colors.grey)),
-    );
-  }
+  Widget _emptyBox(String text) => Padding(
+    padding: const EdgeInsets.all(12),
+    child: Text(text, style: const TextStyle(color: Colors.grey)),
+  );
 }

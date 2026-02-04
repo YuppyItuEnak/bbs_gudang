@@ -1,4 +1,5 @@
 import 'package:bbs_gudang/data/models/delivery_plan/delivery_plan_code_model.dart';
+import 'package:bbs_gudang/data/models/delivery_plan/request_delivery_plan.dart';
 import 'package:bbs_gudang/data/models/pengeluaran_barang/pengeluaran_barang_model.dart';
 import 'package:bbs_gudang/data/services/pengeluaran_barang/pengeluaran_barang_repository.dart';
 import 'package:flutter/material.dart';
@@ -38,6 +39,14 @@ class PengeluaranBarangProvider extends ChangeNotifier {
 
   String? _selectedDeliveryPlanCode;
   String? get selectedDeliveryPlanCode => _selectedDeliveryPlanCode;
+
+  String? DOCode;
+
+  bool isLoadingDOCode = false;
+  String? DOCodeError;
+
+  List<Map<String, dynamic>> _createdSuratJalan = [];
+  List<Map<String, dynamic>> get createdSuratJalan => _createdSuratJalan;
 
   Future<void> fetchListPengeluaranBrg({required String token}) async {
     _isLoading = true;
@@ -126,8 +135,10 @@ class PengeluaranBarangProvider extends ChangeNotifier {
           .fetchDetailDeliveryPlanCode(token: token, id: id);
 
       _detailDPCode = result;
+      print("DEBUG PROVIDER: Item Berhasil Dimuat, Jumlah: ${_detailDPCode?.details.length}");
     } catch (e) {
       _errorMessage = e.toString();
+      
       debugPrint('❌ fetchDetailDPCode error: $e');
     } finally {
       _isLoading = false;
@@ -135,12 +146,11 @@ class PengeluaranBarangProvider extends ChangeNotifier {
     }
   }
 
-void setSelectedDeliveryPlanId(String id) {
-  debugPrint('✅ SET selectedDeliveryPlanId = $id');
-  _selectedDeliveryPlanId = id;
-  notifyListeners();
-}
-
+  void setSelectedDeliveryPlanId(String id) {
+    debugPrint('✅ SET selectedDeliveryPlanId = $id');
+    _selectedDeliveryPlanId = id;
+    notifyListeners();
+  }
 
   void setListDeliveryPlanCode(List<DeliveryPlanCodeModel> list) {
     _listDeliveryPlanCode = list;
@@ -152,4 +162,77 @@ void setSelectedDeliveryPlanId(String id) {
 
     notifyListeners();
   }
+
+  Future<void> generateNoDO({
+    required String token,
+    required String unitBusinessId,
+  }) async {
+    try {
+      isLoadingDOCode = true;
+      DOCodeError = null;
+      notifyListeners();
+
+      final code = await _pengeluaranBarangRepository.generateNoDO(
+        token: token,
+        unitBusinessId: unitBusinessId,
+      );
+
+      DOCode = code;
+    } catch (e) {
+      debugPrint('ERROR GENERATE NO DO: $e');
+      DOCode = null;
+      DOCodeError = e.toString();
+    } finally {
+      isLoadingDOCode = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> createPengeluaranBarang({
+    required String token,
+    required SuratJalanRequestModel payload,
+  }) async {
+    _setLoading(true);
+    _errorMessage = null;
+
+    try {
+      final result = await _pengeluaranBarangRepository.createPengeluaranBarang(
+        token: token,
+        payload: payload,
+      );
+
+      _createdSuratJalan = result;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+
+  void updateItemQtyLocal(int dIdx, int iIdx, double newQty) {
+  if (detailDPCode != null) {
+    detailDPCode!.details[dIdx].items[iIdx].qtyDp = newQty.toInt();
+    notifyListeners();
+  }
+}
+
+void removeItemLocal(int dIdx, int iIdx) {
+  if (detailDPCode != null) {
+    detailDPCode!.details[dIdx].items.removeAt(iIdx);
+    // Jika list item di detail tersebut kosong, hapus detailnya sekalian
+    if (detailDPCode!.details[dIdx].items.isEmpty) {
+      detailDPCode!.details.removeAt(dIdx);
+    }
+    notifyListeners();
+  }
+}
 }

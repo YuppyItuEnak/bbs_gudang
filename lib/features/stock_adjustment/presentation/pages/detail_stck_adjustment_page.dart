@@ -1,6 +1,8 @@
 import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
+import 'package:bbs_gudang/features/stock_adjustment/presentation/pages/edit_stck_adjust_page.dart';
 import 'package:bbs_gudang/features/stock_adjustment/presentation/providers/stock_adjustment_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 // Pastikan import provider dan model Anda di sini
 // import 'package:your_project/providers/adjustment_provider.dart';
@@ -83,7 +85,9 @@ class _DetailStckAdjustmentPageState extends State<DetailStckAdjustmentPage> {
                           _buildHeaderIconText(
                             Icons.calendar_today_outlined,
                             // Format tanggal jika perlu (data.date)
-                            data.date.toString().split(' ')[0],
+                            DateFormat(
+                              "dd/MM/yyyy",
+                            ).format(DateTime.parse(data.date)),
                           ),
                           _buildStatusBadge(data.status),
                         ],
@@ -135,26 +139,65 @@ class _DetailStckAdjustmentPageState extends State<DetailStckAdjustmentPage> {
               // --- Bottom Button ---
               Padding(
                 padding: const EdgeInsets.all(20),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF4CAF50)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                child: Column(
+                  children: [
+                    // 🔥 BUTTON EDIT — HANYA JIKA DRAFT
+                    if (data.status == "DRAFT")
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // TODO: Navigasi ke halaman edit
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EditStkAdjustPage(id: data.id),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text(
+                            "Edit Stock Adjustment",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    if (data.status == "DRAFT") const SizedBox(height: 12),
+
+                    // 🔙 BUTTON KEMBALI — SELALU ADA
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF4CAF50)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          "Kembali",
+                          style: TextStyle(
+                            color: Color(0xFF4CAF50),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
                     ),
-                    child: const Text(
-                      "Kembali",
-                      style: TextStyle(
-                        color: Color(0xFF4CAF50),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ],

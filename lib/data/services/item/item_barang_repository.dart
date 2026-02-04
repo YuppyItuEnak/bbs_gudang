@@ -60,6 +60,8 @@ class ItemBarangRepository {
 
       final body = jsonDecode(response.body);
 
+      print("Fetch body: $body");
+
       final List list = body['data'];
       final pagination = body['pagination'];
 

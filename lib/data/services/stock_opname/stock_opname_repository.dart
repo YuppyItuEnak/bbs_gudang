@@ -19,9 +19,12 @@ class StockOpnameRepository {
     List<String>? warehouseIds,
   }) async {
     try {
-      final uri = Uri.parse(
-        '$baseUrl/dynamic/t_inventory_s_opname',
-      ).replace(queryParameters: {'include': 'm_unit_bussiness,m_warehouse', 'no_pagination': 'true',});
+      final uri = Uri.parse('$baseUrl/dynamic/t_inventory_s_opname').replace(
+        queryParameters: {
+          'include': 'm_unit_bussiness,m_warehouse',
+          'no_pagination': 'true',
+        },
+      );
 
       final response = await http.get(
         uri,
@@ -140,5 +143,41 @@ class StockOpnameRepository {
     }
 
     return json['data']; // ✅ OPC-2601-0006
+  }
+
+  Future<Map<String, dynamic>> updateStckOpname({
+    required String token,
+    required String opnameId,
+    required Map<String, dynamic> payload,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        "$baseUrl/dynamic/t_inventory_s_opname/with-details/$opnameId",
+      );
+      final response = await http.put(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(payload),
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      // Cek apakah response sukses (status 200 atau 201)
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return responseData;
+      } else {
+        // Ambil pesan error dari body jika ada, jika tidak pakai default message
+        final message =
+            responseData['message'] ??
+            'Gagal memperbarui data (Status: ${response.statusCode})';
+        throw message;
+      }
+    } catch (e) {
+      // Teruskan error ke layer provider
+      rethrow;
+    }
   }
 }

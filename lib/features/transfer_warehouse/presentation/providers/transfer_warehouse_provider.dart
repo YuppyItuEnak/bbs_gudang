@@ -67,6 +67,7 @@ class TransferWarehouseProvider extends ChangeNotifier {
     required String unitBusinessId,
     required String sourceWarehouseId,
     required String destinationWarehouseId,
+    required String date,
     required String status, // DRAFT / POSTED
     String? notes,
   }) async {
@@ -77,7 +78,7 @@ class TransferWarehouseProvider extends ChangeNotifier {
       final payload = {
         "status": status,
         "unit_bussiness_id": unitBusinessId,
-        "date": DateTime.now().toIso8601String().substring(0, 10),
+        "date": date,
         "source_warehouse_id": sourceWarehouseId,
         "destination_warehouse_id": destinationWarehouseId,
         "notes": notes,
@@ -95,6 +96,77 @@ class TransferWarehouseProvider extends ChangeNotifier {
               },
             )
             .toList(),
+      };
+
+      await _transferWarehouseRepository.saveTransferWarehouse(
+        token: token,
+        payload: payload,
+      );
+    } finally {
+      isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateTransfer({
+    required String token,
+    required String id,
+    required String unitBusinessId,
+    required String code,
+    required String sourceWarehouseId,
+    required String destinationWarehouseId,
+    required String status,
+    required String date,
+    String? notes,
+    required String unitBusinessName, // Tambahan untuk m_unit_bussiness
+    required String sourceWarehouseName, // Tambahan untuk source_warehouse
+    required String
+    destinationWarehouseName, // Tambahan untuk destination_warehouse
+  }) async {
+    isSubmitting = true;
+    notifyListeners();
+
+    try {
+      final now = DateTime.now().toIso8601String();
+
+      final payload = {
+        "id": id,
+        "unit_bussiness_id": unitBusinessId,
+        "code": code,
+        "source_warehouse_id": sourceWarehouseId,
+        "destination_warehouse_id": destinationWarehouseId,
+        "status": status,
+        "tonnage": items.length,
+        "notes": notes ?? "",
+        "date": date,
+        "createdAt": date, // Sesuai payload edit
+        "updatedAt": date, // Sesuai payload edit
+        "m_unit_bussiness": {"id": unitBusinessId, "name": unitBusinessName},
+        "source_warehouse": {
+          "id": sourceWarehouseId,
+          "name": sourceWarehouseName,
+        },
+        "destination_warehouse": {
+          "id": destinationWarehouseId,
+          "name": destinationWarehouseName,
+        },
+
+        // Bagian Detail
+        "t_inventory_transfer_warehouse_d": items.map((e) {
+          return {
+            "id": e['detail_id'],
+            "item_code": e['item_code'] ?? e['code'],
+            "item_name": e['item_name'] ?? e['name'],
+            "qty": e['qty'],
+            "uom": e['uom_name'] ?? "PCS",
+            "weight": e['weight'] ?? 0,
+            "notes": e['notes'] ?? "",
+            "t_inventory_transfer_warehouse_id": id,
+            "item_id": e['id'],
+            "createdAt": now,
+            "updatedAt": now,
+          };
+        }).toList(),
       };
 
       await _transferWarehouseRepository.saveTransferWarehouse(

@@ -69,12 +69,15 @@ class _ItemCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                item['name'],
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF4CAF50),
-                  fontSize: 15,
+              Expanded(
+                // Tambahkan expanded agar text tidak overflow
+                child: Text(
+                  item['name'] ?? item['item_name'], // UBAH KE 'item_name'
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF4CAF50),
+                    fontSize: 15,
+                  ),
                 ),
               ),
               GestureDetector(
@@ -101,11 +104,11 @@ class _ItemCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  item['code'],
+                  item['item_code'] ?? item['code'], // UBAH KE 'item_code'
                   style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
                 ),
               ),
-              const Text("PCS"),
+              Text(item['uom_name'] ?? 'PCS'), // UBAH KE 'uom_name'
               const SizedBox(width: 10),
 
               Row(
@@ -113,10 +116,10 @@ class _ItemCard extends StatelessWidget {
                   _qtyBtn(
                     icon: Icons.remove,
                     onTap: () {
-                      if (item['qty'] > 1) {
+                      if ((item['qty'] ?? 0) > 1) {
                         context.read<TransferWarehouseProvider>().updateQty(
                           item['id'],
-                          item['qty'] - 1,
+                          (item['qty'] ?? 1) - 1,
                         );
                       }
                     },
@@ -134,7 +137,7 @@ class _ItemCard extends StatelessWidget {
                     onTap: () {
                       context.read<TransferWarehouseProvider>().updateQty(
                         item['id'],
-                        item['qty'] + 1,
+                        (item['qty'] ?? 0) + 1,
                       );
                     },
                   ),

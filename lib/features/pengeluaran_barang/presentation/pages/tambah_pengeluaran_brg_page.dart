@@ -1,3 +1,4 @@
+import 'package:bbs_gudang/data/models/delivery_plan/request_delivery_plan.dart';
 import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_gudang/features/pengeluaran_barang/presentation/pages/edit_pengeluaran_brg_form.dart';
 import 'package:bbs_gudang/features/pengeluaran_barang/presentation/pages/tambah_item_pengeluaran_page.dart';
@@ -29,6 +30,7 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
   final vehicleCtrl = TextEditingController();
   final totalAmountCtrl = TextEditingController();
   final driverCtrl = TextEditingController();
+  final noDOCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -42,6 +44,45 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
         );
       }
     });
+  }
+
+  SuratJalanRequestModel _buildPayload(
+    PengeluaranBarangProvider pb, {
+    required int status,
+  }) {
+    final dp = pb.detailDPCode!;
+    final unitBusiness = dp.unitBussiness!;
+
+    return SuratJalanRequestModel(
+      deliveryPlanId: dp.id!,
+      unitBusinessId: unitBusiness.id!,
+      status: status, // 🔥 DINAMIS
+      date: DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      vehicle: dp.vehicle?.name,
+      nopol: dp.nopol,
+      expeditionType: expeditionTypeCtrl.text,
+      details: dp.details.map((detail) {
+        return SuratJalanDetailPayload(
+          soId: detail.salesOrder?.id ?? '',
+          customerId: detail.customerId ?? '',
+          customerName: detail.customer?.name ?? '',
+          shipTo: detail.shipToAddress ?? '',
+          npwp: detail.npwp ?? '',
+          topId: detail.salesOrder?.top_id ?? '',
+          items: detail.items.map((item) {
+            return SuratJalanItemPayload(
+              itemId: item.item!.id!,
+              qty: item.qtyDp,
+              price: item.price ?? 0,
+              weight: (item.weight ?? 0).toDouble(),
+              uomId: item.uom?.id ?? '',
+              uomUnit: item.uomUnit!,
+              uomValue: item.uomValue ?? 1,
+            );
+          }).toList(),
+        );
+      }).toList(),
+    );
   }
 
   /// 🔄 AUTO FILL FROM DETAIL DP
@@ -66,7 +107,8 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
     driverCtrl.text = detail.driver ?? '';
 
     // ✅ EXPEDITION dari SALES ORDER di DETAILS
-    expeditionCtrl.text = firstDetail?.salesOrder?.expeditionType ?? '';
+    expeditionTypeCtrl.text = firstDetail?.salesOrder?.expeditionType ?? '';
+    expeditionCtrl.text = detail.unitBussiness?.name ?? '';
   }
 
   @override
@@ -153,10 +195,23 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                               final token = context.read<AuthProvider>().token;
 
                               if (token != null) {
+                                // 1️⃣ Fetch detail DP
                                 await pb.fetchDetailDPCode(
                                   token: token,
                                   id: value,
                                 );
+
+                                // 2️⃣ Ambil unit business ID dari detail DP
+                                final unitBusinessId =
+                                    pb.detailDPCode?.unitBussiness?.id;
+
+                                // 3️⃣ Generate No DO
+                                if (unitBusinessId != null) {
+                                  await pb.generateNoDO(
+                                    token: token,
+                                    unitBusinessId: unitBusinessId,
+                                  );
+                                }
                               }
                             },
                           ),
@@ -240,14 +295,38 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
 
                       const SizedBox(height: 12),
 
-                      const ItemPengeluaranTile(
-                        noSo: "SO-001",
-                        namaBarang: "Barang A",
-                        qty: "2 roll",
-                        qtySo: "100",
-                        qtyDikirim: "80",
-                        sisa: "20",
-                      ),
+                      if (pb.detailDPCode?.details.isEmpty ?? true)
+                        const Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Text("Tidak ada detail item"),
+                        ),
+
+                      if (pb.detailDPCode != null)
+                        Column(
+                          children: pb.detailDPCode!.details
+                              .expand(
+                                (detail) => detail.items.map((item) {
+                                  final soCode = detail.salesOrder?.code ?? "-";
+                                  final namaBarang = item.item?.name ?? "-";
+                                  final qtySo = item.qtySo;
+                                  final qtyDp = item.qtyDp;
+                                  final sisa = qtySo - qtyDp;
+
+                                  return ItemPengeluaranTile(
+                                    noSo: soCode,
+                                    noDO: pb.isLoadingDOCode
+                                        ? "Generating..."
+                                        : (pb.DOCode ?? "-"),
+                                    namaBarang: namaBarang,
+                                    qty: "${qtyDp} ${item.uomUnit}",
+                                    qtySo: qtySo.toString(),
+                                    qtyDikirim: qtyDp.toString(),
+                                    sisa: sisa.toString(),
+                                  );
+                                }),
+                              )
+                              .toList(),
+                        ),
 
                       const SizedBox(height: 30),
                     ],
@@ -258,26 +337,120 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
               /// ===== SAVE BUTTON =====
               Padding(
                 padding: const EdgeInsets.all(20),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                child: Row(
+                  children: [
+                    /// ===== SAVE (DRAFT) =====
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: pb.isLoading
+                            ? null
+                            : () async {
+                                final token = context
+                                    .read<AuthProvider>()
+                                    .token;
+                                if (token == null || pb.detailDPCode == null)
+                                  return;
+
+                                final payload = _buildPayload(pb, status: 1);
+
+                                debugPrint("📦 PAYLOAD SJ (DRAFT):");
+                                debugPrint(payload.toJson().toString());
+
+                                final success = await pb
+                                    .createPengeluaranBarang(
+                                      token: token,
+                                      payload: payload,
+                                    );
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      success
+                                          ? "Draft berhasil disimpan"
+                                          : pb.errorMessage ??
+                                                "Gagal simpan draft",
+                                    ),
+                                  ),
+                                );
+                              },
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF4CAF50)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          minimumSize: const Size(double.infinity, 50),
+                        ),
+                        child: const Text(
+                          "Save",
+                          style: TextStyle(
+                            color: Color(0xFF4CAF50),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
-                    child: const Text(
-                      "Simpan",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+
+                    const SizedBox(width: 12),
+
+                    /// ===== POSTED =====
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: pb.isLoading
+                            ? null
+                            : () async {
+                                final token = context
+                                    .read<AuthProvider>()
+                                    .token;
+                                if (token == null || pb.detailDPCode == null)
+                                  return;
+
+                                final payload = _buildPayload(pb, status: 2);
+
+                                debugPrint("📦 PAYLOAD SJ (POSTED):");
+                                debugPrint(payload.toJson().toString());
+
+                                final success = await pb
+                                    .createPengeluaranBarang(
+                                      token: token,
+                                      payload: payload,
+                                    );
+
+                                if (success) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        "Pengeluaran Barang berhasil diposting",
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        pb.errorMessage ?? "Gagal posting data",
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4CAF50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          minimumSize: const Size(double.infinity, 50),
+                        ),
+                        child: const Text(
+                          "Posted",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],

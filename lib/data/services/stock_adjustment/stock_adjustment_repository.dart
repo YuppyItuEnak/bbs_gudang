@@ -73,7 +73,7 @@ class StockAdjustmentRepository {
       }
 
       final decoded = json.decode(response.body);
-      print("fetch Data stock adjust: ${response.body}");
+      print("fetch detail Data stock adjust: ${response.body}");
       return StockAdjustmentModel.fromJson(decoded["data"]);
     } catch (e) {
       throw Exception("StockAdjustment Error: $e");
@@ -114,6 +114,31 @@ class StockAdjustmentRepository {
     return list.map<Map<String, dynamic>>((e) {
       return {'id': e['id'], 'code': e['code']};
     }).toList();
+  }
+
+  Future<String> generateAdjustmentCode({required String token}) async {
+    final uri = Uri.parse(
+      '$baseUrl/fn/t_inventory_s_adjustment/generateCode?menu_id=4ad48011-9a08-4073-bde0-10f88bfebc81',
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    final data = jsonDecode(response.body);
+
+    print("GEN CODE STATUS: ${response.statusCode}");
+    print("GEN CODE BODY: ${response.body}");
+
+    if (response.statusCode != 200 || data['success'] != true) {
+      throw Exception(data['message'] ?? 'Gagal generate code');
+    }
+
+    return data['data']; // "ADJ-2602-0002"
   }
 
   Future<Map<String, dynamic>> checkCanSubmit({
@@ -157,12 +182,70 @@ class StockAdjustmentRepository {
       body: jsonEncode(payload),
     );
 
+    print("STATUS CODE: ${response.statusCode}");
+    print("RESPONSE BODY: ${response.body}");
+    print("PAYLOAD SENT: ${jsonEncode(payload)}");
+
     final data = jsonDecode(response.body);
 
-    if (response.statusCode != 200 || data['status'] != 'success') {
+    // ❌ HANDLE HTTP ERROR BUT STILL READ MESSAGE
+    if (response.statusCode != 200) {
+      String message = data['message'] ?? "Server error ${response.statusCode}";
+
+      // ✅ IF VALIDATION ERRORS EXIST
+      if (data['errors'] != null && data['errors'] is Map) {
+        final errors = data['errors'] as Map<String, dynamic>;
+
+        final errorText = errors.entries
+            .map((e) {
+              final field = e.key;
+              final msgs = (e.value as List).join(', ');
+              return "$field: $msgs";
+            })
+            .join("\n");
+
+        message = "$message\n$errorText";
+      }
+
+      throw Exception(message);
+    }
+
+    // ❌ HANDLE BUSINESS LOGIC ERROR
+    if (data['status'] != 'success') {
       throw Exception(data['message'] ?? 'Gagal simpan stock adjustment');
     }
 
     return data['data'];
+  }
+
+  Future<Map<String, dynamic>> updateStockAdjustment({
+    required String token,
+    required String id,
+    required Map<String, dynamic> payload,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        "$baseUrl/dynamic/t_inventory_s_adjustment/with-details/$id",
+      );
+
+      final response = await http.put(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(payload),
+      );
+
+      final decoded = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && decoded['status'] == 'success') {
+        return decoded['data'];
+      }
+
+      throw Exception(decoded['message'] ?? "Gagal update stock adjustment");
+    } catch (e) {
+      throw Exception("Update adjustment error: $e");
+    }
   }
 }

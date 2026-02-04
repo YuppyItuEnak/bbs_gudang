@@ -162,15 +162,18 @@ class StockAdjustmentProvider extends ChangeNotifier {
     required Map<String, dynamic> payload,
   }) async {
     try {
-      final result = await _repo.createStockAdjustment(
-        token: token,
-        payload: payload,
-      );
+      _isLoading = true;
+      notifyListeners();
 
-      adjustmentId = result['id'];
-      adjustmentCode = result['code'];
+      await _repo.createStockAdjustment(token: token, payload: payload);
+
+      _error = null;
     } catch (e) {
+      _error = e.toString().replaceFirst('Exception: ', '');
       rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -185,5 +188,57 @@ class StockAdjustmentProvider extends ChangeNotifier {
     _selectedOpname = null;
     _error = null;
     notifyListeners();
+  }
+
+  bool isUpdating = false;
+  String? updateError;
+
+  Future<bool> updateStockAdjustment({
+    required String token,
+    required String id,
+    required Map<String, dynamic> payload,
+  }) async {
+    try {
+      isUpdating = true;
+      updateError = null;
+      notifyListeners();
+
+      final data = await _repo.updateStockAdjustment(
+        token: token,
+        id: id,
+        payload: payload,
+      );
+
+      // Optional: refresh detail setelah update
+      await fetchDetailAdjustment(token: token, id: id);
+
+      isUpdating = false;
+      notifyListeners();
+
+      return true;
+    } catch (e) {
+      isUpdating = false;
+      updateError = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  String? generatedCode;
+  bool isGeneratingCode = false;
+
+  Future<void> generateCode({required String token}) async {
+    try {
+      isGeneratingCode = true;
+      notifyListeners();
+
+      generatedCode = await _repo.generateAdjustmentCode(token: token);
+    } catch (e) {
+      _error = e.toString();
+      generatedCode = null;
+    } finally {
+      isGeneratingCode = false;
+      notifyListeners();
+    }
   }
 }

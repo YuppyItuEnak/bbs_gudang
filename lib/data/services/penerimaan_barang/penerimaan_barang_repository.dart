@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:bbs_gudang/core/constants/api_constants.dart';
 import 'package:bbs_gudang/data/models/penerimaan_barang/available_po_model.dart';
@@ -20,6 +21,8 @@ class PenerimaanBarangRepository {
             'm_gen:id|value1,m_supplier:id|name|is_pajak,m_unit_bussiness:id|name,t_purchase_order>t_purchase_request',
         'page': page.toString(),
         'paginate': paginate.toString(),
+        'order_by': 'posted_at',
+        'order_type': 'DESC',
       };
 
       final uri = Uri.parse(
@@ -280,5 +283,91 @@ class PenerimaanBarangRepository {
     }
 
     return json['data']; // ✅ OPC-2601-0006
+  }
+
+  Future<Map<String, dynamic>> updatePBWithDetails({
+    required String token,
+    required String pbId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final uri = Uri.parse(
+      "$baseUrl/dynamic/t_penerimaan_barang/with-details/$pbId",
+    );
+
+    final response = await http.put(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(payload),
+    );
+
+    print("📡 UPDATE PB STATUS: ${response.statusCode}");
+    print("📡 UPDATE PB RAW RESPONSE: ${response.body}");
+
+    Map<String, dynamic>? json;
+
+    try {
+      json = jsonDecode(response.body);
+    } catch (e) {
+      throw Exception("Response bukan JSON valid");
+    }
+
+    /// ❌ HTTP ERROR
+    if (response.statusCode != 200) {
+      final message =
+          json?['message'] ??
+          json?['error'] ??
+          json?['errors']?.toString() ??
+          "HTTP ${response.statusCode}";
+
+      throw Exception(message);
+    }
+
+    if (json?['status'] != 'success') {
+      final message =
+          json?['message'] ??
+          json?['error'] ??
+          json?['errors']?.toString() ??
+          'Update PB gagal';
+
+      throw Exception(message);
+    }
+
+    return json?['data'];
+  }
+
+  Future<void> insertInventory({
+    required String token,
+    required Map<String, dynamic> payload,
+  }) async {
+    try {
+      final uri = Uri.parse("$baseUrl/fn/t_penerimaan_barang/insertInventory");
+
+      final response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(payload),
+      );
+
+      debugPrint('📦 INSERT INVENTORY STATUS: ${response.statusCode}');
+      debugPrint('📦 INSERT INVENTORY BODY: ${response.body}');
+
+      if (response.statusCode != 200) {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+
+      final json = jsonDecode(response.body);
+
+      if (json['success'] != true) {
+        throw Exception(json['message'] ?? 'Insert inventory gagal');
+      }
+    } catch (e) {
+      throw Exception('Insert inventory gagal: $e');
+    }
   }
 }

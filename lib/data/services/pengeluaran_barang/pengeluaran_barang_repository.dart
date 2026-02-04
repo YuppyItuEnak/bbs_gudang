@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:bbs_gudang/core/constants/api_constants.dart';
 import 'package:bbs_gudang/data/models/delivery_plan/delivery_plan_code_model.dart';
+import 'package:bbs_gudang/data/models/delivery_plan/request_delivery_plan.dart';
 import 'package:bbs_gudang/data/models/pengeluaran_barang/pengeluaran_barang_model.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -24,6 +25,8 @@ class PengeluaranBarangRepository {
           'limit': limit.toString(),
           'include':
               't_sales_order,m_unit_bussiness,m_customer,t_delivery_plan',
+          'order_by': 'date',
+          'order_type': 'DESC',
         },
       );
 
@@ -94,12 +97,13 @@ class PengeluaranBarangRepository {
       }
 
       final data = body['data'];
+      debugPrint("Detail Pengeluaran Barang: $data");
 
       // 🧩 DEBUG FIELD
-      debugPrint("🧩 SEMUA FIELD DATA:");
-      data.forEach((key, value) {
-        debugPrint("FIELD: $key => ${value.runtimeType}");
-      });
+      // debugPrint("🧩 SEMUA FIELD DATA:");
+      // data.forEach((key, value) {
+      //   debugPrint("FIELD: $key => ${value.runtimeType}");
+      // });
 
       // 🔴 ERROR PARSING MODEL
       try {
@@ -212,6 +216,86 @@ class PengeluaranBarangRepository {
       throw Exception("Format data Delivery Plan tidak dikenali");
     } catch (e) {
       throw Exception('Gagal mengambil data Delivery Plan Code: $e');
+    }
+  }
+
+  Future<String> generateNoDO({
+    required String token,
+    required String unitBusinessId,
+  }) async {
+    try {
+      final uri = Uri.parse("$baseUrl/fn/t_surat_jalan/generateCode").replace(
+        queryParameters: {
+          'menu_id': 'b5d79799-51d1-4089-bc2e-71916b00200f',
+          'unit_bussiness_id': unitBusinessId,
+        },
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('GENERATE CODE STATUS: ${response.statusCode}');
+      debugPrint('GENERATE CODE BODY: ${response.body}');
+
+      if (response.statusCode != 200) {
+        throw Exception('HTTP Error ${response.statusCode}');
+      }
+
+      final json = jsonDecode(response.body);
+
+      // ✅ FIX SESUAI RESPONSE BACKEND
+      if (json['success'] != true) {
+        throw Exception(json['message'] ?? 'Generate code error');
+      }
+
+      return json['data'];
+    } catch (e) {
+      throw Exception('Generate code error: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> createPengeluaranBarang({
+    required String token,
+    required SuratJalanRequestModel payload,
+  }) async {
+    try {
+      final uri = Uri.parse("$baseUrl/fn/t_surat_jalan/createSuratJalanv3");
+
+      final response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(payload.toJson()),
+      );
+
+      // === LOG DEBUG (boleh dihapus nanti)
+      debugPrint("🧪 CREATE SJ STATUS: ${response.statusCode}");
+      debugPrint("🧪 CREATE SJ BODY: ${response.body}");
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        final error = jsonDecode(response.body);
+        throw Exception(
+          error['message'] ?? 'Gagal menyimpan Pengeluaran Barang',
+        );
+      }
+
+      final decoded = jsonDecode(response.body);
+
+      if (decoded['data'] == null || decoded['data'] is! List) {
+        throw Exception('Format response tidak valid');
+      }
+
+      return List<Map<String, dynamic>>.from(decoded['data']);
+    } catch (e) {
+      throw Exception('Gagal menyimpan Pengeluaran Barang: $e');
     }
   }
 }

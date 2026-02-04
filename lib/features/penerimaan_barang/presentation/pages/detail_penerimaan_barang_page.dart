@@ -1,4 +1,5 @@
 import 'package:bbs_gudang/data/models/penerimaan_barang/penerimaan_barang_model.dart';
+import 'package:bbs_gudang/features/penerimaan_barang/presentation/pages/edit_penerimaan_barang.dart';
 import 'package:bbs_gudang/features/penerimaan_barang/presentation/providers/penerimaan_barang_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -70,6 +71,8 @@ class _DetailPenerimaanBarangPageState
           final header = provider.data!;
           final details = header.details ?? [];
 
+          debugPrint("purchaseorderid: ${provider.data?.purchaseOrderId}");
+
           return Column(
             children: [
               Expanded(
@@ -126,26 +129,68 @@ class _DetailPenerimaanBarangPageState
               // ===== TOMBOL KEMBALI =====
               Padding(
                 padding: const EdgeInsets.all(20),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF4CAF50)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                child: Row(
+                  children: [
+                    /// ✏️ EDIT — HANYA JIKA DRAFT
+                    if (header.status == "DRAFT")
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // TODO: arahkan ke halaman edit PB
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    EditPenerimaanBarangPage(pbId: header.id!),
+                              ),
+                            );
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Edit Penerimaan Barang"),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            "Edit",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    if (header.status == "DRAFT") const SizedBox(width: 12),
+
+                    /// 🔙 KEMBALI — SELALU ADA
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF4CAF50)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          "Kembali",
+                          style: TextStyle(
+                            color: Color(0xFF4CAF50),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
                     ),
-                    child: const Text(
-                      "Kembali",
-                      style: TextStyle(
-                        color: Color(0xFF4CAF50),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ],

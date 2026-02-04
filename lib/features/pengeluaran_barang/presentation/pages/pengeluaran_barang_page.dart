@@ -159,9 +159,8 @@ class _PengeluaranBarangPageState extends State<PengeluaranBarangPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => DetailPengeluaranBrgPage(
-                               id: item.id,
-                            ),
+                            builder: (context) =>
+                                DetailPengeluaranBrgPage(id: item.id),
                           ),
                         );
                       },
@@ -174,13 +173,22 @@ class _PengeluaranBarangPageState extends State<PengeluaranBarangPage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+         final result = await  Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => const TambahPengeluaranBrgPage(),
             ),
           );
+
+          if (result == true) {
+            final token = context.read<AuthProvider>().token;
+            if (token != null) {
+              context.read<PengeluaranBarangProvider>().fetchListPengeluaranBrg(
+                token: token,
+              );
+            }
+          }
         },
         backgroundColor: const Color(0xFF4CAF50),
         child: const Icon(Icons.add, color: Colors.white, size: 30),

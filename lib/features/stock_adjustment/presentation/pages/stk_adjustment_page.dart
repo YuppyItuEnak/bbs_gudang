@@ -16,23 +16,23 @@ class StkAdjustmentPage extends StatefulWidget {
 class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
   final ScrollController _scrollController = ScrollController();
 
-  /// GANTI DENGAN TOKEN ASLI
-
   @override
   void initState() {
     super.initState();
     final token = context.read<AuthProvider>().token;
 
-    /// fetch pertama
+    /// Fetch pertama
     Future.microtask(() {
       context.read<StockAdjustmentProvider>().fetchStockAdjustments(
         token: token!,
+        loadMore: true,
       );
     });
 
-    /// infinite scroll
+    /// Infinite scroll
     _scrollController.addListener(() {
       final provider = context.read<StockAdjustmentProvider>();
+
       if (_scrollController.position.pixels >=
               _scrollController.position.maxScrollExtent - 100 &&
           provider.hasMore &&
@@ -114,24 +114,34 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
                   return const Center(child: Text("Data kosong"));
                 }
 
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
-                  ),
-                  itemCount: provider.data.length + (provider.hasMore ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == provider.data.length) {
-                      return const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-
-                    final item = provider.data[index];
-                    return _buildAdjustmentCard(item);
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    final token = context.read<AuthProvider>().token!;
+                    await provider.fetchStockAdjustments(
+                      token: token,
+                      loadMore: true,
+                    );
                   },
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    itemCount:
+                        provider.data.length + (provider.hasMore ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == provider.data.length) {
+                        return const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+
+                      final item = provider.data[index];
+                      return _buildAdjustmentCard(item);
+                    },
+                  ),
                 );
               },
             ),
@@ -142,13 +152,22 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
       /// FAB TAMBAH
       floatingActionButton: FloatingActionButton(
         heroTag: null,
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => const TambahStkAdjustPage(),
             ),
           );
+
+          /// ✅ Refresh setelah tambah
+          if (result == true) {
+            final token = context.read<AuthProvider>().token!;
+            await context.read<StockAdjustmentProvider>().fetchStockAdjustments(
+              token: token,
+              loadMore: true,
+            );
+          }
         },
         backgroundColor: const Color(0xFF4CAF50),
         child: const Icon(Icons.add, color: Colors.white, size: 30),
@@ -158,12 +177,28 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
 
   /// CARD ITEM
   Widget _buildAdjustmentCard(StockAdjustmentModel item) {
+    Color statusColor;
+    String statusText = item.status ?? "-";
+
+    switch (statusText.toUpperCase()) {
+      case "APPROVED":
+        statusColor = Colors.green;
+        break;
+      case "REJECTED":
+        statusColor = Colors.red;
+        break;
+      case "DRAFT":
+        statusColor = Colors.orange;
+        break;
+      default:
+        statusColor = Colors.grey;
+    }
+
     return InkWell(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            // Mengirimkan UUID item ke halaman detail
             builder: (context) =>
                 DetailStckAdjustmentPage(adjustmentId: item.id),
           ),
@@ -187,11 +222,40 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// CODE
-            Text(
-              item.code,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            /// HEADER: CODE + STATUS
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  item.code,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+
+                /// STATUS BADGE
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
+
             const SizedBox(height: 12),
 
             Row(

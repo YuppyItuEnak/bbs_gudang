@@ -1,9 +1,11 @@
+import 'package:bbs_gudang/data/models/list_item/list_item_model.dart';
+
 class StockOpnameDetailModel {
   final String id;
   final String itemCode;
   final int opnameQty;
   final int currentQty;
-  final ItemModel? item;
+  final ItemBarangModel? item;
 
   StockOpnameDetailModel({
     required this.id,
@@ -20,7 +22,7 @@ class StockOpnameDetailModel {
       opnameQty: json['opname_qty'] ?? 0,
       currentQty: json['current_on_hand_quantity'] ?? 0,
       item: json['stockOpnameDetailItem'] != null
-          ? ItemModel.fromJson(json['stockOpnameDetailItem'])
+          ? ItemBarangModel.fromJson(json['stockOpnameDetailItem'])
           : null,
     );
   }

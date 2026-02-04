@@ -236,6 +236,10 @@ class _TambahItemState extends State<TambahItem> {
                                     "id": item.id,
                                     "code": item.code,
                                     "name": item.name,
+                                    "item_uom_id":
+                                        item.itemUomId, // DIAMBIL DARI MODEL
+                                    "item_group_coa_id": item
+                                        .itemGroupCoaId, // DIAMBIL DARI MODEL
                                     "qty": e.value,
                                   };
                                 })

@@ -452,16 +452,71 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     }
   }
 
+  void _fillFormFromDetail(PenerimaanBarangModel model) {
+    // HEADER
+    pbCode = model.code;
+    supplierId = model.supplierId;
+    supplierName = model.supplierName;
+
+    purchaseOrderId = model.purchaseOrder?.id;
+    purchaseRequestId = model.purchaseRequestId;
+
+    unitBusinessId = model.unitBussinessId;
+    unitBusinessName = model.unitBussinessName;
+
+    warehouseId = model.warehouseId;
+    warehouseName = model.warehouseName;
+
+    itemGroupCoaId = model.itemGroupCoaId;
+    itemGroup = model.itemGroupCoa;
+
+    policeNo = model.policeNumber;
+    driverName = model.driverName;
+    supplierSjNo = model.noSjSupplier;
+    headerNote = model.notes;
+
+    invoiceDate = model.date != null ? model.date : null;
+
+    // DETAIL ITEM
+    selectedItems = model.details.map((e) {
+      return {
+        "id": e.id, // 🔥 penting buat update
+        "purchase_order_d_id": e.poDetail?.id ?? '',
+        "purchase_request_d_id": e.prDetail?.id ?? '',
+        "item_id": e.item?.id ?? '',
+        "item_code": e.item?.code ?? '',
+        "item_name": e.item?.name ?? '',
+        "item_type": e.item?.itemTypeName ?? '',
+        "qty_received": e.qtyReceived,
+        "qty_receipt": e.qtyReceipt,
+        "qty_closing": e.qtyReceipt ?? 0,
+        // "item_uom_id": e.,
+        // "item_uom": e.itemUom,
+        // "price": e.price,
+        // "item_price": e.itemPrice,
+        // "total": e.total,
+        // "coa_inventory_id": e.coaInventoryId,
+        // "coa_unbilled_id": e.coaUnbilledId,
+        // "coa_purchase_return_id": e.coaPurchaseReturnId,
+        "notes": e.notes ?? "",
+      };
+    }).toList();
+  }
+
   Future<void> fetchDetail({required String token, required String id}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _data = await _repository.fetchDetailPenerimaanBarang(
+      final result = await _repository.fetchDetailPenerimaanBarang(
         token: token,
         id: id,
       );
+
+      _data = result;
+
+      _fillFormFromDetail(result);
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -525,6 +580,93 @@ class PenerimaanBarangProvider extends ChangeNotifier {
       );
     } catch (e) {
       rethrow;
+    }
+  }
+
+  void hydrateFromDetailPB(PenerimaanBarangModel model) {
+    // PO
+    if (model.purchaseOrder != null) {
+      selectedPO = AvailablePoModel(
+        id: model.purchaseOrder!.id,
+        code: model.purchaseOrder!.code ?? '-',
+      );
+
+      purchaseOrderId = model.purchaseOrder!.id;
+    }
+
+    // Field lain
+    supplierName = model.supplierName;
+    prCode = model.purchaseOrder?.code ?? '';
+    itemGroup = model.itemGroupCoa;
+
+    notifyListeners();
+  }
+
+  Future<void> postPenerimaanBarang({
+    required String token,
+    required String pbId,
+    required Map<String, dynamic> payload,
+  }) async {
+    _isSubmitting = true;
+    notifyListeners();
+
+    try {
+      final data = await _repository.updatePBWithDetails(
+        token: token,
+        pbId: pbId,
+        payload: payload,
+      );
+
+      _data = PenerimaanBarangModel.fromJson(data);
+    } catch (e) {
+      _errorMessage = e.toString();
+      rethrow;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  bool _isSubmitting = false;
+
+  bool get isSubmitting => _isSubmitting;
+
+  Future<void> insertInventoryItems({
+    required String token,
+    required String pbId,
+    required String pbCode,
+    required String warehouseId,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      for (final item in items) {
+        final payload = {
+          "item_id": item["item_id"],
+          "warehouse_id": warehouseId,
+          "quantity": item["qty_received"] ?? item["qty_receipt"],
+          "uom": item["item_uom"],
+          "transactionTypeName": "PURCHASE_RECEIPT",
+          "unitCost": item["price"],
+          "reference_id": pbId,
+          "reference_source": "t_penerimaan_barang",
+          "batchNumber": pbCode,
+        };
+
+        debugPrint("📦 INSERT INVENTORY PAYLOAD");
+        debugPrint(payload.toString());
+
+        await _repository.insertInventory(token: token, payload: payload);
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      rethrow;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
     }
   }
 }

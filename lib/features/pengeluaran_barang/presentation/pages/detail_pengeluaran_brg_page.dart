@@ -1,5 +1,6 @@
 import 'package:bbs_gudang/data/models/pengeluaran_barang/pengeluaran_barang_model.dart';
 import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
+import 'package:bbs_gudang/features/pengeluaran_barang/presentation/pages/edit_pengeluaran_brg_form.dart';
 import 'package:bbs_gudang/features/pengeluaran_barang/presentation/providers/pengeluaran_barang_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -132,25 +133,64 @@ class _DetailPengeluaranBrgPageState extends State<DetailPengeluaranBrgPage> {
               // BUTTON BAWAH
               Padding(
                 padding: const EdgeInsets.all(20),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.green),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                child: Column(
+                  children: [
+                    // 🔥 TOMBOL EDIT (HANYA DRAFT)
+                    if (model.status == 1)
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // TODO: Navigasi ke halaman edit
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EditPengeluaranBrgPage(pbId: model.id,),
+                              ),
+                            );
+                            print("EDIT DATA ${model.id}");
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text(
+                            "Edit Pengeluaran Barang",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    if (model.status == 1) const SizedBox(height: 10),
+
+                    // 🔙 TOMBOL KEMBALI (SELALU ADA)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.green),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          "Kembali",
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
-                    child: const Text(
-                      "Kembali",
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -161,26 +201,34 @@ class _DetailPengeluaranBrgPageState extends State<DetailPengeluaranBrgPage> {
   }
 
   Widget _buildHeaderGrid(PengeluaranBarangModel model) {
-  return GridView.count(
-    crossAxisCount: 2,
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    childAspectRatio: 2.5,
-    children: [
-      _buildInfoTile("No. Pengeluaran", model.code),
-      _buildInfoTile("Tanggal", model.date),
-      _buildInfoTile("Customer", model.customerModel?.name ?? "-"),
-      _buildInfoTile("Ship To", model.shipTo),
-      _buildInfoTile("Status", model.status.toString()),
-      _buildInfoTile("Unit Bisnis", model.unitBussinessModel?.name ?? "-"),
-      _buildInfoTile("SO", model.salesOrder?.code ?? "-"),
-      _buildInfoTile("NPWP", model.npwp),
-      _buildInfoTile("Diambil", model.isTaken ? "Ya" : "Belum"),
-      _buildInfoTile("Catatan", model.notes ?? "-"),
-    ],
-  );
-}
+    String statusText;
 
+    if (model.status == 1) {
+      statusText = "DRAFT";
+    } else if (model.status == 2) {
+      statusText = "POSTED";
+    } else {
+      statusText = model.status.toString();
+    }
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 2.5,
+      children: [
+        _buildInfoTile("No. Pengeluaran", model.code),
+        _buildInfoTile("Tanggal", model.date),
+        _buildInfoTile("Customer", model.customerModel?.name ?? "-"),
+        _buildInfoTile("Ship To", model.shipTo),
+        _buildInfoTile("Status", statusText),
+        _buildInfoTile("Unit Bisnis", model.unitBussinessModel?.name ?? "-"),
+        _buildInfoTile("SO", model.salesOrder?.code ?? "-"),
+        _buildInfoTile("NPWP", model.npwp),
+        _buildInfoTile("Diambil", model.isTaken ? "Ya" : "Belum"),
+        _buildInfoTile("Catatan", model.notes ?? "-"),
+      ],
+    );
+  }
 
   Widget _buildInfoTile(String label, String value) {
     return Column(
