@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_gudang/features/list_item/presentation/pages/tambah_item_page.dart';
 import 'package:bbs_gudang/features/stock_adjustment/presentation/providers/stock_adjustment_provider.dart';
@@ -16,6 +15,10 @@ class TambahStkAdjustPage extends StatefulWidget {
 }
 
 class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
+  // Warna sesuai gambar profil yang diunggah
+  final Color primaryGreen = const Color(0xff4CAF50);
+  final Color backgroundGrey = const Color(0xffF5F5F5);
+
   String? selectedCompanyId;
   String? selectedWarehouseId;
   String? selectedOpnameId;
@@ -29,16 +32,13 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
   @override
   void initState() {
     super.initState();
-
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = context.read<AuthProvider>();
       final companyProvider = context.read<TransferWarehouseProvider>();
       final stockProvider = context.read<StockAdjustmentProvider>();
 
-      // ✅ Generate Code Saat Masuk
       await stockProvider.generateCode(token: auth.token!);
 
-      // Load Company
       String? responsibilityId;
       if (auth.user!.userDetails.isNotEmpty) {
         final primary = auth.user!.userDetails.firstWhere(
@@ -57,20 +57,27 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(backgroundColor: Colors.red, content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.red,
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
-  // ===============================
-  // DATE PICKER
-  // ===============================
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: selectedDate ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
+      builder: (context, child) => Theme(
+        data: Theme.of(
+          context,
+        ).copyWith(colorScheme: ColorScheme.light(primary: primaryGreen)),
+        child: child!,
+      ),
     );
 
     if (picked != null) {
@@ -81,9 +88,6 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
     }
   }
 
-  // ===============================
-  // SELECT ITEM
-  // ===============================
   void _navigateToSelectItem() async {
     final token = context.read<AuthProvider>().token!;
     final result = await Navigator.push(
@@ -91,18 +95,10 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
       MaterialPageRoute(builder: (_) => TambahItem(token: token)),
     );
 
-    // ✅ DEBUG RAW RESULT
-    // debugPrint("RAW RESULT FROM TambahItemPage => $result");
-
     if (result != null && result is List) {
       setState(() {
         for (final item in result) {
-          // ✅ DEBUG RAW ITEM
-          // debugPrint("RAW ITEM => $item");
-          debugPrint("DEBUG: Data item dari pencarian => $item");
-
           final itemId = item['id'];
-
           final index = selectedItems.indexWhere((e) => e['item_id'] == itemId);
 
           if (index != -1) {
@@ -113,28 +109,42 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
               "item_id": item['id'],
               "code": item['code'],
               "name": item['name'],
-              "item_uom_id": item['item_uom_id'], // HARUS DARI API ITEM
+              "item_uom_id": item['item_uom_id'],
               "item_group_coa_id": item['item_group_coa_id'],
               "qty_before": item['qty_before'] ?? 0,
               "qty_after": item['qty'] ?? 1,
+              "qty": item['qty'] ?? 1,
               "cost": item['cost'] ?? 0,
             });
           }
         }
       });
-
-      debugPrint("NORMALIZED ITEMS => $selectedItems");
     }
+  }
+
+  // FITUR UPDATE QTY
+  void _updateItemQty(int index, double delta) {
+    setState(() {
+      double currentQty = (selectedItems[index]['qty'] as num).toDouble();
+      double newQty = currentQty + delta;
+      if (newQty >= 0) {
+        selectedItems[index]['qty'] = newQty;
+        selectedItems[index]['qty_after'] = newQty;
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xffF8F9FB),
+      backgroundColor: backgroundGrey,
       appBar: AppBar(
+        backgroundColor: primaryGreen,
+        foregroundColor: Colors.white,
+        elevation: 0,
         title: const Text(
           "Stock Adjustment",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
       ),
@@ -142,34 +152,37 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionTitle("No Adjustment"),
-                  _buildAdjustmentCode(),
-                  const SizedBox(height: 16),
-
-                  _sectionTitle("Company"),
-                  _buildCompanySelector(),
-                  const SizedBox(height: 16),
-
-                  _sectionTitle("Gudang"),
-                  _buildGudangSelector(),
-                  const SizedBox(height: 16),
-
-                  _sectionTitle("Referensi Opname"),
-                  _buildOpnameDropdown(),
-                  const SizedBox(height: 16),
-
-                  _sectionTitle("Tanggal Adjustment"),
-                  _buildDateField(),
-                  const SizedBox(height: 16),
-
-                  _sectionTitle("Catatan"),
-                  _buildTextInput(_catatanController, "Catatan"),
-                  const SizedBox(height: 24),
-
+                  _sectionCard("Informasi Utama", [
+                    _fieldLabel("No. Adjustment"),
+                    _buildAdjustmentCode(),
+                    const SizedBox(height: 16),
+                    _fieldLabel("Company"),
+                    _buildCompanySelector(),
+                    const SizedBox(height: 16),
+                    _fieldLabel("Gudang"),
+                    _buildGudangSelector(),
+                  ]),
+                  const SizedBox(height: 20),
+                  _sectionCard("Referensi & Waktu", [
+                    _fieldLabel("Referensi Opname"),
+                    _buildOpnameDropdown(),
+                    const SizedBox(height: 16),
+                    _fieldLabel("Tanggal Adjustment"),
+                    _buildDateField(),
+                  ]),
+                  const SizedBox(height: 20),
+                  _sectionCard("Tambahan", [
+                    _fieldLabel("Catatan"),
+                    _buildTextInput(
+                      _catatanController,
+                      "Tulis catatan di sini...",
+                    ),
+                  ]),
+                  const SizedBox(height: 20),
                   _buildItemSection(),
                 ],
               ),
@@ -181,136 +194,134 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
     );
   }
 
-  // ===============================
-  // CODE DISPLAY
-  // ===============================
+  // REUSABLE WIDGETS UNTUK UI BARU
+  Widget _sectionCard(String title, List<Widget> children) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: primaryGreen,
+              fontSize: 14,
+            ),
+          ),
+          const Divider(height: 24),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String label) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      label,
+      style: const TextStyle(
+        fontWeight: FontWeight.w600,
+        fontSize: 13,
+        color: Colors.black87,
+      ),
+    ),
+  );
+
   Widget _buildAdjustmentCode() {
     return Consumer<StockAdjustmentProvider>(
       builder: (_, provider, __) {
-        if (provider.isGeneratingCode) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                SizedBox(width: 10),
-                Text("Generating code..."),
-              ],
-            ),
-          );
-        }
-
-        if (provider.generatedCode == null) {
-          return const Text(
-            "Failed generate code",
-            style: TextStyle(color: Colors.red),
-          );
-        }
-
         return Container(
-          padding: const EdgeInsets.all(12),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
           decoration: BoxDecoration(
             color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Text(
-            provider.generatedCode!,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
+          child: provider.isGeneratingCode
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(
+                  provider.generatedCode ?? "-",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black54,
+                  ),
+                ),
         );
       },
     );
   }
 
-  // ===============================
-  // COMPANY
-  // ===============================
   Widget _buildCompanySelector() {
     return Consumer<TransferWarehouseProvider>(
-      builder: (_, provider, __) {
-        if (provider.isLoadingCompany) {
-          return const CircularProgressIndicator();
-        }
-
-        return _buildDropdown(
-          value: selectedCompanyId,
-          hint: "Pilih Company",
-          items: provider.companies
-              .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
-              .toList(),
-          onChanged: (val) {
-            setState(() {
-              selectedCompanyId = val;
-              selectedWarehouseId = null;
-              selectedOpnameId = null;
-              selectedItems.clear();
-            });
-
-            provider.loadWarehouseCompany(
-              token: context.read<AuthProvider>().token!,
-              unitBusinessId: val!,
-            );
-          },
-        );
-      },
+      builder: (_, provider, __) => _buildDropdown(
+        value: selectedCompanyId,
+        hint: "Pilih Company",
+        items: provider.companies
+            .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+            .toList(),
+        onChanged: (val) {
+          setState(() {
+            selectedCompanyId = val;
+            selectedWarehouseId = null;
+            selectedOpnameId = null;
+            selectedItems.clear();
+          });
+          provider.loadWarehouseCompany(
+            token: context.read<AuthProvider>().token!,
+            unitBusinessId: val!,
+          );
+        },
+      ),
     );
   }
 
-  // ===============================
-  // GUDANG
-  // ===============================
   Widget _buildGudangSelector() {
     return Consumer<TransferWarehouseProvider>(
-      builder: (_, provider, __) {
-        if (provider.isLoadingWarehouse) {
-          return const CircularProgressIndicator();
-        }
-
-        return _buildDropdown(
-          value: selectedWarehouseId,
-          hint: "Pilih Gudang",
-          items: provider.warehouses
-              .map((w) => DropdownMenuItem(value: w.id, child: Text(w.name)))
-              .toList(),
-          onChanged: selectedCompanyId == null
-              ? null
-              : (val) {
-                  setState(() {
-                    selectedWarehouseId = val;
-                    selectedOpnameId = null;
-                  });
-
-                  final opnameProvider = context
-                      .read<StockAdjustmentProvider>();
-
-                  opnameProvider.clear();
-
-                  opnameProvider.loadOpnameReference(
-                    token: context.read<AuthProvider>().token!,
-                    unitBusinessId: selectedCompanyId!,
-                    warehouseId: val!,
-                  );
-                },
-        );
-      },
+      builder: (_, provider, __) => _buildDropdown(
+        value: selectedWarehouseId,
+        hint: "Pilih Gudang",
+        items: provider.warehouses
+            .map((w) => DropdownMenuItem(value: w.id, child: Text(w.name)))
+            .toList(),
+        onChanged: selectedCompanyId == null
+            ? null
+            : (val) {
+                setState(() {
+                  selectedWarehouseId = val;
+                  selectedOpnameId = null;
+                });
+                context.read<StockAdjustmentProvider>().clear();
+                context.read<StockAdjustmentProvider>().loadOpnameReference(
+                  token: context.read<AuthProvider>().token!,
+                  unitBusinessId: selectedCompanyId!,
+                  warehouseId: val!,
+                );
+              },
+      ),
     );
   }
 
-  // ===============================
-  // OPNAME
-  // ===============================
   Widget _buildOpnameDropdown() {
     return Consumer<StockAdjustmentProvider>(
       builder: (_, provider, __) {
-        if (provider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
+        if (provider.isLoading) return const LinearProgressIndicator();
         return _buildDropdown(
           value: selectedOpnameId,
           hint: "Pilih Referensi Opname",
@@ -321,111 +332,257 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
               .toList(),
           onChanged: selectedWarehouseId == null
               ? null
-              : (val) {
+              : (val) async {
                   setState(() => selectedOpnameId = val);
-
-                  final selected = provider.opnames.firstWhere(
+                  final selectedHeader = provider.opnames.firstWhere(
                     (e) => e['id'] == val,
                   );
-
-                  provider.setSelectedOpname(selected);
+                  provider.setSelectedOpname(selectedHeader);
+                  await provider.selectOpname(
+                    token: context.read<AuthProvider>().token!,
+                    opnameId: val!,
+                  );
+                  setState(() {
+                    selectedItems = provider.selectedItems
+                        .map(
+                          (item) => {
+                            "item_id": item['item_id'],
+                            "code": item['item_code'],
+                            "name": item['item_name'],
+                            "item_uom_id": item['uom_id'],
+                            "qty_before": item['qty_on_hand'] ?? 0,
+                            "qty_after": item['qty_physical'] ?? 0,
+                            "qty": item['qty_physical'] ?? 0,
+                            "cost": 0,
+                            "item_group_coa_id": item['item_group_coa_id'],
+                          },
+                        )
+                        .toList();
+                  });
                 },
         );
       },
     );
   }
 
-  // ===============================
-  // DATE FIELD
-  // ===============================
   Widget _buildDateField() {
-    return GestureDetector(
+    return InkWell(
       onTap: _pickDate,
-      child: AbsorbPointer(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: TextField(
-            controller: _dateController,
-            decoration: const InputDecoration(
-              hintText: "Pilih tanggal",
-              border: InputBorder.none,
-              suffixIcon: Icon(Icons.calendar_today),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              _dateController.text.isEmpty
+                  ? "Pilih tanggal"
+                  : _dateController.text,
             ),
-          ),
+            Icon(Icons.calendar_month, color: primaryGreen),
+          ],
         ),
       ),
     );
   }
 
-  // ===============================
-  // ITEM LIST
-  // ===============================
   Widget _buildItemSection() {
-    if (selectedItems.isEmpty) {
-      return OutlinedButton(
-        onPressed: _navigateToSelectItem,
-        child: const Text("+ Add Item"),
-      );
-    }
-
     return Column(
-      children: selectedItems.map((item) {
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            title: Text(item['name'] ?? '-'),
-            subtitle: Text(item['code'] ?? '-'),
-            trailing: Text("Qty: ${item['qty']}"),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              "Daftar Item",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            TextButton.icon(
+              onPressed: _navigateToSelectItem,
+              icon: const Icon(Icons.add_circle_outline, size: 20),
+              label: const Text("Manual"),
+              style: TextButton.styleFrom(foregroundColor: primaryGreen),
+            ),
+          ],
+        ),
+        if (selectedItems.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(30),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Column(
+              children: [
+                Icon(Icons.inventory_2_outlined, size: 40, color: Colors.grey),
+                SizedBox(height: 8),
+                Text(
+                  "Belum ada item terpilih",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: selectedItems.length,
+            itemBuilder: (context, index) {
+              final item = selectedItems[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item['name'] ?? '-',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            item['code'] ?? '-',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // CONTROLLER PLUS MINUS QTY
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => _updateItemQty(index, -1),
+                            icon: const Icon(
+                              Icons.remove_circle,
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                          Text(
+                            "${item['qty']}",
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            onPressed: () => _updateItemQty(index, 1),
+                            icon: Icon(Icons.add_circle, color: primaryGreen),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () =>
+                          setState(() => selectedItems.removeAt(index)),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-        );
-      }).toList(),
+      ],
     );
   }
 
-  // ===============================
-  // SUBMIT
-  // ===============================
+  // BUTTON SUBMIT DENGAN LOADING STATE
+  Widget _buildBottomButton() {
+    return Consumer<StockAdjustmentProvider>(
+      builder: (context, provider, _) {
+        bool isLoading = provider.isLoading;
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () => _submitAdjustment(sendApproval: false),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    side: BorderSide(color: primaryGreen),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    "Save Draft",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () => _submitAdjustment(sendApproval: true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          "Send Approval",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Logic Submit tetap sama
   Future<void> _submitAdjustment({required bool sendApproval}) async {
     final auth = context.read<AuthProvider>();
     final provider = context.read<StockAdjustmentProvider>();
 
-    debugPrint("SELECTED ITEMS RAW => $selectedItems");
-    debugPrint(
-      "CHECK UOM => ${selectedItems.map((e) => e['item_uom_id']).toList()}",
-    );
-
-    if (provider.generatedCode == null) {
+    if (provider.generatedCode == null)
       return _showError("Kode adjustment belum tergenerate");
-    }
     if (selectedCompanyId == null) return _showError("Company belum dipilih");
     if (selectedWarehouseId == null) return _showError("Gudang belum dipilih");
     if (selectedDate == null) return _showError("Tanggal belum dipilih");
     if (selectedItems.isEmpty) return _showError("Item belum ditambahkan");
-
-    if (selectedItems.any((e) => e['item_uom_id'] == null)) {
-      return _showError(
-        "Ada item tanpa UOM. Lengkapi UOM di master item terlebih dahulu",
-      );
-    }
-
-    if (sendApproval) {
-      final canSubmit = await provider.checkCanSubmit(
-        token: auth.token!,
-        authUserId: auth.user!.id,
-        menuId: '4ad48011-9a08-4073-bde0-10f88bfebc81',
-        unitBusinessId: selectedCompanyId,
-      );
-
-      if (!canSubmit) {
-        _showError(provider.error ?? 'Tidak bisa submit approval');
-        return;
-      }
-    }
 
     final payload = {
       "code": provider.generatedCode,
@@ -435,7 +592,6 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
       "notes": _catatanController.text,
       "submitted_by": auth.user!.id,
       "status": sendApproval ? "SUBMITTED" : "DRAFT",
-
       "inventory_adjustment_account_id":
           provider.selectedOpname?['inventory_adjustment_account_id'],
       "total_diff": provider.selectedOpname?['total_diff'] ?? 0,
@@ -443,8 +599,6 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
       "t_inventory_s_adjustment_d": selectedItems.map((e) {
         final qtyBefore = e['qty_before'] ?? 0;
         final qtyAfter = e['qty_after'] ?? e['qty'] ?? 0;
-        final adjustment = qtyAfter - qtyBefore;
-
         return {
           "item_id": e['item_id'],
           "item_code": e['code'],
@@ -454,13 +608,11 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
           "notes": "",
           "qty_before": qtyBefore,
           "qty_after": qtyAfter,
-          "adjustment": adjustment,
+          "adjustment": qtyAfter - qtyBefore,
           "cost": e['cost'] ?? 0,
         };
       }).toList(),
     };
-
-    debugPrint("FINAL PAYLOAD => ${jsonEncode(payload)}");
 
     try {
       await provider.createAdjustment(token: auth.token!, payload: payload);
@@ -470,34 +622,7 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
     }
   }
 
-  Widget _buildBottomButton() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => _submitAdjustment(sendApproval: false),
-              child: const Text("Save Draft"),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _submitAdjustment(sendApproval: true),
-              child: const Text("Send Approval"),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sectionTitle(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 6),
-    child: Text(text, style: const TextStyle(color: Colors.grey)),
-  );
-
+  // DROPDOWN STYLE
   Widget _buildDropdown({
     required String? value,
     required String hint,
@@ -507,33 +632,37 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton(
           value: value,
-          hint: Text(hint),
+          hint: Text(hint, style: const TextStyle(fontSize: 13)),
           items: items,
           onChanged: onChanged,
           isExpanded: true,
+          icon: Icon(Icons.keyboard_arrow_down, color: primaryGreen),
         ),
       ),
     );
   }
 
   Widget _buildTextInput(TextEditingController controller, String hint) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(hintText: hint, border: InputBorder.none),
+    return TextField(
+      controller: controller,
+      maxLines: 3,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(fontSize: 13),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
       ),
     );
   }

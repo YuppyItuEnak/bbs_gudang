@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:bbs_gudang/data/models/delivery_plan/delivery_plan_code_model.dart';
 import 'package:bbs_gudang/data/models/delivery_plan/request_delivery_plan.dart';
 import 'package:bbs_gudang/data/models/pengeluaran_barang/pengeluaran_barang_model.dart';
 import 'package:bbs_gudang/data/services/pengeluaran_barang/pengeluaran_barang_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class PengeluaranBarangProvider extends ChangeNotifier {
   final PengeluaranBarangRepository _pengeluaranBarangRepository =
@@ -135,10 +138,12 @@ class PengeluaranBarangProvider extends ChangeNotifier {
           .fetchDetailDeliveryPlanCode(token: token, id: id);
 
       _detailDPCode = result;
-      print("DEBUG PROVIDER: Item Berhasil Dimuat, Jumlah: ${_detailDPCode?.details.length}");
+      print(
+        "DEBUG PROVIDER: Item Berhasil Dimuat, Jumlah: ${_detailDPCode?.details.length}",
+      );
     } catch (e) {
       _errorMessage = e.toString();
-      
+
       debugPrint('❌ fetchDetailDPCode error: $e');
     } finally {
       _isLoading = false;
@@ -219,20 +224,96 @@ class PengeluaranBarangProvider extends ChangeNotifier {
   }
 
   void updateItemQtyLocal(int dIdx, int iIdx, double newQty) {
-  if (detailDPCode != null) {
-    detailDPCode!.details[dIdx].items[iIdx].qtyDp = newQty.toInt();
-    notifyListeners();
-  }
-}
-
-void removeItemLocal(int dIdx, int iIdx) {
-  if (detailDPCode != null) {
-    detailDPCode!.details[dIdx].items.removeAt(iIdx);
-    // Jika list item di detail tersebut kosong, hapus detailnya sekalian
-    if (detailDPCode!.details[dIdx].items.isEmpty) {
-      detailDPCode!.details.removeAt(dIdx);
+    if (detailDPCode != null) {
+      detailDPCode!.details[dIdx].items[iIdx].qtyDp = newQty.toInt();
+      notifyListeners();
+      debugPrint("✅ State updated locally to $newQty. UI should refresh now.");
     }
-    notifyListeners();
   }
-}
+
+  void removeItemLocal(int dIdx, int iIdx) {
+    if (detailDPCode != null) {
+      detailDPCode!.details[dIdx].items.removeAt(iIdx);
+      // Jika list item di detail tersebut kosong, hapus detailnya sekalian
+      if (detailDPCode!.details[dIdx].items.isEmpty) {
+        detailDPCode!.details.removeAt(dIdx);
+      }
+      notifyListeners();
+    }
+  }
+
+  bool _isUpdating = false;
+  bool get isUpdating => _isUpdating;
+
+  Future<void> updatePengeluaranBrg({
+    required String token,
+    required int status, // Pastikan ada parameter ini
+    String? nopol,
+    String? vehicle,
+    required Function(String message) onSuccess,
+    required Function(String error) onError,
+  }) async {
+    _isUpdating = true;
+    notifyListeners();
+
+    try {
+      if (detailDPCode == null) throw "Data detail tidak ditemukan";
+
+      // Susun Payload
+      final Map<String, dynamic> payload = {
+        "delivery_plan_id": selectedDeliveryPlanId,
+        "unit_bussiness_id": detailPengeluaranBarang?.unitBussinessId,
+        "status": status, // Menerima status dari UI (1 atau 2)
+        "date": DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        "delivery_area": detailDPCode?.deliveryArea?.code ?? "",
+        "vehicle": vehicle ?? detailDPCode?.vehicle?.name ?? "",
+        "nopol": nopol,
+        "details": detailDPCode!.details.map((detail) {
+          return {
+            "so_id": detail.salesOrder?.id,
+            "ref_code": detail.salesOrder?.code,
+            "ref_name": detail.salesOrder?.customerName,
+            "npwp": "",
+            "top_id": detail.salesOrder?.top_id,
+            "ship_to": detail.shipToName,
+            "customer_id": detail.customer?.id,
+            "customer_name": detail.customer?.name,
+            "items": detail.items.map((item) {
+              return {
+                "item_id": item.item?.id,
+                "qty": item.qtyDp ?? 0, // Inilah nilai yang diambil dari UI
+                "price": item.price ?? 0,
+                "uom_id": item.uom?.id,
+                "uom_unit": item.uomUnit,
+                "uom_value": 1,
+              };
+            }).toList(),
+          };
+        }).toList(),
+      };
+
+      // === DEBUG PAYLOAD ===
+      debugPrint("🚀 SENDING PAYLOAD TO API:");
+      debugPrint(jsonEncode(payload));
+      // =====================
+
+      final result = await _pengeluaranBarangRepository.updatePengeluaranBrg(
+        token: token,
+        pbId: detailPengeluaranBarang!.id!,
+        payload: payload,
+      );
+
+      if (result.isNotEmpty) {
+        onSuccess("Berhasil memperbarui data");
+      }
+
+      await fetchDetailPengeluaranBrg(token: token, id: detailPengeluaranBarang!.id);
+    } catch (e) {
+      debugPrint("❌ ERROR UPDATE: $e");
+      onError(e.toString());
+    } finally {
+      _isUpdating = false;
+      notifyListeners();
+    }
+  }
 }

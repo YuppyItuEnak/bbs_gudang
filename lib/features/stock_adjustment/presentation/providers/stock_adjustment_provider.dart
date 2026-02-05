@@ -118,6 +118,115 @@ class StockAdjustmentProvider extends ChangeNotifier {
     }
   }
 
+  // Di dalam StockAdjustmentProvider
+
+  // Tambahkan variabel untuk menampung item yang sedang dikerjakan
+  List<Map<String, dynamic>> _selectedItems = [];
+  List<Map<String, dynamic>> get selectedItems => _selectedItems;
+
+  Future<void> selectOpname({
+    required String token,
+    required String opnameId,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    _selectedItems = []; // Reset item sebelumnya
+    notifyListeners();
+
+    try {
+      // 1. Ambil data Opname (Header & List ID Item)
+      final data = await _repo.fetchItemByOpname(
+        token: token,
+        opnameId: opnameId,
+      );
+
+      final List opnameDetails = data["t_inventory_s_opname_ds"] ?? [];
+
+      // 2. Gunakan Future.wait untuk mengambil detail nama barang secara PARALEL
+      // Ini akan menjalankan semua request fetchMasterItem sekaligus
+      final List<Map<String, dynamic>> enrichedItems = await Future.wait(
+        opnameDetails.map((item) async {
+          final itemId = item["item_id"];
+
+          try {
+            // Panggil repo yang baru Anda buat
+            final masterData = await _repo.fetchMasterItem(
+              token: token,
+              opnameId: itemId, // Sesuai parameter repo Anda (itemId)
+            );
+
+            double opnameQty = (item["opname_qty"] ?? 0).toDouble();
+            double onHandQty = (item["current_on_hand_quantity"] ?? 0)
+                .toDouble();
+            double diff = opnameQty - onHandQty;
+
+            return {
+              "item_id": itemId,
+              "item_code": masterData["code"] ?? item["item_code"] ?? "",
+              "item_name":
+                  masterData["name"] ?? "Tanpa Nama", // NAMA SEKARANG MUNCUL
+              "item_group_coa_id":
+                  masterData["item_group_coa_id"], // PENTING untuk submit
+              "uom_id": item["item_uom_id"],
+              "qty_on_hand": onHandQty,
+              "qty_physical": opnameQty,
+              "qty_adjustment": diff,
+              "notes": "Bawaan dari Opname ${data['code'] ?? ''}",
+            };
+          } catch (e) {
+            // Fallback jika salah satu item gagal fetch
+            debugPrint("Gagal fetch detail item $itemId: $e");
+            return {
+              "item_id": itemId,
+              "item_code": item["item_code"] ?? "",
+              "item_name": "Gagal muat nama",
+              "uom_id": item["item_uom_id"],
+              "qty_on_hand": 0.0,
+              "qty_physical": 0.0,
+              "qty_adjustment": 0.0,
+              "notes": "Error detail fetch",
+            };
+          }
+        }).toList(),
+      );
+
+      // 3. Masukkan hasil penggabungan ke state
+      _selectedItems = enrichedItems;
+
+      debugPrint(
+        "✅ Berhasil memuat ${_selectedItems.length} item lengkap dengan nama",
+      );
+    } catch (e) {
+      _error = e.toString();
+      debugPrint("❌ Error selectOpname: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadItemByOpname({
+    required String token,
+    required String opnameId,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final result = await _repo.fetchItemByOpname(
+        token: token,
+        opnameId: opnameId,
+      );
+      _selectedOpname = result;
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> checkCanSubmit({
     required String token,
     required String authUserId,

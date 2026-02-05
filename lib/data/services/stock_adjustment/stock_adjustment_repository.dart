@@ -17,6 +17,8 @@ class StockAdjustmentRepository {
         queryParameters: {
           "page": page.toString(),
           "paginate": paginate.toString(),
+          "order_by": "createdAt",
+          "order_type": "DESC",
           "include":
               "t_inventory_s_adjustment_d,m_unit_bussiness:id|name,m_warehouse:id|name,t_inventory_s_opname:id|code,t_inventory_s_adjustment_approval:user_id|status,user_default:id|name",
           "selectfield":
@@ -114,6 +116,67 @@ class StockAdjustmentRepository {
     return list.map<Map<String, dynamic>>((e) {
       return {'id': e['id'], 'code': e['code']};
     }).toList();
+  }
+
+  Future<Map<String, dynamic>> fetchItemByOpname({
+    required String token,
+    required String opnameId,
+  }) async {
+    try {
+      final uri = Uri.parse("$baseUrl/dynamic/t_inventory_s_opname/$opnameId")
+          .replace(
+            queryParameters: {'include': 't_inventory_s_opname_d,m_item_group'},
+          );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception("Failed load opname");
+      }
+
+      final decoded = json.decode(response.body);
+      print("fetch detail Data Item by opname: ${response.body}");
+      return decoded["data"];
+    } catch (e) {
+      throw Exception("StockAdjustment Error: $e");
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchMasterItem({
+    required String token,
+    required String opnameId,
+  }) async {
+    try {
+      final uri = Uri.parse("$baseUrl/dynamic/m_item/$opnameId").replace(
+        queryParameters: {
+          'selectfield': 'id,code,name,item_group_coa_id',
+          'include': 'm_item_group',
+        },
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+      );
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        print("fetch master Item by opname: ${response.body}");
+        return decoded["data"]; // Mengembalikan data item (nama, code, coa_id, dll)
+      } else {
+        throw Exception("Gagal mengambil detail item master");
+      }
+    } catch (e) {
+      rethrow;
+    }
   }
 
   Future<String> generateAdjustmentCode({required String token}) async {

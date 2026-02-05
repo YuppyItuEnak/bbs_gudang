@@ -165,7 +165,7 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
             final token = context.read<AuthProvider>().token!;
             await context.read<StockAdjustmentProvider>().fetchStockAdjustments(
               token: token,
-              loadMore: true,
+              loadMore: false,
             );
           }
         },

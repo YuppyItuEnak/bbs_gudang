@@ -15,6 +15,10 @@ class EditStkAdjustPage extends StatefulWidget {
 }
 
 class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
+  // Warna Tema (Diselaraskan dengan Tambah Page)
+  final Color primaryGreen = const Color(0xff4CAF50);
+  final Color backgroundGrey = const Color(0xffF5F5F5);
+
   String? selectedCompanyId;
   String? selectedWarehouseId;
   String? selectedOpnameId;
@@ -76,34 +80,37 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
           "code": e.item?.code ?? e.itemCode,
           "item_uom_id": e.item?.itemUomId,
           "item_group_coa_id": e.item?.itemGroupCoaId,
-          "qty": e.qtyAfter,
-          "qtyBefore": e.qtyBefore ?? 0,
-          "adjustment": e.adjustment ?? 0,
+          "qty": (e.qtyAfter as num).toDouble(),
+          "qtyBefore": (e.qtyBefore ?? 0 as num).toDouble(),
+          "adjustment": (e.adjustment ?? 0 as num).toDouble(),
           "reason": e.reason ?? "",
         };
       }).toList();
-
-      print("SELECTED ITEMS: $selectedItems");
 
       setState(() {});
     });
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(backgroundColor: Colors.red, content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.red,
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   void _showSuccess(String msg) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(backgroundColor: Colors.green, content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.green,
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
-  // ==========================
-  // ADD ITEM
-  // ==========================
   void _navigateToSelectItem() async {
     final token = context.read<AuthProvider>().token!;
     final result = await Navigator.push(
@@ -114,14 +121,13 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
     if (result != null && result is List) {
       setState(() {
         for (final newItem in result) {
-          debugPrint("DEBUG: Data item dari pencarian => $newItem");
           final index = selectedItems.indexWhere(
             (e) => e['id'] == newItem['id'],
           );
 
           if (index != -1) {
             selectedItems[index]['qty'] =
-                (selectedItems[index]['qty'] ?? 0) + (newItem['qty'] ?? 0);
+                (selectedItems[index]['qty'] ?? 0) + (newItem['qty'] ?? 1);
             selectedItems[index]['adjustment'] =
                 selectedItems[index]['qty'] -
                 (selectedItems[index]['qtyBefore'] ?? 0);
@@ -130,11 +136,11 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
               "id": newItem['id'],
               "name": newItem['name'],
               "code": newItem['code'],
-              "item_uom_id": newItem['item_uom_id'], // HARUS DARI API ITEM
+              "item_uom_id": newItem['item_uom_id'],
               "item_group_coa_id": newItem['item_group_coa_id'],
-              "qty": newItem['qty'] ?? 1,
-              "qtyBefore": newItem['qtyBefore'] ?? 0,
-              "adjustment": 0,
+              "qty": (newItem['qty'] ?? 1 as num).toDouble(),
+              "qtyBefore": (newItem['qty_before'] ?? 0 as num).toDouble(),
+              "adjustment": 0.0,
               "reason": "",
             });
           }
@@ -143,19 +149,22 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
     }
   }
 
-  // ==========================
-  // SUBMIT
-  // ==========================
+  void _updateQty(int index, double delta) {
+    setState(() {
+      double currentQty = selectedItems[index]['qty'];
+      double newQty = currentQty + delta;
+      if (newQty >= 0) {
+        selectedItems[index]['qty'] = newQty;
+        selectedItems[index]['adjustment'] =
+            newQty - (selectedItems[index]['qtyBefore'] ?? 0);
+      }
+    });
+  }
+
   Future<void> _submitAdjustment({required bool sendApproval}) async {
     if (selectedItems.isEmpty) {
       _showError("Item belum ditambahkan");
       return;
-    }
-
-    for (var item in selectedItems) {
-      print(
-        "CHECK ITEM ${item['name']}: UOM=${item['item_uom_id']}, COA=${item['item_group_coa_id']}",
-      );
     }
 
     final auth = context.read<AuthProvider>();
@@ -182,27 +191,20 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
       "notes": _catatanController.text,
       "submitted_by": auth.user!.id,
       "status": sendApproval ? "SUBMITTED" : "DRAFT",
-
       "date": DateTime.now().toIso8601String().split('T').first,
-
       "inventory_adjustment_account_id":
           provider.selectedOpname?['inventory_adjustment_account_id'],
-
       "total_diff": 0,
       "io_multiplier": 1,
-
       "t_inventory_s_adjustment_d": selectedItems.map((e) {
-        final qtyBefore = e['qtyBefore'] ?? 0;
-        final qtyAfter = e['qty'];
-
         return {
           "item_id": e['id'],
           "item_code": e['code'],
           "item_uom_id": e['item_uom_id'],
           "item_group_coa_id": e['item_group_coa_id'],
-          "qty_before": qtyBefore,
-          "qty_after": qtyAfter,
-          "adjustment": qtyAfter - qtyBefore,
+          "qty_before": e['qtyBefore'],
+          "qty_after": e['qty'],
+          "adjustment": e['adjustment'],
           "reason": e['reason'] ?? "",
           "notes": "",
           "cost": 0,
@@ -225,17 +227,17 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
     Navigator.pop(context, true);
   }
 
-  // ==========================
-  // UI
-  // ==========================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xffF8F9FB),
+      backgroundColor: backgroundGrey,
       appBar: AppBar(
+        backgroundColor: primaryGreen,
+        foregroundColor: Colors.white,
+        elevation: 0,
         title: const Text(
           "Edit Stock Adjustment",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
       ),
@@ -249,32 +251,32 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
             children: [
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (adjustmentCode != null) ...[
-                        _sectionTitle("No Adjustment"),
-                        _readonlyBox(adjustmentCode!),
+                      _sectionCard("Informasi Utama", [
+                        _fieldLabel("No. Adjustment"),
+                        _readonlyBox(adjustmentCode ?? "-"),
                         const SizedBox(height: 16),
-                      ],
-
-                      _sectionTitle("Company"),
-                      _buildCompanySelector(),
-                      const SizedBox(height: 16),
-
-                      _sectionTitle("Gudang"),
-                      _buildGudangSelector(),
-                      const SizedBox(height: 16),
-
-                      _sectionTitle("Referensi Opname"),
-                      _buildOpnameDropdown(),
-                      const SizedBox(height: 16),
-
-                      _sectionTitle("Catatan"),
-                      _buildTextInput(_catatanController, "Catatan"),
-                      const SizedBox(height: 24),
-
+                        _fieldLabel("Company"),
+                        _buildCompanySelector(),
+                        const SizedBox(height: 16),
+                        _fieldLabel("Gudang"),
+                        _buildGudangSelector(),
+                      ]),
+                      const SizedBox(height: 20),
+                      _sectionCard("Referensi & Catatan", [
+                        _fieldLabel("Referensi Opname"),
+                        _buildOpnameDropdown(),
+                        const SizedBox(height: 16),
+                        _fieldLabel("Catatan"),
+                        _buildTextInput(
+                          _catatanController,
+                          "Tulis catatan di sini...",
+                        ),
+                      ]),
+                      const SizedBox(height: 20),
                       _buildItemSection(),
                     ],
                   ),
@@ -288,135 +290,253 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
     );
   }
 
+  // --- REUSABLE UI COMPONENTS ---
+
+  Widget _sectionCard(String title, List<Widget> children) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: primaryGreen,
+              fontSize: 14,
+            ),
+          ),
+          const Divider(height: 24),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String label) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      label,
+      style: const TextStyle(
+        fontWeight: FontWeight.w600,
+        fontSize: 13,
+        color: Colors.black87,
+      ),
+    ),
+  );
+
   Widget _readonlyBox(String value) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade300),
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-    );
-  }
-
-  Widget _sectionTitle(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(text, style: const TextStyle(color: Colors.grey)),
-    );
-  }
-
-  // ==========================
-  // ITEM UI
-  // ==========================
-  Widget _buildItemSection() {
-    if (selectedItems.isEmpty) {
-      return Center(
-        child: OutlinedButton(
-          onPressed: _navigateToSelectItem,
-          child: const Text("+ Add Item"),
+      child: Text(
+        value,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Colors.black54,
         ),
-      );
-    }
+      ),
+    );
+  }
 
+  Widget _buildItemSection() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              "Item Terpilih",
-              style: TextStyle(fontWeight: FontWeight.bold),
+              "Daftar Item",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            TextButton(
+            TextButton.icon(
               onPressed: _navigateToSelectItem,
-              child: const Text("+ Add Item"),
+              icon: const Icon(Icons.add_circle_outline, size: 20),
+              label: const Text("Tambah Item"),
+              style: TextButton.styleFrom(foregroundColor: primaryGreen),
             ),
           ],
         ),
-        const SizedBox(height: 8),
-
-        ...selectedItems.map((item) {
-          return Card(
-            child: ListTile(
-              title: Text(item['name']),
-              subtitle: Text(item['code']),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.remove),
-                    onPressed: () {
-                      if (item['qty'] > 1) {
-                        setState(() {
-                          item['qty']--;
-                          item['adjustment'] =
-                              item['qty'] - (item['qtyBefore'] ?? 0);
-                        });
-                      }
-                    },
-                  ),
-                  Text(item['qty'].toString()),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: () {
-                      setState(() {
-                        item['qty']++;
-                        item['adjustment'] =
-                            item['qty'] - (item['qtyBefore'] ?? 0);
-                      });
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      setState(() => selectedItems.remove(item));
-                    },
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
+        if (selectedItems.isEmpty)
+          _emptyItemPlaceholder()
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: selectedItems.length,
+            itemBuilder: (context, index) {
+              final item = selectedItems[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item['name'] ?? '-',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            item['code'] ?? '-',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Adj: ${item['adjustment']}",
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: (item['adjustment'] ?? 0) >= 0
+                                  ? Colors.blue
+                                  : Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => _updateQty(index, -1),
+                            icon: const Icon(
+                              Icons.remove_circle,
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                          Text(
+                            "${item['qty']}",
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            onPressed: () => _updateQty(index, 1),
+                            icon: Icon(Icons.add_circle, color: primaryGreen),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () =>
+                          setState(() => selectedItems.removeAt(index)),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
       ],
     );
   }
 
-  // ==========================
-  // BUTTONS
-  // ==========================
+  Widget _emptyItemPlaceholder() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(30),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Column(
+        children: [
+          Icon(Icons.inventory_2_outlined, size: 40, color: Colors.grey),
+          SizedBox(height: 8),
+          Text("Belum ada item terpilih", style: TextStyle(color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBottomButton(StockAdjustmentProvider provider) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+    bool isLoading = provider.isUpdating;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+      ),
       child: Row(
         children: [
           Expanded(
-            child: SizedBox(
-              height: 52,
-              child: OutlinedButton(
-                onPressed: provider.isUpdating
-                    ? null
-                    : () => _submitAdjustment(sendApproval: false),
-                child: provider.isUpdating
-                    ? const CircularProgressIndicator()
-                    : const Text("Update Draft"),
+            child: OutlinedButton(
+              onPressed: isLoading
+                  ? null
+                  : () => _submitAdjustment(sendApproval: false),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                side: BorderSide(color: primaryGreen),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                "Update Draft",
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: SizedBox(
-              height: 52,
-              child: ElevatedButton(
-                onPressed: provider.isUpdating
-                    ? null
-                    : () => _submitAdjustment(sendApproval: true),
-                child: provider.isUpdating
-                    ? const CircularProgressIndicator()
-                    : const Text("Send Approval"),
+            child: ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () => _submitAdjustment(sendApproval: true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryGreen,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text(
+                      "Send Approval",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
             ),
           ),
         ],
@@ -424,81 +544,68 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
     );
   }
 
-  // ==========================
-  // DROPDOWNS
-  // ==========================
+  // --- SELECTORS ---
+
   Widget _buildCompanySelector() {
     return Consumer<TransferWarehouseProvider>(
-      builder: (_, provider, __) {
-        return _buildDropdown(
-          value: selectedCompanyId,
-          hint: "Pilih Company",
-          items: provider.companies
-              .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
-              .toList(),
-          onChanged: (val) async {
-            if (val == null) return;
-            setState(() {
-              selectedCompanyId = val;
-              selectedWarehouseId = null;
-              selectedOpnameId = null;
-            });
-
-            final auth = context.read<AuthProvider>();
-            await provider.loadWarehouseCompany(
-              token: auth.token!,
-              unitBusinessId: val,
-            );
-          },
-        );
-      },
+      builder: (_, provider, __) => _buildDropdown(
+        value: selectedCompanyId,
+        hint: "Pilih Company",
+        items: provider.companies
+            .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+            .toList(),
+        onChanged: (val) async {
+          if (val == null) return;
+          setState(() {
+            selectedCompanyId = val;
+            selectedWarehouseId = null;
+            selectedOpnameId = null;
+          });
+          await provider.loadWarehouseCompany(
+            token: context.read<AuthProvider>().token!,
+            unitBusinessId: val,
+          );
+        },
+      ),
     );
   }
 
   Widget _buildGudangSelector() {
     return Consumer<TransferWarehouseProvider>(
-      builder: (_, provider, __) {
-        return _buildDropdown(
-          value: selectedWarehouseId,
-          hint: "Pilih Gudang",
-          items: provider.warehouses
-              .map((w) => DropdownMenuItem(value: w.id, child: Text(w.name)))
-              .toList(),
-          onChanged: (val) async {
-            if (val == null) return;
-            setState(() {
-              selectedWarehouseId = val;
-              selectedOpnameId = null;
-            });
-
-            final auth = context.read<AuthProvider>();
-            final saProvider = context.read<StockAdjustmentProvider>();
-
-            await saProvider.loadOpnameReference(
-              token: auth.token!,
-              unitBusinessId: selectedCompanyId!,
-              warehouseId: val,
-            );
-          },
-        );
-      },
+      builder: (_, provider, __) => _buildDropdown(
+        value: selectedWarehouseId,
+        hint: "Pilih Gudang",
+        items: provider.warehouses
+            .map((w) => DropdownMenuItem(value: w.id, child: Text(w.name)))
+            .toList(),
+        onChanged: (val) async {
+          if (val == null) return;
+          setState(() {
+            selectedWarehouseId = val;
+            selectedOpnameId = null;
+          });
+          await context.read<StockAdjustmentProvider>().loadOpnameReference(
+            token: context.read<AuthProvider>().token!,
+            unitBusinessId: selectedCompanyId!,
+            warehouseId: val,
+          );
+        },
+      ),
     );
   }
 
   Widget _buildOpnameDropdown() {
     return Consumer<StockAdjustmentProvider>(
-      builder: (_, provider, __) {
-        return _buildDropdown(
-          value: selectedOpnameId,
-          hint: "Pilih Referensi Opname",
-          items: provider.opnames
-              .map<DropdownMenuItem<String>>(
-                (o) => DropdownMenuItem(value: o['id'], child: Text(o['code'])),
-              )
-              .toList(),
-          onChanged: (val) => setState(() => selectedOpnameId = val),
-        );
-      },
+      builder: (_, provider, __) => _buildDropdown(
+        value: selectedOpnameId,
+        hint: "Pilih Referensi Opname",
+        items: provider.opnames
+            .map<DropdownMenuItem<String>>(
+              (o) => DropdownMenuItem(value: o['id'], child: Text(o['code'])),
+            )
+            .toList(),
+        onChanged: (val) => setState(() => selectedOpnameId = val),
+      ),
     );
   }
 
@@ -511,33 +618,37 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           isExpanded: true,
           value: value,
-          hint: Text(hint),
+          hint: Text(hint, style: const TextStyle(fontSize: 13)),
           items: items,
           onChanged: onChanged,
+          icon: Icon(Icons.keyboard_arrow_down, color: primaryGreen),
         ),
       ),
     );
   }
 
   Widget _buildTextInput(TextEditingController controller, String hint) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(hintText: hint, border: InputBorder.none),
+    return TextField(
+      controller: controller,
+      maxLines: 3,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(fontSize: 13),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
       ),
     );
   }

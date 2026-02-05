@@ -254,6 +254,33 @@ class _EditPenerimaanBarangPageState extends State<EditPenerimaanBarangPage> {
                             : const Text("Posted"),
                       ),
                     ),
+                    if (isSubmitting)
+                      Container(
+                        color: Colors.black.withOpacity(0.3),
+                        child: const Center(
+                          child: Card(
+                            elevation: 4,
+                            child: Padding(
+                              padding: EdgeInsets.all(20.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(
+                                    color: Colors.green,
+                                  ),
+                                  SizedBox(height: 15),
+                                  Text(
+                                    "Sedang memproses...",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

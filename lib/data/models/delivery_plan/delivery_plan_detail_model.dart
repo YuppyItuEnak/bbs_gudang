@@ -1,3 +1,4 @@
+import 'package:bbs_gudang/data/models/list_item/list_item_model.dart';
 import 'package:flutter/material.dart';
 
 T safeParse<T>(String field, dynamic value, T Function(dynamic val) parser) {
@@ -114,7 +115,7 @@ class DeliveryPlanDetailItemModel {
   final int uomValue;
   final String uomUnit;
 
-  final ItemModel? item;
+  final ItemBarangModel? item;
   final ItemUomModel? uom;
 
   DeliveryPlanDetailItemModel({
@@ -147,7 +148,7 @@ class DeliveryPlanDetailItemModel {
       uomValue: parseInt(json['uom_value']),
       uomUnit: json['uom_unit'] ?? '',
 
-      item: json['m_item'] != null ? ItemModel.fromJson(json['m_item']) : null,
+      item: json['m_item'] != null ? ItemBarangModel.fromJson(json['m_item']) : null,
       uom: json['tdpDetailItemUom'] != null
           ? ItemUomModel.fromJson(json['tdpDetailItemUom'])
           : null,

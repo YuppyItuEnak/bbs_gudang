@@ -270,11 +270,11 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                         hint: "Vehicle",
                       ),
 
-                      TmbhPengeluaranInputField(
-                        label: "Total Amount",
-                        controller: totalAmountCtrl,
-                        hint: "Total Amount",
-                      ),
+                      // TmbhPengeluaranInputField(
+                      //   label: "Total Amount",
+                      //   controller: totalAmountCtrl,
+                      //   hint: "Total Amount",
+                      // ),
 
                       TmbhPengeluaranInputField(
                         label: "Driver",

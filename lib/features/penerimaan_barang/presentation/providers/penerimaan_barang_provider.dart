@@ -618,6 +618,7 @@ class PenerimaanBarangProvider extends ChangeNotifier {
       );
 
       _data = PenerimaanBarangModel.fromJson(data);
+      await fetchDetail(token: token, id: pbId);
     } catch (e) {
       _errorMessage = e.toString();
       rethrow;

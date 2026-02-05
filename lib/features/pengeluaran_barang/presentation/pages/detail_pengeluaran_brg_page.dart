@@ -141,15 +141,25 @@ class _DetailPengeluaranBrgPageState extends State<DetailPengeluaranBrgPage> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: () {
+                          onPressed: () async {
                             // TODO: Navigasi ke halaman edit
-                            Navigator.push(
+                            final result = await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => EditPengeluaranBrgPage(pbId: model.id,),
+                                builder: (_) =>
+                                    EditPengeluaranBrgPage(pbId: model.id),
                               ),
                             );
-                            print("EDIT DATA ${model.id}");
+
+                            if (result == true) {
+                              final token = context.read<AuthProvider>().token;
+                              provider.fetchDetailPengeluaranBrg(
+                                token: token!,
+                                id: widget.id,
+                              );
+
+                              await provider.fetchListPengeluaranBrg(token: token);
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.orange,

@@ -298,4 +298,40 @@ class PengeluaranBarangRepository {
       throw Exception('Gagal menyimpan Pengeluaran Barang: $e');
     }
   }
+
+  // Ubah return type menjadi Map, bukan List
+  Future<Map<String, dynamic>> updatePengeluaranBrg({
+    required String token,
+    required String pbId,
+    required Map<String, dynamic> payload,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        "$baseUrl/dynamic/t_surat_jalan/with-details/$pbId",
+      );
+
+      final response = await http.put(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(payload),
+      );
+
+      debugPrint("🧪 UPDATE SJ STATUS: ${response.statusCode}");
+
+      final decoded = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Pastikan mengembalikan Map dari field 'data'
+        return Map<String, dynamic>.from(decoded['data']);
+      } else {
+        throw decoded['message'] ?? 'Gagal memperbarui data';
+      }
+    } catch (e) {
+      throw 'Gagal memperbarui Pengeluaran Barang: $e';
+    }
+  }
 }
