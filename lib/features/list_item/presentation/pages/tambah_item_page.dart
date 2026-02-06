@@ -7,8 +7,9 @@ import 'package:provider/provider.dart';
 
 class TambahItem extends StatefulWidget {
   final String token;
+  final bool isOpnameMode;
 
-  const TambahItem({super.key, required this.token});
+  const TambahItem({super.key, required this.token, this.isOpnameMode = false});
 
   @override
   State<TambahItem> createState() => _TambahItemState();
@@ -102,6 +103,11 @@ class _TambahItemState extends State<TambahItem> {
       ),
       body: Consumer<ItemBarangProvider>(
         builder: (context, provider, _) {
+          final filteredItems = widget.isOpnameMode
+              ? provider.items
+                    .where((item) => item.itemTypeName?.toUpperCase() != "JASA")
+                    .toList()
+              : provider.items;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -154,8 +160,14 @@ class _TambahItemState extends State<TambahItem> {
                   child: Builder(
                     builder: (_) {
                       // LOADING AWAL
-                      if (provider.isLoading && provider.items.isEmpty) {
+                      if (provider.isLoading && filteredItems.isEmpty) {
                         return const Center(child: CircularProgressIndicator());
+                      }
+
+                      if (filteredItems.isEmpty) {
+                        return const Center(
+                          child: Text("Tidak ada item yang dapat diopname"),
+                        );
                       }
 
                       // ERROR
@@ -185,27 +197,46 @@ class _TambahItemState extends State<TambahItem> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         itemCount:
-                            provider.items.length + (provider.hasMore ? 1 : 0),
+                            filteredItems.length + (provider.hasMore ? 1 : 0),
                         itemBuilder: (context, index) {
                           // LOADING BAWAH (NEXT PAGE)
-                          if (index == provider.items.length) {
+                          if (index == filteredItems.length) {
                             return const Padding(
                               padding: EdgeInsets.symmetric(vertical: 20),
                               child: Center(child: CircularProgressIndicator()),
                             );
                           }
 
-                          final item = provider.items[index];
+                          final item = filteredItems[index];
                           final currentQty = _qtyMap[item.id] ?? 0;
 
                           return ItemCard(
                             nama: item.name,
                             kode: item.code,
                             initialQty: currentQty,
+                            isSelectionMode: widget
+                                .isOpnameMode, // Menyembunyikan selector +/- di Card
                             onQtyChanged: (newQty) {
                               setState(() {
                                 _qtyMap[item.id] = newQty;
                               });
+                            },
+                            // --- IMPLEMENTASI DI SINI ---
+                            onTap: () {
+                              if (widget.isOpnameMode) {
+                                // Langsung kembalikan item yang dipilih ke halaman sebelumnya
+                                Navigator.pop(context, [
+                                  {
+                                    "id": item.id,
+                                    "code": item.code,
+                                    "name": item.name,
+                                    "item_uom_id": item.itemUomId,
+                                    "item_group_coa_id": item.itemGroupCoaId,
+                                    "qty":
+                                        0, // Berikan qty default 1, nanti diedit di halaman Opname
+                                  },
+                                ]);
+                              }
                             },
                           );
                         },

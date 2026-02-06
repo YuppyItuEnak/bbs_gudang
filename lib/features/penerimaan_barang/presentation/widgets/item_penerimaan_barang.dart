@@ -151,17 +151,28 @@ class _ItemPenerimaanBarangState extends State<ItemPenerimaanBarang> {
   }
 
   Widget _buildCounter(PenerimaanBarangProvider provider, int index) {
-    final qty = provider.selectedItems[index]["qty_receipt"] ?? 1;
+    // Ambil langsung dari list provider agar reaktif
+    final qty = provider.selectedItems[index]["qty_receipt"];
 
     return Row(
       children: [
         IconButton(
-          icon: const Icon(Icons.remove),
+          icon: const Icon(Icons.remove_circle_outline, color: Colors.grey),
           onPressed: () => provider.decreaseQty(index),
         ),
-        Text("$qty", style: const TextStyle(fontWeight: FontWeight.bold)),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            "$qty",
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+        ),
         IconButton(
-          icon: const Icon(Icons.add),
+          icon: const Icon(Icons.add_circle_outline, color: Colors.green),
           onPressed: () => provider.increaseQty(index),
         ),
       ],

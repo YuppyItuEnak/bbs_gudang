@@ -275,7 +275,7 @@ class StockAdjustmentRepository {
 
     // ❌ HANDLE BUSINESS LOGIC ERROR
     if (data['status'] != 'success') {
-      throw Exception(data['message'] ?? 'Gagal simpan stock adjustment');
+      throw Exception('Gagal simpan stock adjustment');
     }
 
     return data['data'];

@@ -25,12 +25,11 @@ class PengeluaranBarangRepository {
           'limit': limit.toString(),
           'include':
               't_sales_order,m_unit_bussiness,m_customer,t_delivery_plan',
-          'order_by': 'date',
-          'order_type': 'DESC',
+          'order_by_raw': 'createdAt DESC',
         },
       );
 
-      print("🌐 FETCH PAGE $page → $uri");
+      // print("🌐 FETCH PAGE $page → $uri");
 
       final response = await http.get(
         uri,
@@ -132,6 +131,7 @@ class PengeluaranBarangRepository {
           'selectfield': 'id,code',
           'no_pagination': 'true',
           'include': 'm_vehicle,m_unit_bussiness,m_delivery_area,m_gen',
+          'where': 'status=4|sj_used=false',
         },
       );
 
@@ -323,6 +323,7 @@ class PengeluaranBarangRepository {
       debugPrint("🧪 UPDATE SJ STATUS: ${response.statusCode}");
 
       final decoded = jsonDecode(response.body);
+      debugPrint("🧪 UPDATE SJ BODY: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         // Pastikan mengembalikan Map dari field 'data'

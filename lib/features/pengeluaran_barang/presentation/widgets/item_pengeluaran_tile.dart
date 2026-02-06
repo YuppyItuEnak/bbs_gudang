@@ -9,6 +9,7 @@ class ItemPengeluaranTile extends StatelessWidget {
   final String sisa;
   final bool isSwiped;
   final String noDO;
+  final Widget? trailing;
   final VoidCallback? onEditTap;
   final VoidCallback? onDeleteTap;
 
@@ -21,6 +22,7 @@ class ItemPengeluaranTile extends StatelessWidget {
     required this.qtyDikirim,
     required this.sisa,
     required this.noDO,
+    this.trailing,
     this.isSwiped = false,
     this.onEditTap,
     this.onDeleteTap,
@@ -79,6 +81,7 @@ class ItemPengeluaranTile extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
+
                         Text(
                           qty,
                           style: const TextStyle(
@@ -132,22 +135,20 @@ class ItemPengeluaranTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-
-                    // Deskripsi & Catatan
-                    const Text(
-                      "Deskripsi : Lorem Ipsum",
-                      style: TextStyle(color: Colors.grey, fontSize: 11),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const Text(
-                      "Catatan : -",
-                      style: TextStyle(color: Colors.grey, fontSize: 11),
-                    ),
                   ],
                 ),
               ),
             ),
+            if (trailing != null)
+              trailing!
+            else
+              Text(
+                qty,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueAccent,
+                ),
+              ),
 
             if (isSwiped) ...[
               // TOMBOL EDIT

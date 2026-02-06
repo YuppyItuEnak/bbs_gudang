@@ -179,7 +179,7 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
       );
 
       if (!canSubmit) {
-        _showError(provider.error ?? 'Tidak bisa submit approval');
+        _showError('Tidak bisa submit approval');
         return;
       }
     }

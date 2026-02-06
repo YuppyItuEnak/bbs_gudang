@@ -36,7 +36,7 @@ class PengeluaranBarangCard extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
-                        // 🔹 Baris Atas: ID & Tanggal
+                        // 🔹 Baris Atas: ID & STATUS BADGE
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -47,19 +47,17 @@ class PengeluaranBarangCard extends StatelessWidget {
                                 fontSize: 11,
                               ),
                             ),
-                            Text(
-                              data.date ?? "-", // tanggal
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 11,
-                              ),
+                            // --- FLAG STATUS ---
+                            _buildStatusBadge(
+                              data.status.toString() ?? "Draft",
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 8),
 
                         // 🔹 Baris Tengah: Customer & SIC
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // CUSTOMER (KIRI)
                             Expanded(
@@ -98,21 +96,38 @@ class PengeluaranBarangCard extends StatelessWidget {
                           ],
                         ),
 
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 8),
 
-                        // 🔹 Baris Bawah: Nopol & Driver
+                        // 🔹 Baris Bawah: Nopol, Driver & Tanggal
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              data.deliveryPlan?.nopol ?? "-", // nopol
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 11,
-                              ),
+                            // Nopol & Driver Group
+                            Row(
+                              children: [
+                                Text(
+                                  data.deliveryPlan?.nopol ?? "-",
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                                const Text(
+                                  " • ",
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                                Text(
+                                  data.deliveryPlan?.driver ?? "-",
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
                             ),
+                            // Tanggal
                             Text(
-                              data.deliveryPlan?.driver ?? "-", // driver
+                              data.date ?? "-",
                               style: const TextStyle(
                                 color: Colors.grey,
                                 fontSize: 11,
@@ -127,6 +142,54 @@ class PengeluaranBarangCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Helper untuk membuat Badge Status
+  Widget _buildStatusBadge(dynamic statusValue) {
+    String statusText = "";
+    Color bgColor;
+    Color textColor;
+
+    // Konversi input ke String untuk keamanan pengecekan
+    final status = statusValue?.toString() ?? "";
+
+    switch (status) {
+      case '1': // DRAFT
+        statusText = "DRAFT";
+        bgColor = Colors.blue.shade50;
+        textColor = Colors.blue.shade700;
+        break;
+      case '2': // POSTED
+        statusText = "POSTED";
+        bgColor = Colors.green.shade50;
+        textColor = Colors.green.shade700;
+        break;
+      case '3': // Contoh jika ada status CANCEL/VOID
+        statusText = "CANCEL";
+        bgColor = Colors.red.shade50;
+        textColor = Colors.red.shade700;
+        break;
+      default:
+        statusText = "UNKNOWN";
+        bgColor = Colors.grey.shade100;
+        textColor = Colors.grey.shade600;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        statusText,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );

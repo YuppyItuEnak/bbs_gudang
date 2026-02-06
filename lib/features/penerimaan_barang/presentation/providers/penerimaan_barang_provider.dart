@@ -154,14 +154,27 @@ class PenerimaanBarangProvider extends ChangeNotifier {
   }
 
   void setSelectedItems(List<Map<String, dynamic>> items) {
+    // 1. Simpan nilai qty yang sudah diinput user sebelumnya ke dalam Map (Key: ID, Value: Qty)
+    final existingQtys = {
+      for (var item in selectedItems)
+        (item["item_id"] ?? item["id"]): item["qty_receipt"],
+    };
+
+    // 2. Map items baru sambil mengecek apakah item tersebut sudah punya qty lama
     selectedItems = items.map((item) {
+      final itemId = item["item_id"] ?? item["id"];
+
+      // Jika item sudah ada di list sebelumnya, pakai Qty lama.
+      // Jika benar-benar baru, pakai default 1 (atau item["qty_receipt"] jika ada)
+      int initialQty = existingQtys[itemId] ?? item["qty_receipt"] ?? 1;
+
       return {
         "purchase_order_d_id": item["purchase_order_d_id"] ?? item["id"],
-        "item_id": item["item_id"],
-        "item_code": item["code"] ?? "-",
-        "item_name": item["name"] ?? "-",
+        "item_id": itemId,
+        "item_code": item["code"] ?? item["item_code"] ?? "-",
+        "item_name": item["name"] ?? item["item_name"] ?? "-",
         "qty_order": item["qty"] ?? item["qty_order"] ?? 0,
-        "qty_receipt": item["qty_receipt"] ?? 0,
+        "qty_receipt": initialQty,
       };
     }).toList();
 
@@ -393,14 +406,14 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     bool isRefresh = false,
     bool loadMore = false,
   }) async {
-    // 🔴 STOP kalau sedang load more atau sudah tidak ada page lagi
-    if (_isLoading) return;
-    if (!_hasMore && !isRefresh) return;
+    // Jika refresh, abaikan status _isLoading agar tidak kena return
+    if (_isLoading && !isRefresh) return;
+    if (!isRefresh && !_hasMore) return;
 
     if (isRefresh) {
       _page = 1;
       _hasMore = true;
-      _listPenerimaanBarang.clear();
+      // Jangan clear di sini jika ingin UX yang mulus (biarkan list lama tetap ada sampai data baru datang)
     }
 
     _isLoading = true;
@@ -418,33 +431,25 @@ class PenerimaanBarangProvider extends ChangeNotifier {
           List<PenerimaanBarangModel>.from(result['data']);
 
       final pagination = result['pagination'];
-
-      final int currentPage =
-          int.tryParse(pagination['page']?.toString() ?? '') ?? _page;
-
       final int totalPages =
-          int.tryParse(pagination['totalPages']?.toString() ?? '') ?? _page;
+          int.tryParse(pagination['totalPages']?.toString() ?? '1') ?? 1;
 
-      // =========================
-      // TAMBAH DATA
-      // =========================
-      if (_page == 1) {
+      if (isRefresh) {
+        // Ganti total list dengan data terbaru dari page 1
         _listPenerimaanBarang = newData;
       } else {
         _listPenerimaanBarang.addAll(newData);
       }
 
-      // =========================
-      // LOGIKA STOP PAGINATION
-      // =========================
-      if (currentPage >= totalPages || newData.isEmpty) {
-        _hasMore = false; // 🔴 STOP LOAD
+      // Update status pagination
+      if (_page >= totalPages || newData.isEmpty) {
+        _hasMore = false;
       } else {
-        _page++; // LANJUT PAGE BERIKUTNYA
+        _hasMore = true;
+        _page++;
       }
     } catch (e) {
       _errorMessage = e.toString();
-      debugPrint("❌ ERROR FETCH PENERIMAAN BARANG: $e");
       _hasMore = false;
     } finally {
       _isLoading = false;

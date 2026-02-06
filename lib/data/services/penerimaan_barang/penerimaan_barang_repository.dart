@@ -21,7 +21,7 @@ class PenerimaanBarangRepository {
             'm_gen:id|value1,m_supplier:id|name|is_pajak,m_unit_bussiness:id|name,t_purchase_order>t_purchase_request',
         'page': page.toString(),
         'paginate': paginate.toString(),
-        'order_by': 'posted_at',
+        'order_by': 'date',
         'order_type': 'DESC',
       };
 

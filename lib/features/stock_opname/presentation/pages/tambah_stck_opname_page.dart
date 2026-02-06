@@ -62,7 +62,9 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
     final token = context.read<AuthProvider>().token;
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => TambahItem(token: token!)),
+      MaterialPageRoute(
+        builder: (_) => TambahItem(token: token!, isOpnameMode: true),
+      ),
     );
 
     if (result != null && result is List) {
@@ -114,6 +116,8 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
       Navigator.pop(context, true);
     }
   }
+
+  
 
   @override
   Widget build(BuildContext context) {
@@ -274,34 +278,159 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Items", style: TextStyle(fontWeight: FontWeight.bold)),
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Items",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            Text(
+              "Hasil Opname",
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ],
+        ),
         const SizedBox(height: 10),
-        ...selectedItems.map((item) {
+        ...selectedItems.asMap().entries.map((entry) {
+          int index = entry.key;
+          var item = entry.value;
+
           return Card(
             elevation: 0,
+            margin: const EdgeInsets.only(bottom: 10),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               side: BorderSide(color: Colors.grey.shade300),
             ),
-            child: ListTile(
-              title: Text(
-                item['name'],
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-              subtitle: Text(item['code']),
-              trailing: Text(
-                "Qty: ${item['qty']}",
-                style: const TextStyle(fontWeight: FontWeight.bold),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              child: Row(
+                children: [
+                  // Info Barang
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item['name'],
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          item['code'],
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Kontrol Qty
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(
+                            Icons.remove_circle,
+                            color: Colors.redAccent,
+                            size: 28,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              if (selectedItems[index]['qty'] > 1) {
+                                selectedItems[index]['qty']--;
+                              } else {
+                                // Tampilkan konfirmasi hapus jika qty sudah 1
+                                _confirmRemoveItem(index);
+                              }
+                            });
+                          },
+                        ),
+                        Container(
+                          constraints: const BoxConstraints(minWidth: 40),
+                          alignment: Alignment.center,
+                          child: Text(
+                            "${item['qty']}",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(
+                            Icons.add_circle,
+                            color: Colors.green,
+                            size: 28,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              selectedItems[index]['qty']++;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           );
         }),
         const SizedBox(height: 10),
-        OutlinedButton(
-          onPressed: _navigateToSelectItem,
-          child: const Text("+ Add Item"),
+        // Tombol Tambah Barang Lagi
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _navigateToSelectItem,
+            icon: const Icon(Icons.add_box_outlined),
+            label: const Text("Tambah Barang Lain"),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
         ),
+        const SizedBox(height: 20),
       ],
+    );
+  }
+
+  // Tambahkan fungsi helper untuk hapus item
+  void _confirmRemoveItem(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Hapus Item?"),
+        content: const Text(
+          "Apakah Anda yakin ingin menghapus barang ini dari list opname?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Batal"),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() => selectedItems.removeAt(index));
+              Navigator.pop(context);
+            },
+            child: const Text("Hapus", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 

@@ -1,4 +1,5 @@
 import 'package:bbs_gudang/data/models/home/history_gudang_model.dart';
+import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -125,11 +126,42 @@ class HomeHistorySection extends StatelessWidget {
                 }
 
                 // --- ERROR ---
+                // --- ERROR ---
                 if (provider.errorMessage != null) {
                   return Center(
-                    child: Text(
-                      "Error: ${provider.errorMessage}",
-                      style: const TextStyle(color: Colors.red),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 40,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          "Gagal memuat histori (Error 500)",
+                          style: TextStyle(
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            // Panggil kembali fungsi fetch dari provider
+                            // Anda mungkin butuh token dari AuthProvider di sini
+                            final token = context.read<AuthProvider>().token;
+                            provider.fetchHistoryGudang(token: token!);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                          ),
+                          child: const Text(
+                            "Coba Lagi",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }

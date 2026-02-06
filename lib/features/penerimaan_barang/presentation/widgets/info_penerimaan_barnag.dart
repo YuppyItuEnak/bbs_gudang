@@ -88,7 +88,7 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
           _label("No. SJ Supplier"),
           _textInput(
             (v) => context.read<PenerimaanBarangProvider>().setSupplierSjNo(v),
-            "SJ-001",
+            "Nomor SJ Supplier",
           ),
 
           _label("No. Invoice Supplier"),
@@ -96,19 +96,19 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
             (v) => context
                 .read<PenerimaanBarangProvider>()
                 .setSupplierInvoiceNo(v),
-            "INV-001",
+            "Nomor Invoice Supplier",
           ),
 
           _label("Nomor Polisi"),
           _textInput(
             (v) => context.read<PenerimaanBarangProvider>().setPoliceNo(v),
-            "W 9028 Y",
+            "Nomor Polisi",
           ),
 
           _label("Nama Supir"),
           _textInput(
             (v) => context.read<PenerimaanBarangProvider>().setDriverName(v),
-            "Yatno",
+            "Nama",
           ),
 
           _label("Catatan Header"),

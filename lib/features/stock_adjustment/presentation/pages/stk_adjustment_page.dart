@@ -106,10 +106,7 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (provider.error != null) {
-                  return Center(child: Text(provider.error!));
-                }
-
+               
                 if (provider.data.isEmpty) {
                   return const Center(child: Text("Data kosong"));
                 }

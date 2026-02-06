@@ -591,7 +591,7 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
       "date": DateFormat('yyyy-MM-dd').format(selectedDate!),
       "notes": _catatanController.text,
       "submitted_by": auth.user!.id,
-      "status": sendApproval ? "SUBMITTED" : "DRAFT",
+      "status": sendApproval ? "POSTED" : "DRAFT",
       "inventory_adjustment_account_id":
           provider.selectedOpname?['inventory_adjustment_account_id'],
       "total_diff": provider.selectedOpname?['total_diff'] ?? 0,
@@ -618,7 +618,7 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
       await provider.createAdjustment(token: auth.token!, payload: payload);
       Navigator.pop(context, true);
     } catch (e) {
-      _showError(e.toString());
+      _showError("Gagal create adjustment");
     }
   }
 

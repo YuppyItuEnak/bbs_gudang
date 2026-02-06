@@ -26,7 +26,7 @@ class HistoryGudangProvider extends ChangeNotifier {
         limit: 10,
         warehouseIds: [],
         unitBusinessIds: [],
-        startDate: "",
+        startDate: "2026-02-06",
         endDate: "",
       );
 

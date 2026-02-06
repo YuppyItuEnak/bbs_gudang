@@ -52,12 +52,40 @@ class _EditPengeluaranBrgPageState extends State<EditPengeluaranBrgPage> {
           await pb.fetchDetailDPCode(token: token, id: dpId);
 
           if (pb.detailDPCode != null) {
+            _syncQtyFromPBtoDP(pb); 
             setState(() {
               licensePlateCtrl.text = pb.detailDPCode?.nopol ?? '-';
               driverCtrl.text = pb.detailDPCode?.driver ?? '-';
-              deliveryAreaCtrl.text = pb.detailDPCode?.deliveryArea?.code ?? '-';
+              deliveryAreaCtrl.text =
+                  pb.detailDPCode?.deliveryArea?.code ?? '-';
             });
           }
+        }
+      }
+    }
+  }
+
+  void _syncQtyFromPBtoDP(PengeluaranBarangProvider pb) {
+    final savedItems = pb.detailPengeluaranBarang?.pengeluaranBrgDetail ?? [];
+    final dpDetails = pb.detailDPCode?.details ?? [];
+
+    if (savedItems.isEmpty || dpDetails.isEmpty) return;
+
+    for (var detail in dpDetails) {
+      for (var item in detail.items) {
+        // Cari item yang ID-nya cocok antara template DP dan data PB yang tersimpan
+        final matchedSavedItem = savedItems.firstWhere(
+          (saved) => saved.itemId == (item.item?.id ?? item.itemId),
+          orElse: () => savedItems.firstWhere(
+            (s) => s.itemId == item.itemId,
+            orElse: () => savedItems[0],
+          ), // fallback safety
+        );
+
+        // Jika ditemukan item yang sama di database PB, timpa qty-nya ke UI
+        if (matchedSavedItem != null &&
+            savedItems.any((s) => s.itemId == (item.item?.id ?? item.itemId))) {
+          item.qtyDp = matchedSavedItem.qty;
         }
       }
     }
@@ -106,7 +134,9 @@ class _EditPengeluaranBrgPageState extends State<EditPengeluaranBrgPage> {
       body: Consumer<PengeluaranBarangProvider>(
         builder: (context, pb, _) {
           if (pb.isLoading && pb.detailPengeluaranBarang == null) {
-            return Center(child: CircularProgressIndicator(color: primaryGreen));
+            return Center(
+              child: CircularProgressIndicator(color: primaryGreen),
+            );
           }
 
           if (pb.detailPengeluaranBarang == null) {
@@ -207,7 +237,10 @@ class _EditPengeluaranBrgPageState extends State<EditPengeluaranBrgPage> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           isExpanded: true,
-          value: pb.listDeliveryPlanCode.any((e) => e.id == pb.selectedDeliveryPlanId)
+          value:
+              pb.listDeliveryPlanCode.any(
+                (e) => e.id == pb.selectedDeliveryPlanId,
+              )
               ? pb.selectedDeliveryPlanId
               : null,
           hint: const Text("Pilih Delivery Plan"),
@@ -224,7 +257,8 @@ class _EditPengeluaranBrgPageState extends State<EditPengeluaranBrgPage> {
             if (token != null) {
               await pb.fetchDetailDPCode(token: token, id: value);
               if (pb.detailDPCode != null) {
-                deliveryAreaCtrl.text = pb.detailDPCode?.deliveryArea?.code ?? '-';
+                deliveryAreaCtrl.text =
+                    pb.detailDPCode?.deliveryArea?.code ?? '-';
                 licensePlateCtrl.text = pb.detailDPCode?.nopol ?? '-';
                 driverCtrl.text = pb.detailDPCode?.driver ?? '-';
               }
@@ -236,35 +270,34 @@ class _EditPengeluaranBrgPageState extends State<EditPengeluaranBrgPage> {
   }
 
   Widget _buildItemList(PengeluaranBarangProvider pb) {
-    if (pb.detailDPCode == null) {
-      return Padding(
-        padding: const EdgeInsets.all(20),
-        child: Center(child: CircularProgressIndicator(color: primaryGreen)),
-      );
+    // Gunakan data dari detailDPCode karena ini yang menampung perubahan local/edit qty
+    final details = pb.detailDPCode?.details;
+
+    if (pb.isLoading) {
+      return const Center(child: CircularProgressIndicator());
     }
 
-    if (pb.detailDPCode!.details.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(20.0),
-        child: Center(child: Text("Tidak ada item ditemukan")),
-      );
+    if (details == null || details.isEmpty) {
+      return const Center(child: Text("Tidak ada item ditemukan"));
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: pb.detailDPCode!.details.asMap().entries.expand((entryDetail) {
-        int dIdx = entryDetail.key;
-        return entryDetail.value.items.asMap().entries.map((entryItem) {
-          int iIdx = entryItem.key;
-          var item = entryItem.value;
+    return ListView.builder(
+      // Lebih stabil daripada Column + map untuk list besar
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: details.length,
+      itemBuilder: (context, dIdx) {
+        final detail = details[dIdx];
+        return Column(
+          children: detail.items.asMap().entries.map((entryItem) {
+            int iIdx = entryItem.key;
+            var item = entryItem.value;
 
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: ItemPengeluaranTile(
-              // Tambahkan ValueKey agar UI Update Instan
-              key: ValueKey("item_${item.item?.id}_${item.qtyDp}"),
-              noSo: entryDetail.value.salesOrder?.code ?? "-",
-              noDO: pb.isLoadingDOCode ? "Wait..." : (pb.detailPengeluaranBarang?.code ?? "-"),
+            return ItemPengeluaranTile(
+              // Gunakan ID unik dari database agar Flutter tidak tertukar saat render
+              key: ValueKey("item_${item.id}_${item.item?.id}"),
+              noSo: detail.salesOrder?.code ?? "-",
+              noDO: pb.detailPengeluaranBarang?.code ?? "-",
               namaBarang: item.item?.name ?? "-",
               qty: "${item.qtyDp} ${item.uomUnit}",
               qtySo: (item.qtySo ?? 0).toString(),
@@ -273,10 +306,10 @@ class _EditPengeluaranBrgPageState extends State<EditPengeluaranBrgPage> {
               isSwiped: true,
               onEditTap: () => _showEditQtyDialog(pb, dIdx, iIdx),
               onDeleteTap: () => _confirmDelete(pb, dIdx, iIdx),
-            ),
-          );
-        });
-      }).toList(),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 
@@ -302,12 +335,27 @@ class _EditPengeluaranBrgPageState extends State<EditPengeluaranBrgPage> {
                   : () => _handleUpdateLogic(pb, status: 1),
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: primaryGreen),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 minimumSize: const Size(double.infinity, 50),
               ),
               child: pb.isUpdating
-                  ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: primaryGreen))
-                  : Text("Save", style: TextStyle(color: primaryGreen, fontWeight: FontWeight.bold)),
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: primaryGreen,
+                      ),
+                    )
+                  : Text(
+                      "Save",
+                      style: TextStyle(
+                        color: primaryGreen,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ),
           const SizedBox(width: 12),
@@ -318,12 +366,28 @@ class _EditPengeluaranBrgPageState extends State<EditPengeluaranBrgPage> {
                   : () => _handleUpdateLogic(pb, status: 2),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryGreen,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 minimumSize: const Size(double.infinity, 50),
               ),
               child: pb.isUpdating
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text("Posted", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      "Posted",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
             ),
           ),
         ],
@@ -339,14 +403,19 @@ class _EditPengeluaranBrgPageState extends State<EditPengeluaranBrgPage> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Text("Edit Qty: ${item.item?.name}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        title: Text(
+          "Edit Qty: ${item.item?.name}",
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         content: TextField(
           controller: qtyEditCtrl,
           keyboardType: TextInputType.number,
           decoration: InputDecoration(
             labelText: "Masukkan Qty (${item.uomUnit})",
             labelStyle: TextStyle(color: primaryGreen),
-            focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: primaryGreen)),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: primaryGreen),
+            ),
             border: const OutlineInputBorder(),
           ),
         ),
@@ -376,7 +445,10 @@ class _EditPengeluaranBrgPageState extends State<EditPengeluaranBrgPage> {
         title: const Text("Hapus Item"),
         content: const Text("Apakah Anda yakin ingin menghapus item ini?"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Batal"),
+          ),
           TextButton(
             onPressed: () {
               pb.removeItemLocal(dIdx, iIdx);
@@ -389,7 +461,10 @@ class _EditPengeluaranBrgPageState extends State<EditPengeluaranBrgPage> {
     );
   }
 
-  void _handleUpdateLogic(PengeluaranBarangProvider pb, {required int status}) async {
+  void _handleUpdateLogic(
+    PengeluaranBarangProvider pb, {
+    required int status,
+  }) async {
     final auth = context.read<AuthProvider>();
     final token = auth.token;
 
@@ -403,7 +478,9 @@ class _EditPengeluaranBrgPageState extends State<EditPengeluaranBrgPage> {
       onSuccess: (message) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(status == 1 ? "Draft berhasil disimpan" : "Berhasil diposting"),
+            content: Text(
+              status == 1 ? "Draft berhasil disimpan" : "Berhasil diposting",
+            ),
             backgroundColor: primaryGreen,
           ),
         );

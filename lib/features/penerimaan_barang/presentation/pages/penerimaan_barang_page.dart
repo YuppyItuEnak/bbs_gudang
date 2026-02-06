@@ -30,10 +30,7 @@ class _PenerimaanBarangPageState extends State<PenerimaanBarangPage> {
         final provider = context.read<PenerimaanBarangProvider>();
 
         if (_token != null && provider.hasMore && !provider.isLoading) {
-          provider.fetchPenerimaanBarang(
-            token: _token!,
-            loadMore: true,
-          );
+          provider.fetchPenerimaanBarang(token: _token!, loadMore: true);
         }
       }
     });
@@ -141,6 +138,7 @@ class _PenerimaanBarangPageState extends State<PenerimaanBarangPage> {
                           "date": item.date != null
                               ? DateFormat('dd/MM/yyyy').format(item.date!)
                               : '-',
+                          "status": item.status ?? 'Unknown',
                         },
                         onTap: () {
                           Navigator.push(
@@ -161,17 +159,52 @@ class _PenerimaanBarangPageState extends State<PenerimaanBarangPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => const TambahPenerimaanBarangPage(),
             ),
           );
+
+          // 2. Jika result == true, berarti ada data baru yang berhasil di-submit
+          if (result == true) {
+            _refreshData();
+          }
         },
         backgroundColor: const Color(0xFF4CAF50),
         child: const Icon(Icons.add, color: Colors.white, size: 30),
       ),
+    );
+  }
+
+  Future<void> _refreshData() async {
+    final provider = context.read<PenerimaanBarangProvider>();
+    final token = context.read<AuthProvider>().token;
+
+    if (token != null) {
+      _showLoadingDialog(context);
+
+      // Kirim isRefresh: true agar Provider meriset _page ke 1
+      await provider.fetchPenerimaanBarang(token: token, isRefresh: true);
+
+      if (mounted) {
+        Navigator.pop(context); // Tutup Dialog
+
+        // Paksa ListView scroll ke paling atas agar data terbaru kelihatan
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+      }
+    }
+  }
+
+  void _showLoadingDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) =>
+          const Center(child: CircularProgressIndicator(color: Colors.green)),
     );
   }
 
