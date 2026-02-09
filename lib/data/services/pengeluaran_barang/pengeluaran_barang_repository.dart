@@ -46,6 +46,7 @@ class PengeluaranBarangRepository {
       final body = jsonDecode(response.body);
       final List data = body['data'];
 
+      
       allData.addAll(
         data.map((e) => PengeluaranBarangModel.fromJson(e)).toList(),
       );

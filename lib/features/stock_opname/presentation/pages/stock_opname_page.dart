@@ -54,51 +54,61 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
       /// ================= BODY =================
       body: Consumer<StockOpnameProvider>(
         builder: (context, provider, _) {
+          // Tetap tampilkan loading di tengah layar jika data benar-benar masih kosong & loading
           if (provider.isLoading && provider.reports.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (provider.reports.isEmpty) {
-            return const Center(child: Text("Data stock opname kosong"));
-          }
+          final dataReport = provider.filteredReports;
 
           return Column(
             children: [
-              /// 🔍 SEARCH BAR
+              /// 🔍 SEARCH BAR (Sekarang berada di luar pengecekan isEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
                 child: Row(
                   children: [
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
                         ),
-                        child: const TextField(
-                          decoration: InputDecoration(
-                            icon: Icon(Icons.search),
-                            hintText: "Cari",
+                        child: TextField(
+                          onChanged: (value) {
+                            provider.searchStockOpname(value);
+                          },
+                          decoration: const InputDecoration(
+                            hintText: "Cari nomor Pengeluaran Barang...",
+                            prefixIcon: Icon(Icons.search, color: Colors.grey),
                             border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 15,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey.shade200),
                       ),
-                      child: const Icon(Icons.tune),
+                      child: const Icon(Icons.tune, color: Colors.black87),
                     ),
                   ],
                 ),
               ),
 
-              /// 📄 LIST
+              /// 📄 LIST ATAU EMPTY STATE
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
@@ -110,13 +120,26 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                       loadMore: false,
                     );
                   },
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: provider.reports.length,
-                    itemBuilder: (context, index) {
-                      return _buildStockCard(context, provider.reports[index]);
-                    },
-                  ),
+                  // Gunakan percabangan di sini agar Search Bar di atas tetap ada
+                  child: dataReport.isEmpty
+                      ? ListView(
+                          // Gunakan ListView agar RefreshIndicator tetap bekerja
+                          children: [
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.3,
+                            ),
+                            const Center(
+                              child: Text("Data stock opname kosong"),
+                            ),
+                          ],
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: dataReport.length,
+                          itemBuilder: (context, index) {
+                            return _buildStockCard(context, dataReport[index]);
+                          },
+                        ),
                 ),
               ),
             ],
@@ -124,7 +147,6 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
         },
       ),
 
-      /// ➕ FAB
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF4CAF50),
         child: const Icon(Icons.add),

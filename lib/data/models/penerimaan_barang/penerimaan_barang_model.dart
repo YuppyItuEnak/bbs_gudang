@@ -91,8 +91,9 @@ class PenerimaanBarangModel {
       notes: json['notes'],
 
       status: json['status'],
-      date: json['date'] != null ? DateTime.tryParse(json['date']) : null,
-
+      date: json['date'] != null
+          ? DateTime.tryParse(json['date'].toString())
+          : null,
       supplierId: json['supplier_id'],
       supplierName: json['supplier_name'],
 

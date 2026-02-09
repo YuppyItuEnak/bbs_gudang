@@ -100,6 +100,9 @@ class _PengeluaranBarangPageState extends State<PengeluaranBarangPage> {
             return const Center(child: Text("Data pengeluaran barang kosong"));
           }
 
+          // ✅ AMBIL DATA DARI FILTERED LIST
+          final displayList = provider.filterPengeluaranBarang;
+
           // ✅ DATA ADA → TAMPILKAN LIST
           return Column(
             children: [
@@ -118,12 +121,19 @@ class _PengeluaranBarangPageState extends State<PengeluaranBarangPage> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.grey.shade200),
                         ),
-                        child: const TextField(
-                          decoration: InputDecoration(
-                            hintText: "Cari",
+                        child: TextField(
+                          // 🔥 HUBUNGKAN KE FUNGSI SEARCH
+                          onChanged: (value) {
+                            provider.searchPengeluaranBarang(value);
+                          },
+                          decoration: const InputDecoration(
+                            hintText: "Cari nomor Pengeluaran Barang atau customer...",
                             prefixIcon: Icon(Icons.search, color: Colors.grey),
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(vertical: 12),
+                            contentPadding: EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 15,
+                            ),
                           ),
                         ),
                       ),
@@ -144,29 +154,36 @@ class _PengeluaranBarangPageState extends State<PengeluaranBarangPage> {
 
               // LIST DATA
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
-                  ),
-                  itemCount: provider.listPengeluaranBarang.length,
-                  itemBuilder: (context, index) {
-                    final item = provider.listPengeluaranBarang[index];
+                child: displayList.isEmpty
+                    ? const Center(
+                        child: Text(
+                          "Data tidak ditemukan",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        itemCount: displayList.length,
+                        itemBuilder: (context, index) {
+                          final item = displayList[index];
 
-                    return PengeluaranBarangCard(
-                      data: item, // 🔥 SEKARANG MODEL LANGSUNG
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                DetailPengeluaranBrgPage(id: item.id),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
+                          return PengeluaranBarangCard(
+                            data: item, // 🔥 SEKARANG MODEL LANGSUNG
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      DetailPengeluaranBrgPage(id: item.id),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
               ),
             ],
           );
@@ -174,7 +191,7 @@ class _PengeluaranBarangPageState extends State<PengeluaranBarangPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-         final result = await  Navigator.push(
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => const TambahPengeluaranBrgPage(),

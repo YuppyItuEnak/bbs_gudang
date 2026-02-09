@@ -9,6 +9,7 @@ class StockOpnameProvider extends ChangeNotifier {
   final StockOpnameRepository _opnameRepository = StockOpnameRepository();
 
   List<StockOpnameModel> _reports = [];
+  List<StockOpnameModel> _filteredReports = [];
   StockOpnameModel? _listDetail;
   bool _isLoading = false;
   String? _errorMessage;
@@ -18,6 +19,7 @@ class StockOpnameProvider extends ChangeNotifier {
   bool _hasMore = true;
 
   List<StockOpnameModel> get reports => _reports;
+  List<StockOpnameModel> get filteredReports => _filteredReports;
   StockOpnameModel? get listDetail => _listDetail;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -34,6 +36,24 @@ class StockOpnameProvider extends ChangeNotifier {
   }
 
   int get overStockCount => _reports.length;
+
+  void searchStockOpname(String query) {
+    if (query.isEmpty) {
+      _filteredReports = _reports;
+    } else {
+      _filteredReports = _reports.where((element) {
+        final code = element.code ?? "";
+        final date = element.date.toString() ?? "";
+        final warehouse = element.warehouse?.name ?? "";
+        final searchText = query;
+
+        return code.contains(searchText) ||
+            date.contains(searchText) ||
+            warehouse.contains(searchText);
+      }).toList();
+    }
+    notifyListeners();
+  }
 
   Future<void> fetchStockOpnameReport({
     required String token,
@@ -70,6 +90,7 @@ class StockOpnameProvider extends ChangeNotifier {
       }
 
       _reports.addAll(result);
+      _filteredReports.addAll(result);
 
       /// ✅ SORT PALING PENTING
       _reports.sort((a, b) {

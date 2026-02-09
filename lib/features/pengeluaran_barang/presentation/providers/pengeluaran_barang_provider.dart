@@ -15,6 +15,7 @@ class PengeluaranBarangProvider extends ChangeNotifier {
   bool _isLoadMore = false;
   String? _errorMessage;
   List<PengeluaranBarangModel> _listPengeluaranBarang = [];
+  List<PengeluaranBarangModel> _filterPengeluaranBarang = [];
   PengeluaranBarangModel? _detaiilPengeluaranBarang;
 
   List<DeliveryPlanCodeModel> _listDeliveryPlanCode = [];
@@ -31,6 +32,8 @@ class PengeluaranBarangProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   List<PengeluaranBarangModel> get listPengeluaranBarang =>
       _listPengeluaranBarang;
+  List<PengeluaranBarangModel> get filterPengeluaranBarang =>
+      _filterPengeluaranBarang;
   PengeluaranBarangModel? get detailPengeluaranBarang =>
       _detaiilPengeluaranBarang;
 
@@ -51,6 +54,21 @@ class PengeluaranBarangProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _createdSuratJalan = [];
   List<Map<String, dynamic>> get createdSuratJalan => _createdSuratJalan;
 
+  void searchPengeluaranBarang(String query) {
+    if (query.isEmpty) {
+      _filterPengeluaranBarang = List.from(_listPengeluaranBarang);
+    } else {
+      _filterPengeluaranBarang = _listPengeluaranBarang.where((element) {
+        final code = element.code;
+        final customer = element.customerModel?.name?? "";
+        final searchText = query;
+
+        return code.contains(searchText) || customer.contains(searchText);
+      }).toList();
+    }
+    notifyListeners();
+  }
+
   Future<void> fetchListPengeluaranBrg({required String token}) async {
     _isLoading = true;
     _errorMessage = null;
@@ -62,6 +80,7 @@ class PengeluaranBarangProvider extends ChangeNotifier {
       );
 
       _listPengeluaranBarang = result;
+      _filterPengeluaranBarang = result;
 
       debugPrint("✅ SUCCESS FETCH ALL: ${result.length} data");
     } catch (e, stack) {

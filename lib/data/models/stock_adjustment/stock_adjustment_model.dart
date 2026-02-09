@@ -53,13 +53,15 @@ class StockAdjustmentModel {
       code: json['code'],
       status: json['status'],
       unitBusinessId: json['unit_bussiness_id'],
-      date: json['date'],
-      details: (json['t_inventory_s_adjustment_ds'] as List)
-          .map((i) => StockAdjustmentDetail.fromJson(i))
-          .toList(),
+      date: json['date'] ,
+      details:
+          (json['t_inventory_s_adjustment_ds'] as List?) // Tambahkan '?'
+              ?.map((i) => StockAdjustmentDetail.fromJson(i))
+              .toList() ??
+          [],
       warehouseId: json['warehouse_id'],
-      opnameId: json['opname_id'],
-      notes: json['notes'],
+      opnameId: json['opname_id'] ?? "",
+      notes: json['notes'] ?? "",
 
       approvalCount: json['approval_count'],
       approvedCount: json['approved_count'],

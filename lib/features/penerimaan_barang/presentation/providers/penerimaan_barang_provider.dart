@@ -401,6 +401,26 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     itemGroup = null;
   }
 
+  List<PenerimaanBarangModel> _filterPenerimaanBarang = [];
+  List<PenerimaanBarangModel> get filterPenerimaanBarang =>
+      _filterPenerimaanBarang;
+
+  void searchPenerimaanBarang(String query) {
+    if (query.isEmpty) {
+      _filterPenerimaanBarang = _listPenerimaanBarang;
+    } else {
+      _filterPenerimaanBarang = _listPenerimaanBarang.where((element) {
+        final code = element.code ?? "";
+        final unitBisnis = element.supplierName ?? "";
+        final searchText = query;
+
+        return code.contains(searchText) || unitBisnis.contains(searchText);
+      }).toList();
+    }
+
+    notifyListeners();
+  }
+
   Future<void> fetchPenerimaanBarang({
     required String token,
     bool isRefresh = false,
@@ -430,6 +450,8 @@ class PenerimaanBarangProvider extends ChangeNotifier {
       final List<PenerimaanBarangModel> newData =
           List<PenerimaanBarangModel>.from(result['data']);
 
+      
+
       final pagination = result['pagination'];
       final int totalPages =
           int.tryParse(pagination['totalPages']?.toString() ?? '1') ?? 1;
@@ -437,8 +459,10 @@ class PenerimaanBarangProvider extends ChangeNotifier {
       if (isRefresh) {
         // Ganti total list dengan data terbaru dari page 1
         _listPenerimaanBarang = newData;
+        _filterPenerimaanBarang = newData;
       } else {
         _listPenerimaanBarang.addAll(newData);
+        _filterPenerimaanBarang.addAll(newData);
       }
 
       // Update status pagination

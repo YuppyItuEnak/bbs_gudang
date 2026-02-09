@@ -6,6 +6,7 @@ class StockAdjustmentProvider extends ChangeNotifier {
   final StockAdjustmentRepository _repo = StockAdjustmentRepository();
 
   List<StockAdjustmentModel> _data = [];
+  List<StockAdjustmentModel> _filterData = [];
   StockAdjustmentModel? _detailData;
   bool _isLoading = false;
   String? _error;
@@ -14,6 +15,7 @@ class StockAdjustmentProvider extends ChangeNotifier {
   bool _hasMore = true;
 
   List<StockAdjustmentModel> get data => _data;
+  List<StockAdjustmentModel> get filterData => _filterData;
   StockAdjustmentModel? get detailData => _detailData;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -38,6 +40,24 @@ class StockAdjustmentProvider extends ChangeNotifier {
 
   int get underStockCount => data.length;
 
+  void search(String query) {
+    if (query.isEmpty) {
+      _filterData = _data;
+    } else {
+      _filterData = _data.where((element) {
+        final code = element.code ?? "";
+        final date = element.date ?? "";
+        final warehouse = element.warehouse?.name ?? "";
+        final searchText = query;
+
+        return code.contains(searchText) ||
+            date.contains(searchText) ||
+            warehouse.contains(searchText);
+      }).toList();
+    }
+    notifyListeners();
+  }
+
   Future<void> fetchStockAdjustments({
     required String token,
     bool loadMore = false,
@@ -61,6 +81,7 @@ class StockAdjustmentProvider extends ChangeNotifier {
       if (result.length < _limit) _hasMore = false;
 
       _data.addAll(result);
+      _filterData.addAll(result);
       _page++;
     } catch (e) {
       _error = e.toString();

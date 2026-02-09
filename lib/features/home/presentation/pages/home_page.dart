@@ -37,7 +37,12 @@ class _HomePageState extends State<HomePage> {
       final token = context.read<AuthProvider>().token;
 
       if (token != null) {
-        provider.fetchHistoryGudang(token: token);
+        // provider.fetchHistoryGudang(token: token);
+
+        provider.fetchPengeluaranBarangHistory(token: token);
+        provider.fetchPenerimaanBarangHistory(token: token);
+        provider.fetchStkAdjustHistory(token: token);
+        provider.fetchStkOpnameHistory(token: token);
 
         context.read<StockOpnameProvider>().fetchStockOpnameReport(
           token: token,

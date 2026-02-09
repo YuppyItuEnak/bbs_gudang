@@ -127,10 +127,11 @@ class PenerimaanBarangRepository {
         print("total PO: ${data.length}");
         return data.map((e) => AvailablePoModel.fromJson(e)).toList();
       } else {
-        throw Exception('Gagal mengambil data PO');
+        final body = jsonDecode(response.body);
+        throw Exception(body['message'] ?? 'Gagal mengambil data PO');
       }
     } catch (e) {
-      throw Exception('Gagal mengambil data PO: $e');
+      rethrow;
     }
   }
 
