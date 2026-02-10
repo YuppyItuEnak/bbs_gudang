@@ -28,7 +28,6 @@ class _HistoryGudangPageState extends State<HistoryGudangPage> {
     final token = context.read<AuthProvider>().token;
     if (token != null) {
       final p = context.read<HistoryGudangProvider>();
-      // Memanggil semua API sekaligus secara paralel
       Future.wait([
         p.fetchPengeluaranBarangHistory(token: token),
         p.fetchPenerimaanBarangHistory(token: token),
@@ -43,14 +42,10 @@ class _HistoryGudangPageState extends State<HistoryGudangPage> {
       if (rawDate == null || rawDate == "") return "-";
 
       DateTime date;
-
-      // Kasus 1: Untuk Penerimaan, Opname, Adjustment (Tipe DateTime)
       if (rawDate is DateTime) {
         date = rawDate;
       }
-      // Kasus 2: Untuk Pengeluaran (Tipe String)
       else if (rawDate is String) {
-        // Menangani string tanggal seperti "2023-10-25" atau ISO8601
         date = DateTime.parse(rawDate);
       } else {
         return rawDate.toString();
@@ -59,8 +54,6 @@ class _HistoryGudangPageState extends State<HistoryGudangPage> {
       final formatter = DateFormat('dd MMMM yyyy', 'id_ID');
       return formatter.format(date);
     } catch (e) {
-      // Jika gagal parse (misal format string aneh), kembalikan apa adanya
-
       return rawDate.toString();
     }
   }
@@ -95,7 +88,6 @@ class _HistoryGudangPageState extends State<HistoryGudangPage> {
         ),
         body: Consumer<HistoryGudangProvider>(
           builder: (context, provider, _) {
-            // Kita bungkus TabBarView di dalam Consumer agar semua tab terupdate
             return TabBarView(
               children: [
                 _buildTabContent(
@@ -174,17 +166,17 @@ class _HistoryGudangPageState extends State<HistoryGudangPage> {
 
           if (type == "Pengeluaran" || type == "Adjustment") {
             displayCode = item.code ?? "-";
-            displayDate = item.date; // Ini String
+            displayDate = item.date; 
           } else {
             displayCode = item.code ?? "-";
             displayDate = item.date != null
                 ? DateFormat('dd MMMM yyyy').format(item.date!)
-                : '-'; // Ini DateTime
+                : '-'; 
           }
 
           return _buildCardItem(
             code: displayCode,
-            date: displayDate, // Kirim dynamic
+            date: displayDate, 
             typeName: type,
             onTap: () => _navigateToDetail(context, type, item),
           );
@@ -195,9 +187,9 @@ class _HistoryGudangPageState extends State<HistoryGudangPage> {
 
   Widget _buildCardItem({
     required String code,
-    required dynamic date, // Gunakan dynamic agar fleksibel String/DateTime
+    required dynamic date, 
     required String typeName,
-    required VoidCallback onTap, // Callback navigasi
+    required VoidCallback onTap,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -207,7 +199,7 @@ class _HistoryGudangPageState extends State<HistoryGudangPage> {
       ),
       child: ListTile(
         onTap:
-            onTap, // 🔥 TAMBAHKAN INI agar fungsi navigasi terpanggil saat di-klik
+            onTap, 
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Container(
           padding: const EdgeInsets.all(8),
@@ -244,7 +236,7 @@ class _HistoryGudangPageState extends State<HistoryGudangPage> {
     switch (type) {
       case "Pengeluaran":
         detailPage = DetailPengeluaranBrgPage(id: item.id);
-        break; // Menghentikan switch, lalu lanjut ke baris Navigator
+        break;
       case "Penerimaan":
         detailPage = DetailPenerimaanBarangPage(id: item.id);
         break;
@@ -258,10 +250,9 @@ class _HistoryGudangPageState extends State<HistoryGudangPage> {
         );
         break;
       default:
-        return; // Tetap pakai return di sini jika tipe tidak dikenal (aman)
+        return;
     }
 
-    // Sekarang baris ini bisa dijangkau (Reachable)
     if (detailPage != null) {
       Navigator.push(
         context,

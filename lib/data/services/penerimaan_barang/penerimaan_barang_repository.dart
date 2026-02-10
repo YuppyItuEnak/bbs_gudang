@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:bbs_gudang/core/constants/api_constants.dart';
@@ -37,9 +38,6 @@ class PenerimaanBarangRepository {
         },
       );
 
-      print('📥 STATUS: ${response.statusCode}');
-      print('📥 RESPONSE: ${response.body}');
-
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
 
@@ -56,10 +54,26 @@ class PenerimaanBarangRepository {
 
         throw Exception('Format response tidak sesuai');
       } else {
-        throw Exception('HTTP ${response.statusCode}');
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401)
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          if (response.statusCode >= 500)
+            errorMessage = "Terjadi gangguan pada server.";
+        }
+        throw errorMessage;
       }
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
-      print('❌ ERROR FETCH PENERIMAAN BARANG: $e');
+      debugPrint('❌ ERROR FETCH PENERIMAAN BARANG: $e');
       rethrow;
     }
   }
@@ -84,13 +98,9 @@ class PenerimaanBarangRepository {
         },
       );
 
-      print('📥 DETAIL STATUS: ${response.statusCode}');
-      print('📥 DETAIL RESPONSE: ${response.body}');
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-
-        // print( '📥 DETAIL PB WAREHOUSE: ${body['data']['pbWarehouse']}');
 
         if (body['status'] == 'success' && body['data'] is Map) {
           return PenerimaanBarangModel.fromJson(body['data']);
@@ -98,10 +108,26 @@ class PenerimaanBarangRepository {
 
         throw Exception('Format response detail tidak sesuai');
       } else {
-        throw Exception('HTTP ${response.statusCode}');
+         String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401)
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          if (response.statusCode >= 500)
+            errorMessage = "Terjadi gangguan pada server.";
+        }
+        throw errorMessage;
       }
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
-      print('❌ ERROR FETCH DETAIL PENERIMAAN BARANG: $e');
+      debugPrint('❌ ERROR FETCH DETAIL PENERIMAAN BARANG: $e');
       rethrow;
     }
   }
@@ -127,9 +153,24 @@ class PenerimaanBarangRepository {
         print("total PO: ${data.length}");
         return data.map((e) => AvailablePoModel.fromJson(e)).toList();
       } else {
-        final body = jsonDecode(response.body);
-        throw Exception(body['message'] ?? 'Gagal mengambil data PO');
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401)
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          if (response.statusCode >= 500)
+            errorMessage = "Terjadi gangguan pada server.";
+        }
+        throw errorMessage;
       }
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
       rethrow;
     }

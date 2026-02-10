@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:bbs_gudang/core/constants/api_constants.dart';
 import 'package:bbs_gudang/data/models/home/history_gudang_model.dart';
@@ -11,90 +12,6 @@ import 'package:http/http.dart' as http;
 
 class HistoryGudangRepository {
   final String baseUrl = ApiConstants.baseUrl;
-
-  Future<List<HistoryGudangModel>> fetchListHistoryGudang({
-    required String token,
-
-    // pagination
-    int page = 1,
-    int limit = 100,
-
-    // filters
-    List<int>? unitBusinessIds,
-    List<int>? warehouseIds,
-    List<int>? itemIds,
-    String? startDate, // format: yyyy-mm-dd
-    String? endDate, // format: yyyy-mm-dd
-  }) async {
-    try {
-      final Map<String, dynamic> queryParams = {
-        'page': page.toString(),
-        'limit': limit.toString(),
-      };
-
-      // --- ARRAY FILTERS ---
-      if (unitBusinessIds != null && unitBusinessIds.isNotEmpty) {
-        for (var id in unitBusinessIds) {
-          queryParams.putIfAbsent('unit_business_ids[]', () => []);
-          (queryParams['unit_business_ids[]'] as List).add(id.toString());
-        }
-      }
-
-      if (warehouseIds != null && warehouseIds.isNotEmpty) {
-        for (var id in warehouseIds) {
-          queryParams.putIfAbsent('warehouse_ids[]', () => []);
-          (queryParams['warehouse_ids[]'] as List).add(id.toString());
-        }
-      }
-
-      if (itemIds != null && itemIds.isNotEmpty) {
-        for (var id in itemIds) {
-          queryParams.putIfAbsent('item_ids[]', () => []);
-          (queryParams['item_ids[]'] as List).add(id.toString());
-        }
-      }
-
-      // --- DATE FILTER ---
-
-      final uri =
-          Uri.parse(
-            "$baseUrl/fn/t_inventory_ledger/getInventoryLedgerDetailReport",
-          ).replace(
-            queryParameters: queryParams.map((key, value) {
-              if (value is List) {
-                return MapEntry(key, value);
-              } else {
-                return MapEntry(key, value.toString());
-              }
-            }),
-          );
-
-      final response = await http.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      print('📥 LEDGER URI: $uri');
-      print('📥 LEDGER STATUS: ${response.statusCode}');
-      print('📥 LEDGER BODY: ${response.body}');
-
-      final Map<String, dynamic> jsonResponse = json.decode(response.body);
-      if (response.statusCode != 200) {
-        throw Exception(jsonResponse['message'] ?? 'Unknown error');
-      }
-
-      final List rows = jsonResponse['data']?['rows'] ?? [];
-
-      return rows
-          .map<HistoryGudangModel>((e) => HistoryGudangModel.fromJson(e))
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
 
   Future<List<PengeluaranBarangModel>> fetchPengeluaranBarangHistory({
     required String token,
@@ -113,8 +30,17 @@ class HistoryGudangRepository {
       );
 
       if (response.statusCode != 200) {
-        final Map<String, dynamic> jsonResponse = json.decode(response.body);
-        throw Exception(jsonResponse['message'] ?? 'Unknown error');
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401)
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          if (response.statusCode >= 500)
+            errorMessage = "Terjadi gangguan pada server.";
+        }
+        throw errorMessage;
       }
 
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
@@ -123,13 +49,18 @@ class HistoryGudangRepository {
       return rows
           .where((e) {
             final dynamic status = e['status'];
-            // Cek apakah status adalah int 2 atau string "2"
             return status.toString() == "2";
           })
           .map<PengeluaranBarangModel>((e) {
             return PengeluaranBarangModel.fromJson(e);
           })
           .toList();
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
       rethrow;
     }
@@ -158,8 +89,6 @@ class HistoryGudangRepository {
           final List rawList = body['data'];
           final pagination = body['pagination'];
 
-          // 🔥 FILTER: Hanya ambil data yang statusnya 'POSTED'
-          // Gunakan .where sebelum .map untuk efisiensi
           final items = rawList
               .where((e) => e['status']?.toString().toUpperCase() == 'POSTED')
               .map((e) => PenerimaanBarangModel.fromJson(e))
@@ -170,8 +99,24 @@ class HistoryGudangRepository {
 
         throw Exception('Format response tidak sesuai');
       } else {
-        throw Exception('HTTP ${response.statusCode}');
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401)
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          if (response.statusCode >= 500)
+            errorMessage = "Terjadi gangguan pada server.";
+        }
+        throw errorMessage;
       }
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
       rethrow;
     }
@@ -211,10 +156,8 @@ class HistoryGudangRepository {
 
       final List<StockAdjustmentModel> results = [];
 
-      // Gunakan loop biasa untuk mempermudah debugging
       for (var element in rawData) {
         try {
-          // 🔥 TAMBAHKAN FILTER STATUS DI SINI
           final String status = element['status']?.toString() ?? "";
 
           if (status == "APPROVED" || status == "IN_APPROVAL") {
@@ -228,6 +171,12 @@ class HistoryGudangRepository {
       }
 
       return results;
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
       debugPrint("❌ Error in fetchStkAdjustHistory: $e");
       rethrow;
@@ -251,10 +200,18 @@ class HistoryGudangRepository {
       );
 
       if (response.statusCode != 200) {
-        final Map<String, dynamic> jsonResponse = json.decode(response.body);
-        throw Exception(jsonResponse['message'] ?? 'Unknown error');
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401)
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          if (response.statusCode >= 500)
+            errorMessage = "Terjadi gangguan pada server.";
+        }
+        throw errorMessage;
       }
-
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
       final List rows = jsonResponse['data'];
 
@@ -262,6 +219,12 @@ class HistoryGudangRepository {
           .where((e) => e['status']?.toString().toUpperCase() == 'POSTED')
           .map<StockOpnameModel>((e) => StockOpnameModel.fromJson(e))
           .toList();
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
       rethrow;
     }
