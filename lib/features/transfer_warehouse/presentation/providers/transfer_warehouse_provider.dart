@@ -118,10 +118,10 @@ class TransferWarehouseProvider extends ChangeNotifier {
     required String status,
     required String date,
     String? notes,
-    required String unitBusinessName, // Tambahan untuk m_unit_bussiness
-    required String sourceWarehouseName, // Tambahan untuk source_warehouse
+    required String unitBusinessName, 
+    required String sourceWarehouseName, 
     required String
-    destinationWarehouseName, // Tambahan untuk destination_warehouse
+    destinationWarehouseName, 
   }) async {
     isSubmitting = true;
     notifyListeners();

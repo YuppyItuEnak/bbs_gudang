@@ -97,16 +97,6 @@ class _TransferWarehousePageState extends State<TransferWarehousePage> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                // Error State
-                if (provider.errorMessage != null) {
-                  return Center(
-                    child: Text(
-                      provider.errorMessage!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  );
-                }
-
                 // Empty State
                 if (provider.listTransferWarehouse.isEmpty) {
                   return const Center(
@@ -360,10 +350,10 @@ class _TransferWarehousePageState extends State<TransferWarehousePage> {
       case "DRAFT":
         bgColor = Colors.grey;
         break;
-      case "APPROVED":
+      case "POSTED":
         bgColor = Colors.green;
         break;
-      case "PROCESS":
+      case "SUBMITTED":
         bgColor = Colors.blue;
         break;
       case "REJECTED":

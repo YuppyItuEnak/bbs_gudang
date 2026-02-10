@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:bbs_gudang/core/constants/api_constants.dart';
 import 'package:bbs_gudang/data/models/stock_adjustment/stock_adjustment_model.dart';
@@ -35,7 +36,17 @@ class StockAdjustmentRepository {
       );
 
       if (response.statusCode != 200) {
-        throw Exception("Failed load stock adjustment");
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401)
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          if (response.statusCode >= 500)
+            errorMessage = "Terjadi gangguan pada server.";
+        }
+        throw errorMessage;
       }
 
       final decoded = json.decode(response.body);
@@ -43,8 +54,14 @@ class StockAdjustmentRepository {
       final List data = decoded["data"];
 
       return data.map((e) => StockAdjustmentModel.fromJson(e)).toList();
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
-      throw Exception("StockAdjustment Error: $e");
+      rethrow;
     }
   }
 
@@ -71,14 +88,24 @@ class StockAdjustmentRepository {
       );
 
       if (response.statusCode != 200) {
-        throw Exception("Failed load stock adjustment");
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401)
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          if (response.statusCode >= 500)
+            errorMessage = "Terjadi gangguan pada server.";
+        }
+        throw errorMessage;
       }
 
       final decoded = json.decode(response.body);
       print("fetch detail Data stock adjust: ${response.body}");
       return StockAdjustmentModel.fromJson(decoded["data"]);
     } catch (e) {
-      throw Exception("StockAdjustment Error: $e");
+      rethrow;
     }
   }
 
@@ -106,7 +133,17 @@ class StockAdjustmentRepository {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Failed load opname');
+      String errorMessage = "Gagal memuat data (${response.statusCode})";
+      try {
+        final Map<String, dynamic> errorBody = json.decode(response.body);
+        errorMessage = errorBody['message'] ?? errorMessage;
+      } catch (e) {
+        if (response.statusCode == 401)
+          errorMessage = "Sesi telah berakhir, silakan login ulang.";
+        if (response.statusCode >= 500)
+          errorMessage = "Terjadi gangguan pada server.";
+      }
+      throw errorMessage;
     }
 
     final body = json.decode(response.body);
@@ -137,14 +174,30 @@ class StockAdjustmentRepository {
       );
 
       if (response.statusCode != 200) {
-        throw Exception("Failed load opname");
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401)
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          if (response.statusCode >= 500)
+            errorMessage = "Terjadi gangguan pada server.";
+        }
+        throw errorMessage;
       }
 
       final decoded = json.decode(response.body);
       print("fetch detail Data Item by opname: ${response.body}");
       return decoded["data"];
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
-      throw Exception("StockAdjustment Error: $e");
+      rethrow;
     }
   }
 
@@ -170,7 +223,7 @@ class StockAdjustmentRepository {
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
         print("fetch master Item by opname: ${response.body}");
-        return decoded["data"]; // Mengembalikan data item (nama, code, coa_id, dll)
+        return decoded["data"];
       } else {
         throw Exception("Gagal mengambil detail item master");
       }
@@ -198,7 +251,17 @@ class StockAdjustmentRepository {
     print("GEN CODE BODY: ${response.body}");
 
     if (response.statusCode != 200 || data['success'] != true) {
-      throw Exception(data['message'] ?? 'Gagal generate code');
+      String errorMessage = "Gagal memuat data (${response.statusCode})";
+      try {
+        final Map<String, dynamic> errorBody = json.decode(response.body);
+        errorMessage = errorBody['message'] ?? errorMessage;
+      } catch (e) {
+        if (response.statusCode == 401)
+          errorMessage = "Sesi telah berakhir, silakan login ulang.";
+        if (response.statusCode >= 500)
+          errorMessage = "Terjadi gangguan pada server.";
+      }
+      throw errorMessage;
     }
 
     return data['data']; // "ADJ-2602-0002"
@@ -226,7 +289,17 @@ class StockAdjustmentRepository {
     final data = jsonDecode(response.body);
 
     if (response.statusCode != 200) {
-      throw Exception(data['message'] ?? 'Gagal cek approval');
+      String errorMessage = "Gagal memuat data (${response.statusCode})";
+      try {
+        final Map<String, dynamic> errorBody = json.decode(response.body);
+        errorMessage = errorBody['message'] ?? errorMessage;
+      } catch (e) {
+        if (response.statusCode == 401)
+          errorMessage = "Sesi telah berakhir, silakan login ulang.";
+        if (response.statusCode >= 500)
+          errorMessage = "Terjadi gangguan pada server.";
+      }
+      throw errorMessage;
     }
 
     return data;
@@ -253,7 +326,7 @@ class StockAdjustmentRepository {
 
     // ❌ HANDLE HTTP ERROR BUT STILL READ MESSAGE
     if (response.statusCode != 200) {
-      String message = data['message'] ?? "Server error ${response.statusCode}";
+      String message = "Gagal memuat data (${response.statusCode})";
 
       // ✅ IF VALIDATION ERRORS EXIST
       if (data['errors'] != null && data['errors'] is Map) {
@@ -306,9 +379,19 @@ class StockAdjustmentRepository {
         return decoded['data'];
       }
 
-      throw Exception(decoded['message'] ?? "Gagal update stock adjustment");
+      String errorMessage = "Gagal memuat data (${response.statusCode})";
+      try {
+        final Map<String, dynamic> errorBody = json.decode(response.body);
+        errorMessage = errorBody['message'] ?? errorMessage;
+      } catch (e) {
+        if (response.statusCode == 401)
+          errorMessage = "Sesi telah berakhir, silakan login ulang.";
+        if (response.statusCode >= 500)
+          errorMessage = "Terjadi gangguan pada server.";
+      }
+      throw errorMessage;
     } catch (e) {
-      throw Exception("Update adjustment error: $e");
+      rethrow;
     }
   }
 }

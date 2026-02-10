@@ -177,7 +177,11 @@ class _PenerimaanBarangPageState extends State<PenerimaanBarangPage> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const TambahPenerimaanBarangPage(),
+              builder: (context) => ChangeNotifierProvider(
+                // Provider ini baru tercipta saat tombol diklik
+                create: (_) => PenerimaanBarangProvider(),
+                child: const TambahPenerimaanBarangPage(),
+              ),
             ),
           );
 

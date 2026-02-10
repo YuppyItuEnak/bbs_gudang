@@ -70,14 +70,7 @@ class _DetailStockOpnamePageState extends State<DetailStockOpnamePage> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (provider.errorMessage != null) {
-      return Center(
-        child: Text(
-          provider.errorMessage!,
-          style: const TextStyle(color: Colors.red),
-        ),
-      );
-    }
+
 
     final header = provider.listDetail;
     if (header == null) {

@@ -584,6 +584,13 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
     if (selectedDate == null) return _showError("Tanggal belum dipilih");
     if (selectedItems.isEmpty) return _showError("Item belum ditambahkan");
 
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) =>
+          const Center(child: CircularProgressIndicator(color: Colors.white)),
+    );
+
     final payload = {
       "code": provider.generatedCode,
       "unit_bussiness_id": selectedCompanyId,
@@ -616,7 +623,13 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
 
     try {
       await provider.createAdjustment(token: auth.token!, payload: payload);
-      Navigator.pop(context, true);
+      await provider.fetchStockAdjustments(token: auth.token!, loadMore: false);
+      if (mounted) {
+        // Tutup Loading Dialog
+        Navigator.pop(context);
+        // Kembali ke halaman list dengan membawa nilai 'true'
+        Navigator.pop(context, true);
+      }
     } catch (e) {
       _showError("Gagal create adjustment");
     }

@@ -70,8 +70,12 @@ class StockAdjustmentProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (!loadMore) reset();
-
+      if (!loadMore) {
+      _page = 1;
+      _hasMore = true;
+      _data.clear();
+      _filterData.clear(); 
+    }
       final result = await _repo.getStockAdjustments(
         token: token,
         page: _page,
@@ -81,7 +85,7 @@ class StockAdjustmentProvider extends ChangeNotifier {
       if (result.length < _limit) _hasMore = false;
 
       _data.addAll(result);
-      _filterData.addAll(result);
+     _filterData = List.from(_data);
       _page++;
     } catch (e) {
       _error = e.toString();
@@ -296,6 +300,7 @@ class StockAdjustmentProvider extends ChangeNotifier {
       notifyListeners();
 
       await _repo.createStockAdjustment(token: token, payload: payload);
+      await fetchStockAdjustments(token: token, loadMore: false);
 
       _error = null;
     } catch (e) {

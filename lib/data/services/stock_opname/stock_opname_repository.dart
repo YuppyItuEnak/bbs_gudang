@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:ffi';
+import 'dart:io';
 import 'package:bbs_gudang/core/constants/api_constants.dart';
 import 'package:bbs_gudang/data/models/stock_opname/stock_opname_detail.dart';
 import 'package:bbs_gudang/data/models/stock_opname/stock_opname_model.dart';
@@ -23,6 +24,8 @@ class StockOpnameRepository {
         queryParameters: {
           'include': 'm_unit_bussiness,m_warehouse',
           'no_pagination': 'true',
+          'order_by': 'date',
+          'order_type': 'DESC',
         },
       );
 
@@ -35,7 +38,17 @@ class StockOpnameRepository {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('HTTP ${response.statusCode}');
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401)
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          if (response.statusCode >= 500)
+            errorMessage = "Terjadi gangguan pada server.";
+        }
+        throw errorMessage;
       }
 
       final decoded = jsonDecode(response.body);
@@ -45,8 +58,14 @@ class StockOpnameRepository {
       final List listData = decoded['data'];
 
       return listData.map((e) => StockOpnameModel.fromJson(e)).toList();
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
-      throw Exception('Failed to load stock opname report: $e');
+      rethrow;
     }
   }
 
@@ -75,12 +94,28 @@ class StockOpnameRepository {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Failed load opname detail');
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401)
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          if (response.statusCode >= 500)
+            errorMessage = "Terjadi gangguan pada server.";
+        }
+        throw errorMessage;
       }
 
       final decoded = jsonDecode(response.body);
 
       return StockOpnameModel.fromJson(decoded['data']);
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
       print('❌ ERROR FETCH DETAIL PENERIMAAN BARANG: $e');
       rethrow;
@@ -139,7 +174,17 @@ class StockOpnameRepository {
 
     // ✅ FIX SESUAI RESPONSE BACKEND
     if (json['success'] != true) {
-      throw Exception(json['message'] ?? 'Generate code error');
+      String errorMessage = "Gagal memuat data (${response.statusCode})";
+      try {
+        final Map<String, dynamic> errorBody = json.decode(response.body);
+        errorMessage = errorBody['message'] ?? errorMessage;
+      } catch (e) {
+        if (response.statusCode == 401)
+          errorMessage = "Sesi telah berakhir, silakan login ulang.";
+        if (response.statusCode >= 500)
+          errorMessage = "Terjadi gangguan pada server.";
+      }
+      throw errorMessage;
     }
 
     return json['data']; // ✅ OPC-2601-0006
@@ -170,13 +215,25 @@ class StockOpnameRepository {
         return responseData;
       } else {
         // Ambil pesan error dari body jika ada, jika tidak pakai default message
-        final message =
-            responseData['message'] ??
-            'Gagal memperbarui data (Status: ${response.statusCode})';
-        throw message;
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401)
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          if (response.statusCode >= 500)
+            errorMessage = "Terjadi gangguan pada server.";
+        }
+        throw errorMessage;
       }
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
-      // Teruskan error ke layer provider
       rethrow;
     }
   }

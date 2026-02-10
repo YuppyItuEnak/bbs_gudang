@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:bbs_gudang/core/constants/api_constants.dart';
 import 'package:bbs_gudang/data/models/transfer_warehouse/company_warehouse_model.dart';
@@ -36,7 +37,6 @@ class TransferWarehouseRepository {
 
         final data = jsonResponse['data'];
 
-        // Debug tambahan: cek null atau tipe data
         if (data == null) {
           print('⚠️ Data is null');
           return [];
@@ -72,9 +72,15 @@ class TransferWarehouseRepository {
           'Failed to load transfer warehouse, code: ${response.statusCode}',
         );
       }
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
       print('❌ ERROR FETCH Transfer Warehouse: $e');
-      throw Exception('Failed to load transfer warehouse: $e');
+      rethrow;
     }
   }
 
@@ -111,8 +117,24 @@ class TransferWarehouseRepository {
 
         return TransferWarehouseModel.fromJson(jsonResponse['data']);
       } else {
-        throw Exception('Failed to load transfer warehouse');
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401)
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          if (response.statusCode >= 500)
+            errorMessage = "Terjadi gangguan pada server.";
+        }
+        throw errorMessage;
       }
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
       throw Exception('Failed to load transfer warehouse: $e');
     }
@@ -139,7 +161,17 @@ class TransferWarehouseRepository {
     );
 
     if (response.statusCode != 200) {
-      throw Exception("HTTP ${response.statusCode}");
+      String errorMessage = "Gagal memuat data (${response.statusCode})";
+      try {
+        final Map<String, dynamic> errorBody = json.decode(response.body);
+        errorMessage = errorBody['message'] ?? errorMessage;
+      } catch (e) {
+        if (response.statusCode == 401)
+          errorMessage = "Sesi telah berakhir, silakan login ulang.";
+        if (response.statusCode >= 500)
+          errorMessage = "Terjadi gangguan pada server.";
+      }
+      throw errorMessage;
     }
 
     final body = jsonDecode(response.body);
@@ -185,7 +217,7 @@ class TransferWarehouseRepository {
     required String token,
     required Map<String, dynamic> payload,
   }) async {
-     final url = Uri.parse(
+    final url = Uri.parse(
       '$baseUrl/fn/t_inventory_transfer_warehouse/saveTransaction',
     );
 
@@ -199,9 +231,17 @@ class TransferWarehouseRepository {
     );
 
     if (response.statusCode != 200) {
-      throw Exception(
-        'Gagal menyimpan transfer warehouse: ${response.body}',
-      );
+      String errorMessage = "Gagal memuat data (${response.statusCode})";
+      try {
+        final Map<String, dynamic> errorBody = json.decode(response.body);
+        errorMessage = errorBody['message'] ?? errorMessage;
+      } catch (e) {
+        if (response.statusCode == 401)
+          errorMessage = "Sesi telah berakhir, silakan login ulang.";
+        if (response.statusCode >= 500)
+          errorMessage = "Terjadi gangguan pada server.";
+      }
+      throw errorMessage;
     }
   }
 }

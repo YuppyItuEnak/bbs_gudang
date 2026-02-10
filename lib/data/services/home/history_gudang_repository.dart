@@ -46,7 +46,7 @@ class HistoryGudangRepository {
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
       final List rows = jsonResponse['data'];
 
-      return rows
+      List<PengeluaranBarangModel> historyList = rows
           .where((e) {
             final dynamic status = e['status'];
             return status.toString() == "2";
@@ -55,6 +55,11 @@ class HistoryGudangRepository {
             return PengeluaranBarangModel.fromJson(e);
           })
           .toList();
+
+      historyList.sort((a, b) {
+        return b.date.compareTo(a.date);
+      });
+      return historyList;
     } on SocketException {
       throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
     } on HttpException {
@@ -89,10 +94,17 @@ class HistoryGudangRepository {
           final List rawList = body['data'];
           final pagination = body['pagination'];
 
-          final items = rawList
+          final List<PenerimaanBarangModel> items = rawList
               .where((e) => e['status']?.toString().toUpperCase() == 'POSTED')
               .map((e) => PenerimaanBarangModel.fromJson(e))
               .toList();
+
+          items.sort((a, b) {
+            final dateB = b.date ?? DateTime.now();
+            final dateA = a.date ?? DateTime.now();
+
+            return dateB.compareTo(dateA);
+          });
 
           return {'data': items, 'pagination': pagination};
         }
@@ -130,6 +142,7 @@ class HistoryGudangRepository {
           .replace(
             queryParameters: {
               'order_by': 'submitted_by',
+              'order_type': 'DESC',
               'no_pagination': 'true',
             },
           );
@@ -169,6 +182,12 @@ class HistoryGudangRepository {
           continue;
         }
       }
+
+      results.sort((StockAdjustmentModel a, StockAdjustmentModel b) {
+        final DateTime dateB = DateTime.tryParse(b.date ?? "") ?? DateTime(0);
+        final DateTime dateA = DateTime.tryParse(a.date ?? "") ?? DateTime(0);
+        return dateB.compareTo(dateA);
+      });
 
       return results;
     } on SocketException {
@@ -215,10 +234,15 @@ class HistoryGudangRepository {
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
       final List rows = jsonResponse['data'];
 
-      return rows
+      List<StockOpnameModel> historyList = rows
           .where((e) => e['status']?.toString().toUpperCase() == 'POSTED')
           .map<StockOpnameModel>((e) => StockOpnameModel.fromJson(e))
           .toList();
+
+      historyList.sort((a, b) {
+        return b.date.compareTo(a.date);
+      });
+      return historyList;
     } on SocketException {
       throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
     } on HttpException {

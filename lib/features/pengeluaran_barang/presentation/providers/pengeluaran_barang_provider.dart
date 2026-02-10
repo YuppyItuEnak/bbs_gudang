@@ -80,7 +80,7 @@ class PengeluaranBarangProvider extends ChangeNotifier {
       );
 
       _listPengeluaranBarang = result;
-      _filterPengeluaranBarang = result;
+      _filterPengeluaranBarang = List.from(result);
 
       debugPrint("✅ SUCCESS FETCH ALL: ${result.length} data");
     } catch (e, stack) {

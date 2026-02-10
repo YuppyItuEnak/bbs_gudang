@@ -87,28 +87,29 @@ class StockOpnameProvider extends ChangeNotifier {
 
       if (result.isEmpty) {
         _hasMore = false;
-      }
+      }else{
+        final existingIds = _reports.map((e) => e.id).toSet();
+      
+      
+      final uniqueNewData = result.where((item) => !existingIds.contains(item.id)).toList();
 
-      _reports.addAll(result);
-      _filteredReports.addAll(result);
-
-      /// ✅ SORT PALING PENTING
+      _reports.addAll(uniqueNewData);
+      _filteredReports = List.from(_reports);
       _reports.sort((a, b) {
-        // 1️⃣ sort by date DESC (null-safe)
-        final aDate = a.date ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bDate = b.date ?? DateTime.fromMillisecondsSinceEpoch(0);
-
-        final dateCompare = bDate.compareTo(aDate);
-        if (dateCompare != 0) return dateCompare;
-
-        // 2️⃣ kalau tanggal sama → sort by code number DESC
-        final aNum = int.tryParse(a.code.split('-').last) ?? 0;
-        final bNum = int.tryParse(b.code.split('-').last) ?? 0;
-
-        return bNum.compareTo(aNum);
+         final aDate = a.date ?? DateTime.fromMillisecondsSinceEpoch(0);
+         final bDate = b.date ?? DateTime.fromMillisecondsSinceEpoch(0);
+         final dateCompare = bDate.compareTo(aDate);
+         if (dateCompare != 0) return dateCompare;
+         final aNum = int.tryParse(a.code.split('-').last) ?? 0;
+         final bNum = int.tryParse(b.code.split('-').last) ?? 0;
+         return bNum.compareTo(aNum);
       });
+      
+      _filteredReports = List.from(_reports); // Pastikan filter juga tersortir
 
       _page++;
+      }
+
     } catch (e) {
       _errorMessage = e.toString();
     } finally {

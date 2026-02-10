@@ -450,8 +450,6 @@ class PenerimaanBarangProvider extends ChangeNotifier {
       final List<PenerimaanBarangModel> newData =
           List<PenerimaanBarangModel>.from(result['data']);
 
-      
-
       final pagination = result['pagination'];
       final int totalPages =
           int.tryParse(pagination['totalPages']?.toString() ?? '1') ?? 1;
@@ -461,8 +459,15 @@ class PenerimaanBarangProvider extends ChangeNotifier {
         _listPenerimaanBarang = newData;
         _filterPenerimaanBarang = newData;
       } else {
-        _listPenerimaanBarang.addAll(newData);
-        _filterPenerimaanBarang.addAll(newData);
+        for (var item in newData) {
+          bool isExist = _listPenerimaanBarang.any(
+            (existing) => existing.id == item.id,
+          );
+          if (!isExist) {
+            _listPenerimaanBarang.add(item);
+            _filterPenerimaanBarang.add(item);
+          }
+        }
       }
 
       // Update status pagination
@@ -601,14 +606,19 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     required String token,
     required Map<String, dynamic> payload,
   }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
     try {
-      // 🔹 3. Submit stock opname
       result = await _repository.createPenerimaanBarang(
         token: token,
         payload: payload,
       );
     } catch (e) {
       rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 

@@ -615,6 +615,16 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
     required List<DropdownMenuItem<String>> items,
     required ValueChanged<String?>? onChanged,
   }) {
+    // Pengecekan Keamanan:
+    // Pastikan 'value' ada di dalam daftar 'items'. Jika tidak ada, paksa jadi null.
+    String? safeValue = value;
+    if (value != null) {
+      final bool hasValue = items.any((item) => item.value == value);
+      if (!hasValue) {
+        safeValue = null;
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -624,7 +634,7 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           isExpanded: true,
-          value: value,
+          value: safeValue, // Gunakan safeValue
           hint: Text(hint, style: const TextStyle(fontSize: 13)),
           items: items,
           onChanged: onChanged,
