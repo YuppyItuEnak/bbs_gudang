@@ -37,7 +37,9 @@ class _TambahPenerimaanBarangPageState
         "supplier_id": provider.supplierId,
         "supplier_name": provider.supplierName,
         "purchase_request_id": provider.purchaseRequestId,
+        "purchase_request_code": provider.prCode,
         "purchase_order_id": provider.purchaseOrderId,
+        "purchase_order_code": provider.selectedPO?.code,
         "unit_bussiness_id": provider.unitBusinessId,
         "unit_bussiness_name": provider.unitBusinessName,
         "warehouse_id": provider.warehouseId,
@@ -80,6 +82,27 @@ class _TambahPenerimaanBarangPageState
         }).toList(),
       };
 
+      // ... di dalam try block sebelum await provider.submitPenerimaanBarang ...
+
+      debugPrint("""
+🚀 CHECK PAYLOAD SEBELUM KIRIM:
+--------------------------------
+ID PO: ${provider.purchaseOrderId}
+ID PR: ${provider.purchaseRequestId}
+NO PB (Code): ${provider.pbCode}
+NO PR (PR Code): ${provider.prCode}
+UNIT: ${provider.unitBusinessName}
+--------------------------------
+JUMLAH ITEM: ${provider.selectedItems.length}
+""");
+
+      // Cek apakah ada yang null secara spesifik
+      if (provider.purchaseOrderId == null)
+        debugPrint("⚠️ WARNING: purchase_order_id is NULL");
+      if (provider.purchaseRequestId == null)
+        debugPrint("⚠️ WARNING: purchase_request_id is NULL");
+
+      debugPrint("📦 FULL JSON PAYLOAD:");
       debugPrint("📦 SUBMIT PB [$status]");
       debugPrint(payload.toString());
 

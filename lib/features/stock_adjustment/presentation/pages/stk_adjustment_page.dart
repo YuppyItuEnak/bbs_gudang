@@ -192,7 +192,7 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
     String statusText = item.status ?? "-";
 
     switch (statusText.toUpperCase()) {
-      case "APPROVED":
+      case "POSTED":
         statusColor = Colors.green;
         break;
       case "REJECTED":

@@ -190,7 +190,7 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
       "opname_id": selectedOpnameId,
       "notes": _catatanController.text,
       "submitted_by": auth.user!.id,
-      "status": sendApproval ? "SUBMITTED" : "DRAFT",
+      "status": sendApproval ? "POSTED" : "DRAFT",
       "date": DateTime.now().toIso8601String().split('T').first,
       "inventory_adjustment_account_id":
           provider.selectedOpname?['inventory_adjustment_account_id'],

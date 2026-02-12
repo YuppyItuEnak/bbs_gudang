@@ -1,5 +1,6 @@
 import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_gudang/features/penerimaan_barang/presentation/providers/penerimaan_barang_provider.dart';
+import 'package:bbs_gudang/features/penerimaan_barang/presentation/widgets/info_penerimaan_barang_edit.dart';
 import 'package:bbs_gudang/features/penerimaan_barang/presentation/widgets/info_penerimaan_barnag.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -26,11 +27,24 @@ class _EditPenerimaanBarangPageState extends State<EditPenerimaanBarangPage> {
     Future.microtask(() {
       final token = context.read<AuthProvider>().token;
       if (token == null) return;
+      final provider = context.read<PenerimaanBarangProvider>();
 
       context.read<PenerimaanBarangProvider>().fetchDetail(
         token: token,
         id: widget.pbId,
       );
+
+      debugPrint("=== DEBUG EDIT PB PAGE ===");
+      debugPrint("PB ID: ${widget.pbId}");
+      debugPrint("PO ID dari Data: ${provider.data?.purchaseOrderId}");
+       debugPrint("PR ID dari Data: ${provider.data?.purchaseRequestId}");
+      debugPrint("PO Code dari Data: ${provider.selectedPO?.code}");
+      debugPrint(
+        "PR Code dari Data: ${provider.prCode}",
+      );
+      debugPrint("Supplier Name: ${provider.supplierName}");
+      debugPrint("Warehouse ID: ${provider.warehouseId}");
+      debugPrint("==========================");
     });
   }
 
@@ -72,6 +86,7 @@ class _EditPenerimaanBarangPageState extends State<EditPenerimaanBarangPage> {
         "supplier_id": provider.supplierId,
         "supplier_name": provider.supplierName,
         "purchase_request_id": provider.purchaseRequestId,
+        // "purchase_request_code": provider.prCode,
         "driver_name": provider.driverName,
         "date_sj_supplier": dateStr,
         "warehouse_id": provider.warehouseId,
@@ -198,12 +213,7 @@ class _EditPenerimaanBarangPageState extends State<EditPenerimaanBarangPage> {
                 padding: const EdgeInsets.only(bottom: 90),
                 child: TabBarView(
                   children: [
-                    InfoPenerimaanBarang(
-                      readOnlyPo: true,
-                      readOnlySupplier: true,
-                      readOnlyPr: true,
-                      readOnlyItemGroup: true,
-                    ),
+                    InfoPenerimaanBarangEdit(),
                     ItemPenerimaanBarang(isEdit: true, allowAdd: false),
                   ],
                 ),

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:bbs_gudang/core/constants/api_constants.dart';
 import 'package:bbs_gudang/data/models/stock_adjustment/stock_adjustment_model.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 
 class StockAdjustmentRepository {
@@ -39,7 +40,7 @@ class StockAdjustmentRepository {
         String errorMessage = "Gagal memuat data (${response.statusCode})";
         try {
           final Map<String, dynamic> errorBody = json.decode(response.body);
-          errorMessage = errorBody['message'] ?? errorMessage;
+          errorMessage = errorMessage;
         } catch (e) {
           if (response.statusCode == 401)
             errorMessage = "Sesi telah berakhir, silakan login ulang.";
@@ -350,6 +351,8 @@ class StockAdjustmentRepository {
     if (data['status'] != 'success') {
       throw Exception('Gagal simpan stock adjustment');
     }
+
+    debugPrint("CREATE STOCK ADJUSTMENT RESPONSE: ${response.body}");
 
     return data['data'];
   }

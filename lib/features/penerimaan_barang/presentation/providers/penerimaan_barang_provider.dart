@@ -335,6 +335,7 @@ class PenerimaanBarangProvider extends ChangeNotifier {
   Future<void> loadPoDetail({
     required String token,
     required String poId,
+    bool isEdit = false,
   }) async {
     try {
       isLoadingPoDetail = true;
@@ -343,10 +344,12 @@ class PenerimaanBarangProvider extends ChangeNotifier {
       final result = await _repository.fetchPoDetail(token: token, poId: poId);
 
       // ================= HEADER =================
+
       supplierId = result['supplier_id'];
       purchaseRequestId = result['purchase_request_id'];
-      warehouseId = result['warehouse_id'];
-
+      if (!isEdit) {
+        warehouseId = result['warehouse_id'];
+      }
       supplierName = result['supplier_name'];
       prCode = result['purchase_request_code'];
       itemGroup = result['item_group_coa'];
@@ -354,6 +357,7 @@ class PenerimaanBarangProvider extends ChangeNotifier {
 
       debugPrint("supplierId: $supplierId");
       debugPrint("purchaseRequestId: $purchaseRequestId");
+
       debugPrint("warehouseId: $warehouseId");
       debugPrint("warehouse_name: $warehouseName");
       debugPrint("PB: $pbCode");
@@ -363,28 +367,30 @@ class PenerimaanBarangProvider extends ChangeNotifier {
       debugPrint("itemGroupCoaId: $itemGroupCoaId");
 
       // ================= ITEM DETAIL PO =================
-      final List poDetails = result['items'] ?? [];
+      if (!isEdit) {
+        final List poDetails = result['items'] ?? [];
 
-      selectedItems = poDetails.map((d) {
-        debugPrint("MAPPING ITEM PO DETAIL:");
-        debugPrint("PO DETAIL ID: ${d['id']}");
-        debugPrint("ITEM NAME: ${d['item_name']}");
-        debugPrint("QTY ORDER: ${d['qty']}");
+        selectedItems = poDetails.map((d) {
+          debugPrint("MAPPING ITEM PO DETAIL:");
+          debugPrint("PO DETAIL ID: ${d['id']}");
+          debugPrint("ITEM NAME: ${d['item_name']}");
+          debugPrint("QTY ORDER: ${d['qty']}");
 
-        return {
-          // ⚠️ WAJIB — backend pakai ini
-          "purchase_order_d_id": d['id'],
+          return {
+            // ⚠️ WAJIB — backend pakai ini
+            "purchase_order_d_id": d['id'],
 
-          // info item
-          "item_id": d['item_id'],
-          "code": d['item_code'],
-          "name": d['item_name'],
+            // info item
+            "item_id": d['item_id'],
+            "code": d['item_code'],
+            "name": d['item_name'],
 
-          // qty
-          "qty_order": d['qty'],
-          "qty_receipt": 0, // default input user
-        };
-      }).toList();
+            // qty
+            "qty_order": d['qty'],
+            "qty_receipt": 0, // default input user
+          };
+        }).toList();
+      }
 
       debugPrint("===== SELECTED ITEMS AFTER LOAD =====");
       debugPrint(selectedItems.toString());
@@ -393,6 +399,17 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     } finally {
       isLoadingPoDetail = false;
       notifyListeners();
+    }
+  }
+
+  void syncSelectedPo(String? poId) {
+    if (poId == null || _listPO.isEmpty) return;
+
+    try {
+      selectedPO = _listPO.firstWhere((element) => element.id == poId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint("PO ID $poId tidak ditemukan di list dropdown");
     }
   }
 
@@ -492,7 +509,7 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     supplierId = model.supplierId;
     supplierName = model.supplierName;
 
-    purchaseOrderId = model.purchaseOrder?.id;
+    purchaseOrderId = model.purchaseOrderId;
     purchaseRequestId = model.purchaseRequestId;
 
     unitBusinessId = model.unitBussinessId;
