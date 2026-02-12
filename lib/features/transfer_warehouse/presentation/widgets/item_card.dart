@@ -3,16 +3,18 @@ import 'package:flutter/material.dart';
 class ItemCard extends StatefulWidget {
   final String nama;
   final String kode;
+  final double stock;
   final int initialQty;
   final Function(int) onQtyChanged;
   // --- Tambahkan Parameter Baru ---
-  final bool isSelectionMode; 
+  final bool isSelectionMode;
   final VoidCallback? onTap;
 
   const ItemCard({
     super.key,
     required this.nama,
     required this.kode,
+    this.stock = 0,
     required this.initialQty,
     required this.onQtyChanged,
     this.isSelectionMode = false, // Default false agar fitur lama tidak berubah
@@ -82,15 +84,37 @@ class _ItemCardState extends State<ItemCard> {
                     widget.kode,
                     style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
                   ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      "Total Stock: ${widget.stock.toInt()}",
+                      style: TextStyle(
+                        color: Colors.blue.shade700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-            
+
             // --- Logika Kondisional ---
             if (widget.isSelectionMode)
               const Icon(Icons.chevron_right, color: Colors.grey)
             else ...[
-              const Text("PCS", style: TextStyle(color: Colors.grey, fontSize: 13)),
+              const Text(
+                "PCS",
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
               const SizedBox(width: 10),
               _buildQtySelector(isSelected),
             ],
@@ -106,17 +130,23 @@ class _ItemCardState extends State<ItemCard> {
         _buildQtyBtn(
           icon: Icons.remove,
           color: isSelected ? Colors.green : Colors.blue.shade100,
-          onTap: () { if (qty > 0) _updateQty(qty - 1); },
+          onTap: () {
+            if (qty > 0) _updateQty(qty - 1);
+          },
         ),
         Container(
-          width: 60, height: 35,
+          width: 60,
+          height: 35,
           margin: const EdgeInsets.symmetric(horizontal: 8),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade300),
           ),
-          child: Text(qty.toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
+          child: Text(
+            qty.toString(),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
         ),
         _buildQtyBtn(
           icon: Icons.add,
@@ -127,12 +157,19 @@ class _ItemCardState extends State<ItemCard> {
     );
   }
 
-  Widget _buildQtyBtn({required IconData icon, required Color color, required VoidCallback onTap}) {
+  Widget _buildQtyBtn({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(6),
+        ),
         child: Icon(icon, color: Colors.white, size: 20),
       ),
     );

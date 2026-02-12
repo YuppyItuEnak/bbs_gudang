@@ -203,12 +203,10 @@ class _PenerimaanBarangPageState extends State<PenerimaanBarangPage> {
     if (token != null) {
       _showLoadingDialog(context);
 
-      // Kirim isRefresh: true agar Provider meriset _page ke 1
       await provider.fetchPenerimaanBarang(token: token, isRefresh: true);
 
       if (mounted) {
-        Navigator.pop(context); // Tutup Dialog
-
+        Navigator.pop(context); 
         // Paksa ListView scroll ke paling atas agar data terbaru kelihatan
         if (_scrollController.hasClients) {
           _scrollController.jumpTo(0);

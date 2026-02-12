@@ -92,7 +92,7 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
     final token = context.read<AuthProvider>().token!;
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => TambahItem(token: token)),
+      MaterialPageRoute(builder: (_) => TambahItem(token: token,  warehouseId: selectedWarehouseId,)),
     );
 
     if (result != null && result is List) {

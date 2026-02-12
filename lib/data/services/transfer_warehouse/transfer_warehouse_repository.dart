@@ -16,7 +16,7 @@ class TransferWarehouseRepository {
     try {
       final uri = Uri.parse(
         "$baseUrl/fn/t_inventory_transfer_warehouse/getAll",
-      );
+      ).replace(queryParameters: {'order_by_raw': 'createdAt DESC'});
 
       final response = await http.get(
         uri,
@@ -234,7 +234,9 @@ class TransferWarehouseRepository {
       String errorMessage = "Gagal memuat data (${response.statusCode})";
       try {
         final Map<String, dynamic> errorBody = json.decode(response.body);
-        errorMessage = errorBody['message'] ?? errorMessage;
+        if (errorBody['message'] != null) {
+          errorMessage = _parseErrorMessage(errorBody['message']);
+        }
       } catch (e) {
         if (response.statusCode == 401)
           errorMessage = "Sesi telah berakhir, silakan login ulang.";
@@ -243,5 +245,32 @@ class TransferWarehouseRepository {
       }
       throw errorMessage;
     }
+  }
+
+  String _parseErrorMessage(String backendMessage) {
+    // Ubah ke lowercase agar pencarian kata kunci lebih akurat
+    final msg = backendMessage.toLowerCase();
+
+    if (msg.contains("stock") || msg.contains("insufficient")) {
+      return "Stok barang tidak mencukupi untuk melakukan transfer.";
+    }
+    if (msg.contains("duplicate") || msg.contains("already exists")) {
+      return "Data ini sudah pernah disimpan sebelumnya.";
+    }
+    if (msg.contains("required") || msg.contains("empty")) {
+      return "Mohon lengkapi semua data yang wajib diisi.";
+    }
+    if (msg.contains("not found")) {
+      return "Data gudang atau barang tidak ditemukan.";
+    }
+    if (msg.contains("warehouse") && msg.contains("same")) {
+      return "Gudang asal dan tujuan tidak boleh sama.";
+    }
+    if (msg.contains("period") || msg.contains("closed")) {
+      return "Periode transaksi sudah ditutup, tidak bisa menyimpan data.";
+    }
+
+    // Jika tidak ada kata kunci yang cocok, kembalikan pesan asli atau pesan default
+    return backendMessage;
   }
 }

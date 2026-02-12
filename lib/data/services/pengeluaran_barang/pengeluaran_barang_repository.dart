@@ -46,7 +46,6 @@ class PengeluaranBarangRepository {
       final body = jsonDecode(response.body);
       final List data = body['data'];
 
-      
       allData.addAll(
         data.map((e) => PengeluaranBarangModel.fromJson(e)).toList(),
       );
@@ -281,14 +280,34 @@ class PengeluaranBarangRepository {
       debugPrint("🧪 CREATE SJ STATUS: ${response.statusCode}");
       debugPrint("🧪 CREATE SJ BODY: ${response.body}");
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        final error = jsonDecode(response.body);
-        throw Exception(
-          error['message'] ?? 'Gagal menyimpan Pengeluaran Barang',
-        );
-      }
-
       final decoded = jsonDecode(response.body);
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        if (decoded is Map<String, dynamic>) {
+          // A. Parsing Error Validasi (Field-specific)
+          if (decoded['errors'] != null && decoded['errors'] is Map) {
+            final errors = decoded['errors'] as Map<String, dynamic>;
+            final List<String> errorMessages = [];
+
+            errors.forEach((field, msgs) {
+              if (msgs is List && msgs.isNotEmpty) {
+                errorMessages.add(
+                  _formatValidationError(field, msgs.first.toString()),
+                );
+              }
+            });
+
+            if (errorMessages.isNotEmpty) throw errorMessages.join("\n");
+          }
+
+          // B. Parsing Pesan Umum dari Backend
+          if (decoded['message'] != null) {
+            throw _parseGeneralError(decoded['message']);
+          }
+        }
+
+        throw "Gagal menyimpan pengeluaran barang (${response.statusCode})";
+      }
 
       if (decoded['data'] == null || decoded['data'] is! List) {
         throw Exception('Format response tidak valid');
@@ -327,13 +346,85 @@ class PengeluaranBarangRepository {
       debugPrint("🧪 UPDATE SJ BODY: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Pastikan mengembalikan Map dari field 'data'
         return Map<String, dynamic>.from(decoded['data']);
-      } else {
-        throw decoded['message'] ?? 'Gagal memperbarui data';
       }
+
+      // 2. Jika Gagal, Parsing Error
+      if (decoded is Map<String, dynamic>) {
+        // A. Cek Error Validasi Field (misal: qty di baris ke-x)
+        if (decoded['errors'] != null && decoded['errors'] is Map) {
+          final errors = decoded['errors'] as Map<String, dynamic>;
+          final List<String> errorMessages = [];
+
+          errors.forEach((field, msgs) {
+            if (msgs is List && msgs.isNotEmpty) {
+              errorMessages.add(
+                _formatValidationError(field, msgs.first.toString()),
+              );
+            }
+          });
+
+          if (errorMessages.isNotEmpty) throw errorMessages.join("\n");
+        }
+
+        // B. Cek Pesan General dari Backend
+        if (decoded['message'] != null) {
+          throw _parseGeneralError(decoded['message']);
+        }
+      }
+
+      // Fallback error standard
+      if (response.statusCode == 401)
+        throw "Sesi berakhir, silakan login ulang.";
+      if (response.statusCode >= 500) throw "Server sedang gangguan (500).";
+
+      throw decoded['message'] ??
+          'Gagal memperbarui data (${response.statusCode})';
     } catch (e) {
       throw 'Gagal memperbarui Pengeluaran Barang: $e';
     }
+  }
+
+  String _parseGeneralError(String msg) {
+    final lowMsg = msg.toLowerCase();
+
+    if (lowMsg.contains('insufficient'))
+      return "Stok barang di gudang tidak mencukupi.";
+    if (lowMsg.contains('period closed'))
+      return "Periode transaksi sudah ditutup.";
+    if (lowMsg.contains('unauthorized'))
+      return "Sesi habis, silakan login ulang.";
+    if (lowMsg.contains('already shipped'))
+      return "Pesanan ini sudah pernah dikirim.";
+    if (lowMsg.contains('credit limit'))
+      return "Batas kredit customer terlampaui.";
+
+    return msg;
+  }
+
+  String _formatValidationError(String field, String originalMessage) {
+    final Map<String, String> fieldNames = {
+      'warehouse_id': 'Gudang Asal',
+      'customer_id': 'Customer/Pelanggan',
+      'transaction_date': 'Tanggal Kirim',
+      'sales_order_id': 'Nomor SO',
+      'expedition_id': 'Ekspedisi',
+      'notes': 'Keterangan',
+      'item_id': 'Barang',
+      'qty': 'Jumlah Dikirim',
+      'uom_id': 'Satuan',
+      'vehicle_number': 'Nomor Kendaraan',
+    };
+
+    // Menangani error detail barang (details.0.qty)
+    if (field.contains('details.')) {
+      final parts = field.split('.');
+      final index = int.tryParse(parts[1]) ?? 0;
+      final detailField = parts.last;
+      final humanField = fieldNames[detailField] ?? detailField;
+      return "Baris ke-${index + 1} ($humanField): ${originalMessage.toLowerCase()}";
+    }
+
+    return "${fieldNames[field] ?? field}: ${originalMessage.toLowerCase()}";
   }
 }

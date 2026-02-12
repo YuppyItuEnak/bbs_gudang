@@ -22,7 +22,7 @@ class PenerimaanBarangRepository {
             'm_gen:id|value1,m_supplier:id|name|is_pajak,m_unit_bussiness:id|name,t_purchase_order>t_purchase_request',
         'page': page.toString(),
         'paginate': paginate.toString(),
-       'order_by_raw': 'createdAt DESC',
+        'order_by_raw': 'createdAt DESC',
       };
 
       final uri = Uri.parse(
@@ -97,7 +97,6 @@ class PenerimaanBarangRepository {
         },
       );
 
-
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
 
@@ -107,7 +106,7 @@ class PenerimaanBarangRepository {
 
         throw Exception('Format response detail tidak sesuai');
       } else {
-         String errorMessage = "Gagal memuat data (${response.statusCode})";
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
         try {
           final Map<String, dynamic> errorBody = json.decode(response.body);
           errorMessage = errorBody['message'] ?? errorMessage;
@@ -261,11 +260,39 @@ class PenerimaanBarangRepository {
     debugPrint('STATUS CODE: ${response.statusCode}');
     debugPrint('RESPONSE BODY: ${response.body}');
 
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception('Gagal menyimpan Penerimaan Barang');
-    }
-
     final json = jsonDecode(response.body);
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      String errorMessage = "Gagal menyimpan penerimaan barang";
+
+      if (json is Map<String, dynamic>) {
+        // A. Cek Error Validasi (Laravel/Express style)
+        if (json['errors'] != null && json['errors'] is Map) {
+          final errors = json['errors'] as Map<String, dynamic>;
+          final List<String> errorMessages = [];
+
+          errors.forEach((field, msgs) {
+            if (msgs is List && msgs.isNotEmpty) {
+              errorMessages.add(
+                _formatValidationError(field, msgs.first.toString()),
+              );
+            }
+          });
+
+          if (errorMessages.isNotEmpty) throw errorMessages.join("\n");
+        }
+
+        // B. Cek Pesan General dari Backend
+        if (json['message'] != null) {
+          throw _parseGeneralError(json['message']);
+        }
+      }
+
+      // Fallback error standard
+      if (response.statusCode == 401)
+        throw "Sesi berakhir, silakan login ulang.";
+      throw "$errorMessage (${response.statusCode})";
+    }
 
     return PenerimaanBarangModel.fromJson(json['data']); // ✅ FIX
   }
@@ -357,27 +384,43 @@ class PenerimaanBarangRepository {
     }
 
     /// ❌ HTTP ERROR
-    if (response.statusCode != 200) {
-      final message =
-          json?['message'] ??
-          json?['error'] ??
-          json?['errors']?.toString() ??
-          "HTTP ${response.statusCode}";
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      if (json is Map<String, dynamic>) {
+        // A. Cek Error Validasi Field (contoh: qty di details.0)
+        if (json['errors'] != null && json['errors'] is Map) {
+          final errors = json['errors'] as Map<String, dynamic>;
+          final List<String> errorMessages = [];
 
-      throw Exception(message);
+          errors.forEach((field, msgs) {
+            if (msgs is List && msgs.isNotEmpty) {
+              errorMessages.add(
+                _formatValidationError(field, msgs.first.toString()),
+              );
+            }
+          });
+
+          if (errorMessages.isNotEmpty) throw errorMessages.join("\n");
+        }
+
+        // B. Cek Pesan Umum dari Backend
+        if (json['message'] != null) {
+          throw _parseGeneralError(json['message']);
+        }
+      }
+
+      throw "Gagal memperbarui penerimaan barang (${response.statusCode})";
     }
 
+    // 2. Handle Business Logic Error (jika status != success)
     if (json?['status'] != 'success') {
-      final message =
-          json?['message'] ??
-          json?['error'] ??
-          json?['errors']?.toString() ??
-          'Update PB gagal';
-
-      throw Exception(message);
+      final msg = json?['message'] ?? 'Terjadi kesalahan sistem';
+      throw _parseGeneralError(msg);
     }
 
+    // 3. Sukses
     return json?['data'];
+
+    
   }
 
   Future<void> insertInventory({
@@ -411,5 +454,55 @@ class PenerimaanBarangRepository {
     } catch (e) {
       throw Exception('Insert inventory gagal: $e');
     }
+  }
+
+  String _parseGeneralError(String msg) {
+    final lowMsg = msg.toLowerCase();
+
+    if (lowMsg.contains('insufficient')) {
+      return "Stok tidak mencukupi untuk transaksi ini.";
+    }
+    if (lowMsg.contains('period closed')) {
+      return "Periode transaksi sudah ditutup.";
+    }
+    if (lowMsg.contains('unauthorized') || lowMsg.contains('expired')) {
+      return "Sesi Anda telah berakhir, silakan login kembali.";
+    }
+    if (lowMsg.contains('already exists') || lowMsg.contains('duplicate')) {
+      return "Data dengan nomor ini sudah terdaftar di sistem.";
+    }
+    if (lowMsg.contains('exceed')) {
+      return "Jumlah yang dimasukkan melebihi sisa pesanan (PO).";
+    }
+
+    // Jika tidak ada yang cocok, kembalikan pesan asli
+    return msg;
+  }
+
+  String _formatValidationError(String field, String originalMessage) {
+    final Map<String, String> fieldNames = {
+      'warehouse_id': 'Gudang',
+      'transaction_date': 'Tanggal Terima',
+      'vendor_id': 'Supplier/Vendor',
+      'purchase_order_id': 'Nomor PO',
+      'reference_number': 'Nomor Referensi/SJ',
+      'notes': 'Catatan',
+      'item_id': 'Barang',
+      'qty': 'Jumlah',
+      'uom_id': 'Satuan',
+      'batch_number': 'Nomor Batch',
+      'expiry_date': 'Tanggal Kedaluwarsa',
+    };
+
+    // Logika untuk detail barang (details.0.qty dst)
+    if (field.contains('details.')) {
+      final parts = field.split('.');
+      final index = int.tryParse(parts[1]) ?? 0;
+      final detailField = parts.last;
+      final humanField = fieldNames[detailField] ?? detailField;
+      return "Baris ke-${index + 1} ($humanField): ${originalMessage.toLowerCase()}";
+    }
+
+    return "${fieldNames[field] ?? field}: ${originalMessage.toLowerCase()}";
   }
 }

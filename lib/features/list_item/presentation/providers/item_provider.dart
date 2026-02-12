@@ -27,11 +27,14 @@ class ItemBarangProvider extends ChangeNotifier {
   String? itemGroup;
   String? itemDivision;
 
+  Map<String, double> _itemStocks = {};
+  Map<String, double> get itemStocks => _itemStocks;
+
   Future<void> fetchItems({
     required String token,
     bool refresh = false,
     bool nextPage = false,
-
+    String? warehouseId,
     String? code,
     String? name,
     String? status,
@@ -69,6 +72,7 @@ class ItemBarangProvider extends ChangeNotifier {
       final result = await repository.fetchListBarang(
         token: token,
         page: _page,
+        warehouseId: warehouseId,
         filterCode: filterCode,
         filterName: filterName,
         filterStatus: filterStatus,
@@ -78,10 +82,14 @@ class ItemBarangProvider extends ChangeNotifier {
       );
 
       final List<ItemBarangModel> newItems = result['items'];
+      final Map<String, double> incomingStocks = Map<String, double>.from(
+        result['stocks'] ?? {},
+      );
       final pagination = result['pagination'];
 
       // TAMBAH DATA
       _items.addAll(newItems);
+      _itemStocks.addAll(incomingStocks);
 
       // CONTROL HAS MORE
       final int currentPage = pagination['page'];
@@ -92,11 +100,44 @@ class ItemBarangProvider extends ChangeNotifier {
       debugPrint(
         "PAGE LOADED: $currentPage | TOTAL ITEM SEKARANG: ${_items.length} | HAS MORE: $_hasMore",
       );
+      debugPrint("STOCKS LOADED: ${_itemStocks.length} items");
     } catch (e) {
       _errorMessage = e.toString();
       debugPrint("❌ FETCH ITEM ERROR: $e");
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  bool _isLoadingStock = false;
+  bool get isLoadingStock => _isLoadingStock;
+
+  Future<void> getStockItems({
+    required String token,
+    required List<String> itemIds, // Gunakan ID karena API Anda meminta ID
+    required String warehouseId,
+  }) async {
+    if (itemIds.isEmpty) return;
+
+    _isLoadingStock = true;
+    notifyListeners();
+
+    try {
+      // Memanggil fungsi repository yang sudah kita buat sebelumnya
+      final Map<String, double> stockResult = await repository.getStockItem(
+        token: token,
+        itemIds: itemIds,
+        warehouseId: warehouseId,
+      );
+
+      // Menggabungkan hasil stok baru ke dalam state yang sudah ada
+      // Menggunakan addAll agar jika ada item baru di-load (pagination), stok lama tidak hilang
+      _itemStocks.addAll(stockResult);
+    } catch (e) {
+      debugPrint("❌ Provider Error getStockItems: $e");
+    } finally {
+      _isLoadingStock = false;
       notifyListeners();
     }
   }

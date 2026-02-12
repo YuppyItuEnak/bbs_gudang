@@ -16,6 +16,7 @@ class TambahPenerimaanBarangPage extends StatefulWidget {
 
 class _TambahPenerimaanBarangPageState
     extends State<TambahPenerimaanBarangPage> {
+  final GlobalKey<InfoPenerimaanBarangState> _infoKey = GlobalKey<InfoPenerimaanBarangState>();
   bool isSubmitting = false;
 
   Future<void> _submitPB({
@@ -25,6 +26,12 @@ class _TambahPenerimaanBarangPageState
     final provider = context.read<PenerimaanBarangProvider>();
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
+
+    if (_infoKey.currentState != null) {
+      if (!_infoKey.currentState!.validateForm()) {
+        return; // Berhenti jika tidak valid
+      }
+    }
 
     setState(() => isSubmitting = true);
 
@@ -167,7 +174,7 @@ JUMLAH ITEM: ${provider.selectedItems.length}
         body: Stack(
           children: [
             TabBarView(
-              children: [InfoPenerimaanBarang(), ItemPenerimaanBarang()],
+              children: [InfoPenerimaanBarang(key: _infoKey), ItemPenerimaanBarang()],
             ),
 
             /// BUTTON SIMPAN

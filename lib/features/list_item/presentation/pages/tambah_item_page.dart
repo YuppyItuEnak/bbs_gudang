@@ -8,8 +8,14 @@ import 'package:provider/provider.dart';
 class TambahItem extends StatefulWidget {
   final String token;
   final bool isOpnameMode;
+  final String? warehouseId;
 
-  const TambahItem({super.key, required this.token, this.isOpnameMode = false});
+  const TambahItem({
+    super.key,
+    required this.token,
+    this.isOpnameMode = false,
+    this.warehouseId,
+  });
 
   @override
   State<TambahItem> createState() => _TambahItemState();
@@ -22,6 +28,25 @@ class _TambahItemState extends State<TambahItem> {
 
   Timer? _debounce; // untuk debounce search
 
+  void _fetchStocksForVisibleItems() {
+    debugPrint("warehouseId: ${widget.warehouseId}");
+    if (widget.warehouseId == null) return;
+
+    final itemProvider = context.read<ItemBarangProvider>();
+
+    if (itemProvider.items.isNotEmpty) {
+      final List<String> itemIds = itemProvider.items
+          .map((e) => e.id!)
+          .toList();
+
+      itemProvider.getStockItems(
+        token: widget.token,
+        itemIds: itemIds,
+        warehouseId: widget.warehouseId!, // Menggunakan warehouseId dari widget
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -30,8 +55,11 @@ class _TambahItemState extends State<TambahItem> {
     Future.microtask(() {
       context.read<ItemBarangProvider>().fetchItems(
         token: widget.token,
+        warehouseId: widget.warehouseId,
         refresh: true,
       );
+
+      _fetchStocksForVisibleItems();
     });
 
     // PAGINATION SCROLL
@@ -46,7 +74,7 @@ class _TambahItemState extends State<TambahItem> {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 150) {
       if (!provider.isLoading && provider.hasMore) {
-        provider.fetchItems(token: widget.token, nextPage: true);
+        provider.fetchItems(token: widget.token,warehouseId: widget.warehouseId, nextPage: true);
       }
     }
   }
@@ -58,6 +86,7 @@ class _TambahItemState extends State<TambahItem> {
     _debounce = Timer(const Duration(milliseconds: 500), () {
       context.read<ItemBarangProvider>().fetchItems(
         token: widget.token,
+        warehouseId: widget.warehouseId,
         refresh: true,
         name: value,
       );
@@ -71,6 +100,8 @@ class _TambahItemState extends State<TambahItem> {
       name: _searchController.text,
     );
   }
+
+  // Tambahkan fungsi ini di dalam class _TambahItemState
 
   @override
   void dispose() {
@@ -209,10 +240,13 @@ class _TambahItemState extends State<TambahItem> {
 
                           final item = filteredItems[index];
                           final currentQty = _qtyMap[item.id] ?? 0;
+                          final double stockValue =
+                              provider.itemStocks[item.id] ?? 0.0;
 
                           return ItemCard(
                             nama: item.name,
                             kode: item.code,
+                            stock: stockValue,
                             initialQty: currentQty,
                             isSelectionMode: widget
                                 .isOpnameMode, // Menyembunyikan selector +/- di Card

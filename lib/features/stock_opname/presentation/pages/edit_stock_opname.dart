@@ -120,7 +120,7 @@ class _EditStockOpnamePageState extends State<EditStockOpnamePage> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => TambahItem(token: token!, isOpnameMode: true),
+        builder: (_) => TambahItem(token: token!, isOpnameMode: true, warehouseId: selectedWarehouseId,),
       ),
     );
 

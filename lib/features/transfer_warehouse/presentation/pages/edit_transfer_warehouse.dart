@@ -306,7 +306,7 @@ class _EditTransferWarehousePageState extends State<EditTransferWarehousePage> {
         onPressed: () async {
           final result = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => TambahItem(token: auth.token!)),
+            MaterialPageRoute(builder: (_) => TambahItem(token: auth.token!, warehouseId: selectedGudangAwal,)),
           );
 
           if (result != null && result is List) {

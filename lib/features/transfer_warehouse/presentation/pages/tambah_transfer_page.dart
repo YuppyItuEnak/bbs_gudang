@@ -95,6 +95,7 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
                     onChanged: (val) {
                       setState(() {
                         selectedGudangAwal = val;
+                        debugPrint("Selected Gudang Awal: $selectedGudangAwal");
                         if (selectedGudangTujuan == val) {
                           selectedGudangTujuan = null;
                         }
@@ -178,11 +179,14 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
                       ),
                       onPressed: () async {
                         final token = context.read<AuthProvider>().token;
-
+                        print("Mengirim Warehouse ID: $selectedGudangAwal");
                         final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => TambahItem(token: token!),
+                            builder: (_) => TambahItem(
+                              token: token!,
+                              warehouseId: selectedGudangAwal,
+                            ),
                           ),
                         );
 
@@ -299,7 +303,8 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
         sourceWarehouseId: selectedGudangAwal!,
         destinationWarehouseId: selectedGudangTujuan!,
         status: status,
-        notes: _catatanController.text, date: _dateController.text,
+        notes: _catatanController.text,
+        date: _dateController.text,
       );
 
       ScaffoldMessenger.of(

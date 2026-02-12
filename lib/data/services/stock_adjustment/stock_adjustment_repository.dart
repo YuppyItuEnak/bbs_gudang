@@ -333,18 +333,24 @@ class StockAdjustmentRepository {
       if (data['errors'] != null && data['errors'] is Map) {
         final errors = data['errors'] as Map<String, dynamic>;
 
-        final errorText = errors.entries
-            .map((e) {
-              final field = e.key;
-              final msgs = (e.value as List).join(', ');
-              return "$field: $msgs";
-            })
-            .join("\n");
+        final List<String> errorMessages = [];
+        errors.forEach((field, msgs) {
+          if (msgs is List && msgs.isNotEmpty) {
+            // Format setiap error menjadi kalimat ramah user
+            errorMessages.add(
+              _formatValidationError(field, msgs.first.toString()),
+            );
+          }
+        });
 
-        message = "$message\n$errorText";
+        throw errorMessages.join("\n");
       }
 
-      throw Exception(message);
+      if (data['message'] != null) {
+        throw _parseGeneralError(data['message']);
+      }
+
+      throw "Terjadi kesalahan sistem (${response.statusCode})";
     }
 
     // ❌ HANDLE BUSINESS LOGIC ERROR
@@ -382,19 +388,77 @@ class StockAdjustmentRepository {
         return decoded['data'];
       }
 
-      String errorMessage = "Gagal memuat data (${response.statusCode})";
-      try {
-        final Map<String, dynamic> errorBody = json.decode(response.body);
-        errorMessage = errorBody['message'] ?? errorMessage;
-      } catch (e) {
-        if (response.statusCode == 401)
-          errorMessage = "Sesi telah berakhir, silakan login ulang.";
-        if (response.statusCode >= 500)
-          errorMessage = "Terjadi gangguan pada server.";
+      String errorMessage = "Gagal memperbarui data (${response.statusCode})";
+
+      if (decoded is Map<String, dynamic>) {
+        // A. Cek Error Validasi Field (seperti details.0.qty)
+        if (decoded['errors'] != null && decoded['errors'] is Map) {
+          final errors = decoded['errors'] as Map<String, dynamic>;
+          final List<String> errorMessages = [];
+
+          errors.forEach((field, msgs) {
+            if (msgs is List && msgs.isNotEmpty) {
+              errorMessages.add(
+                _formatValidationError(field, msgs.first.toString()),
+              );
+            }
+          });
+
+          if (errorMessages.isNotEmpty) {
+            throw errorMessages.join("\n");
+          }
+        }
+
+        // B. Cek Error Logic Bisnis/Pesan Umum
+        if (decoded['message'] != null) {
+          throw _parseGeneralError(decoded['message']);
+        }
       }
+      if (response.statusCode == 401)
+        throw "Sesi telah berakhir, silakan login ulang.";
+      if (response.statusCode >= 500) throw "Terjadi gangguan pada server.";
+
       throw errorMessage;
     } catch (e) {
       rethrow;
     }
+  }
+
+  String _parseGeneralError(String msg) {
+    final lowMsg = msg.toLowerCase();
+    if (lowMsg.contains('insufficient'))
+      return "Stok di gudang tidak mencukupi.";
+    if (lowMsg.contains('period closed'))
+      return "Periode transaksi sudah ditutup.";
+    if (lowMsg.contains('unauthorized'))
+      return "Sesi Anda habis, silakan login kembali.";
+    return msg;
+  }
+
+  String _formatValidationError(String field, String originalMessage) {
+    // Mapping nama field teknis ke nama ramah user
+    final Map<String, String> fieldNames = {
+      'warehouse_id': 'Gudang',
+      'transaction_date': 'Tanggal Transaksi',
+      'notes': 'Catatan',
+      'item_id': 'Barang',
+      'qty': 'Jumlah',
+      'uom_id': 'Satuan',
+    };
+
+    String cleanField = field;
+
+    // Menangani field detail (contoh: details.0.qty -> Jumlah baris ke-1)
+    if (field.contains('details.')) {
+      final parts = field.split('.');
+      final index = int.tryParse(parts[1]) ?? 0;
+      final detailField = parts.last;
+      final humanField = fieldNames[detailField] ?? detailField;
+      return "Baris ke-${index + 1} ($humanField): ${originalMessage.toLowerCase()}";
+    }
+
+    // Menangani field header biasa
+    cleanField = fieldNames[field] ?? field;
+    return "$cleanField: ${originalMessage.toLowerCase()}";
   }
 }
