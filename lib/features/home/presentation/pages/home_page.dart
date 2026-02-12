@@ -3,6 +3,7 @@ import 'package:bbs_gudang/data/services/pengeluaran_barang/pengeluaran_barang_r
 import 'package:bbs_gudang/data/services/purchase_request/purchase_request_repository.dart';
 import 'package:bbs_gudang/features/home/presentation/providers/history_gudang_provider.dart';
 import 'package:bbs_gudang/features/home/presentation/widgets/home_header_card.dart';
+import 'package:bbs_gudang/features/notification/presentation/providers/notification_provider.dart';
 import 'package:bbs_gudang/features/profile/presentation/pages/profile_page.dart';
 import 'package:bbs_gudang/features/stock_adjustment/presentation/providers/stock_adjustment_provider.dart';
 import 'package:bbs_gudang/features/stock_opname/presentation/providers/stock_opname_provider.dart'
@@ -35,6 +36,7 @@ class _HomePageState extends State<HomePage> {
       );
 
       final token = context.read<AuthProvider>().token;
+      final userId = context.read<AuthProvider>().user?.id ?? '';
 
       if (token != null) {
         // provider.fetchHistoryGudang(token: token);
@@ -43,6 +45,10 @@ class _HomePageState extends State<HomePage> {
         provider.fetchPenerimaanBarangHistory(token: token);
         provider.fetchStkAdjustHistory(token: token);
         provider.fetchStkOpnameHistory(token: token);
+        context.read<NotificationProvider>().fetchNotifications(
+          token: token,
+          userId: userId,
+        );
 
         context.read<StockOpnameProvider>().fetchStockOpnameReport(
           token: token,

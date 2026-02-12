@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:bbs_gudang/features/auth/presentation/pages/login_page.dart';
 import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
+import 'package:bbs_gudang/features/home/presentation/pages/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -96,17 +97,17 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ),
                           ),
-                          Positioned(
-                            top: 50,
-                            left: 10,
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.arrow_back,
-                                color: Colors.white,
-                              ),
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                          ),
+                          // Positioned(
+                          //   top: 50,
+                          //   left: 10,
+                          //   child: IconButton(
+                          //     icon: const Icon(
+                          //       Icons.arrow_back,
+                          //       color: Colors.white,
+                          //     ),
+                          //     onPressed: () => Navigaor,
+                          //   ),
+                          // ),
                           Positioned(
                             top: 60,
                             left: 0,

@@ -89,6 +89,7 @@ class HistoryGudangRepository {
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
+        debugPrint("Response Body: $body");
 
         if (body['status'] == 'success' && body['data'] is List) {
           final List rawList = body['data'];
