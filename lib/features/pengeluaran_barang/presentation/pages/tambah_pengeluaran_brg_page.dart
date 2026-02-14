@@ -56,8 +56,8 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
     final unitBusiness = dp.unitBussiness!;
 
     return SuratJalanRequestModel(
-      deliveryPlanId: dp.id!,
-      unitBusinessId: unitBusiness.id!,
+      deliveryPlanId: dp.id,
+      unitBusinessId: unitBusiness.id,
       status: status, // 🔥 DINAMIS
       date: DateFormat('yyyy-MM-dd').format(DateTime.now()),
       vehicle: dp.vehicle?.name,
@@ -72,14 +72,14 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
           npwp: detail.npwp ?? '',
           topId: detail.salesOrder?.top_id ?? '',
           items: detail.items.map((item) {
-            final currentQty = _editedQuantities[item.item!.id!] ?? item.qtyDp;
+            final currentQty = _editedQuantities[item.item!.id] ?? item.qtyDp;
             return SuratJalanItemPayload(
-              itemId: item.item!.id!,
+              itemId: item.item!.id,
               qty: currentQty,
               price: item.price ?? 0,
               weight: (item.weight ?? 0).toDouble(),
               uomId: item.uom?.id ?? '',
-              uomUnit: item.uomUnit!,
+              uomUnit: item.uomUnit,
               uomValue: item.uomValue ?? 1,
             );
           }).toList(),
@@ -93,20 +93,20 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
     final detail = pb.detailDPCode;
     if (detail == null) return;
 
-    final firstDetail = detail.details?.isNotEmpty == true
-        ? detail.details!.first
+    final firstDetail = detail.details.isNotEmpty == true
+        ? detail.details.first
         : null;
 
     companyCtrl.text = detail.unitBussiness?.name ?? '';
     deliveryAreaCtrl.text = detail.deliveryArea?.code ?? '-';
     licensePlateCtrl.text = detail.nopol ?? '';
-    totalWeightCtrl.text = detail.weight?.toString() ?? '';
+    totalWeightCtrl.text = detail.weight.toString() ?? '';
     dateCtrl.text = detail.date != null
         ? DateFormat('dd/MM/yyyy').format(detail.date!)
         : '';
 
     vehicleCtrl.text = detail.vehicle?.name ?? '';
-    totalAmountCtrl.text = detail.total?.toString() ?? '';
+    totalAmountCtrl.text = detail.total.toString() ?? '';
     driverCtrl.text = detail.driver ?? '';
 
     // ✅ EXPEDITION dari SALES ORDER di DETAILS
@@ -157,7 +157,7 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                       /// ===== NO DP DROPDOWN =====
                       const SizedBox(height: 10),
                       const Text(
-                        "No. Pengeluaran Barang",
+                        "No. Delivery Plan",
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -327,7 +327,7 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                                   final qtySo = item.qtySo;
                                   final qtyDp = item.qtyDp;
                                   final sisa = qtySo - qtyDp;
-                                  final itemId = item.item!.id!;
+                                  final itemId = item.item!.id;
                                   final currentQty =
                                       _editedQuantities[itemId] ?? item.qtyDp;
 
@@ -337,7 +337,7 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                                         ? "Generating..."
                                         : (pb.DOCode ?? "-"),
                                     namaBarang: namaBarang,
-                                    qty: "${qtyDp} ${item.uomUnit}",
+                                    qty: "$qtyDp ${item.uomUnit}",
                                     qtySo: qtySo.toString(),
                                     qtyDikirim: qtyDp.toString(),
                                     sisa: sisa.toString(),
@@ -407,11 +407,13 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                         onPressed: pb.isLoading
                             ? null
                             : () async {
+                                if (!_isInputValid(pb)) return;
                                 final token = context
                                     .read<AuthProvider>()
                                     .token;
-                                if (token == null || pb.detailDPCode == null)
+                                if (token == null || pb.detailDPCode == null) {
                                   return;
+                                }
 
                                 final payload = _buildPayload(pb, status: 1);
 
@@ -471,11 +473,13 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                         onPressed: pb.isLoading
                             ? null
                             : () async {
+                                if (!_isInputValid(pb)) return;
                                 final token = context
                                     .read<AuthProvider>()
                                     .token;
-                                if (token == null || pb.detailDPCode == null)
+                                if (token == null || pb.detailDPCode == null) {
                                   return;
+                                }
 
                                 final payload = _buildPayload(pb, status: 2);
 
@@ -535,5 +539,18 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
         },
       ),
     );
+  }
+
+  bool _isInputValid(PengeluaranBarangProvider pb) {
+    if (pb.detailDPCode == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Pilih Delivery Plan terlebih dahulu!"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return false;
+    }
+    return true;
   }
 }

@@ -161,10 +161,12 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                           final String itemName = item['item_name'];
                           final String itemCode = item['item_code'];
                           final int currentQty = _qtyMap[itemId] ?? 0;
+                          final double stockValue = ((item['qty'] ?? 0) as num).toDouble();
 
                           return ItemCard(
                             nama: itemName,
                             kode: itemCode,
+                            stock: stockValue,
                             initialQty: currentQty,
                             onQtyChanged: (newQty) {
                               setState(() {

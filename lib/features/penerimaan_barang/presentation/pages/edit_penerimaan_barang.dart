@@ -1,7 +1,6 @@
 import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_gudang/features/penerimaan_barang/presentation/providers/penerimaan_barang_provider.dart';
 import 'package:bbs_gudang/features/penerimaan_barang/presentation/widgets/info_penerimaan_barang_edit.dart';
-import 'package:bbs_gudang/features/penerimaan_barang/presentation/widgets/info_penerimaan_barnag.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';

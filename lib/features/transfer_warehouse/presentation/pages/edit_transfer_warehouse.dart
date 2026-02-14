@@ -49,10 +49,9 @@ class _EditTransferWarehousePageState extends State<EditTransferWarehousePage> {
         selectedGudangAwal = detail.sourceWarehouseId;
         selectedGudangTujuan = detail.destinationWarehouseId;
         _catatanController.text = detail.notes ?? "";
-        if (detail.date != null) {
-          selectedDate = DateTime.parse(detail.date.toString());
-          _dateController.text = "${selectedDate!.toLocal()}".split(' ')[0];
-        }
+        // debugPrint("catatan: ${detail.notes}");
+        selectedDate = DateTime.parse(detail.date.toString());
+        _dateController.text = "${selectedDate!.toLocal()}".split(' ')[0];
       });
 
       await provider.loadWarehouseCompany(
@@ -284,7 +283,9 @@ class _EditTransferWarehousePageState extends State<EditTransferWarehousePage> {
     required TransferWarehouseProvider provider,
   }) {
     return DropdownButtonFormField<String>(
-      value: provider.warehouses.any((w) => w.id == value) ? value : null,
+      initialValue: provider.warehouses.any((w) => w.id == value)
+          ? value
+          : null,
       decoration: InputDecoration(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -306,7 +307,12 @@ class _EditTransferWarehousePageState extends State<EditTransferWarehousePage> {
         onPressed: () async {
           final result = await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => TambahItem(token: auth.token!, warehouseId: selectedGudangAwal,)),
+            MaterialPageRoute(
+              builder: (_) => TambahItem(
+                token: auth.token!,
+                warehouseId: selectedGudangAwal,
+              ),
+            ),
           );
 
           if (result != null && result is List) {

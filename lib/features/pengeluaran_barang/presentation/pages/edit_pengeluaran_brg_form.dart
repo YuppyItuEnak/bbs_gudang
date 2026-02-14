@@ -47,21 +47,19 @@ class _EditPengeluaranBrgPageState extends State<EditPengeluaranBrgPage> {
         _fillControllers(detail);
         final dpId = detail.deliveryPlanId;
 
-        if (dpId != null) {
-          pb.setSelectedDeliveryPlanId(dpId);
-          await pb.fetchDetailDPCode(token: token, id: dpId);
+        pb.setSelectedDeliveryPlanId(dpId);
+        await pb.fetchDetailDPCode(token: token, id: dpId);
 
-          if (pb.detailDPCode != null) {
-            _syncQtyFromPBtoDP(pb); 
-            setState(() {
-              licensePlateCtrl.text = pb.detailDPCode?.nopol ?? '-';
-              driverCtrl.text = pb.detailDPCode?.driver ?? '-';
-              deliveryAreaCtrl.text =
-                  pb.detailDPCode?.deliveryArea?.code ?? '-';
-            });
-          }
+        if (pb.detailDPCode != null) {
+          _syncQtyFromPBtoDP(pb); 
+          setState(() {
+            licensePlateCtrl.text = pb.detailDPCode?.nopol ?? '-';
+            driverCtrl.text = pb.detailDPCode?.driver ?? '-';
+            deliveryAreaCtrl.text =
+                pb.detailDPCode?.deliveryArea?.code ?? '-';
+          });
         }
-      }
+            }
     }
   }
 
@@ -83,8 +81,7 @@ class _EditPengeluaranBrgPageState extends State<EditPengeluaranBrgPage> {
         );
 
         // Jika ditemukan item yang sama di database PB, timpa qty-nya ke UI
-        if (matchedSavedItem != null &&
-            savedItems.any((s) => s.itemId == (item.item?.id ?? item.itemId))) {
+        if (savedItems.any((s) => s.itemId == (item.item?.id ?? item.itemId))) {
           item.qtyDp = matchedSavedItem.qty;
         }
       }

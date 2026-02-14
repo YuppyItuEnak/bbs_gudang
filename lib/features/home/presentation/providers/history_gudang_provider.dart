@@ -12,8 +12,8 @@ class HistoryGudangProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   String? _errorMessage;
-  List<HistoryGudangModel> _listHistory = [];
-  List<HistoryGudangModel> _filterHistoryGudang = [];
+  final List<HistoryGudangModel> _listHistory = [];
+  final List<HistoryGudangModel> _filterHistoryGudang = [];
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;

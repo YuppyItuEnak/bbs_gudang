@@ -12,7 +12,7 @@ class PengeluaranBarangProvider extends ChangeNotifier {
       PengeluaranBarangRepository();
 
   bool _isLoading = false;
-  bool _isLoadMore = false;
+  final bool _isLoadMore = false;
   String? _errorMessage;
   List<PengeluaranBarangModel> _listPengeluaranBarang = [];
   List<PengeluaranBarangModel> _filterPengeluaranBarang = [];
@@ -22,9 +22,9 @@ class PengeluaranBarangProvider extends ChangeNotifier {
 
   List<DeliveryPlanCodeModel> get listDeliveryPlanCode => _listDeliveryPlanCode;
 
-  int _page = 1;
+  final int _page = 1;
   final int _limit = 100;
-  bool _hasMore = true;
+  final bool _hasMore = true;
 
   bool get isLoading => _isLoading;
   bool get isLoadMore => _isLoadMore;
@@ -324,7 +324,7 @@ class PengeluaranBarangProvider extends ChangeNotifier {
 
       final result = await _pengeluaranBarangRepository.updatePengeluaranBrg(
         token: token,
-        pbId: detailPengeluaranBarang!.id!,
+        pbId: detailPengeluaranBarang!.id,
         payload: payload,
       );
 

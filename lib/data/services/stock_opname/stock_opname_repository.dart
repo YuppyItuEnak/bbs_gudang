@@ -43,10 +43,12 @@ class StockOpnameRepository {
           final Map<String, dynamic> errorBody = json.decode(response.body);
           errorMessage = errorBody['message'] ?? errorMessage;
         } catch (e) {
-          if (response.statusCode == 401)
+          if (response.statusCode == 401) {
             errorMessage = "Sesi telah berakhir, silakan login ulang.";
-          if (response.statusCode >= 500)
+          }
+          if (response.statusCode >= 500) {
             errorMessage = "Terjadi gangguan pada server.";
+          }
         }
         throw errorMessage;
       }
@@ -99,10 +101,12 @@ class StockOpnameRepository {
           final Map<String, dynamic> errorBody = json.decode(response.body);
           errorMessage = errorBody['message'] ?? errorMessage;
         } catch (e) {
-          if (response.statusCode == 401)
+          if (response.statusCode == 401) {
             errorMessage = "Sesi telah berakhir, silakan login ulang.";
-          if (response.statusCode >= 500)
+          }
+          if (response.statusCode >= 500) {
             errorMessage = "Terjadi gangguan pada server.";
+          }
         }
         throw errorMessage;
       }
@@ -203,10 +207,12 @@ class StockOpnameRepository {
         final Map<String, dynamic> errorBody = json.decode(response.body);
         errorMessage = errorBody['message'] ?? errorMessage;
       } catch (e) {
-        if (response.statusCode == 401)
+        if (response.statusCode == 401) {
           errorMessage = "Sesi telah berakhir, silakan login ulang.";
-        if (response.statusCode >= 500)
+        }
+        if (response.statusCode >= 500) {
           errorMessage = "Terjadi gangguan pada server.";
+        }
       }
       throw errorMessage;
     }
@@ -264,8 +270,9 @@ class StockOpnameRepository {
       }
 
       // Fallback berdasarkan status code
-      if (response.statusCode == 401)
+      if (response.statusCode == 401) {
         throw "Sesi telah berakhir, silakan login ulang.";
+      }
       if (response.statusCode >= 500) throw "Terjadi gangguan pada server.";
 
       throw "Gagal memperbarui data opname (${response.statusCode})";
@@ -283,14 +290,18 @@ class StockOpnameRepository {
   String _parseGeneralError(String msg) {
     final lowMsg = msg.toLowerCase();
 
-    if (lowMsg.contains('period closed'))
+    if (lowMsg.contains('period closed')) {
       return "Periode opname sudah ditutup.";
-    if (lowMsg.contains('unauthorized'))
+    }
+    if (lowMsg.contains('unauthorized')) {
       return "Sesi habis, silakan login kembali.";
-    if (lowMsg.contains('already exists'))
+    }
+    if (lowMsg.contains('already exists')) {
       return "Data opname untuk gudang ini sudah ada.";
-    if (lowMsg.contains('locked'))
+    }
+    if (lowMsg.contains('locked')) {
       return "Data sedang dikunci oleh proses lain.";
+    }
 
     return msg;
   }

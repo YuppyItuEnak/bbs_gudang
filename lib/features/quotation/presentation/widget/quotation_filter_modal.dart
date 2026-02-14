@@ -14,7 +14,7 @@ class QuotationFilterModal extends StatefulWidget {
 }
 
 class _QuotationFilterModalState extends State<QuotationFilterModal> {
-  Key _autocompleteKey = UniqueKey();
+  final Key _autocompleteKey = UniqueKey();
 
   @override
   void initState() {
@@ -179,7 +179,7 @@ class _QuotationFilterModalState extends State<QuotationFilterModal> {
               _label('Status'),
               DropdownButtonFormField<String>(
                 isExpanded: true,
-                value: provider.filterStatus,
+                initialValue: provider.filterStatus,
                 decoration: InputDecoration(
                   hintText: 'Semua',
                   border: OutlineInputBorder(

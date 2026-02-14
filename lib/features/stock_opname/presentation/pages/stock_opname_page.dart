@@ -232,9 +232,7 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
                   ],
                 ),
                 Text(
-                  item.date != null
-                      ? DateFormat('dd/MM/yyyy').format(item.date!)
-                      : '-',
+                  DateFormat('dd/MM/yyyy').format(item.date!),
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],

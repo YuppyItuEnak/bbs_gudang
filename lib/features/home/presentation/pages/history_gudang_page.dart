@@ -253,13 +253,11 @@ class _HistoryGudangPageState extends State<HistoryGudangPage> {
         return;
     }
 
-    if (detailPage != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => detailPage!),
-      );
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => detailPage!),
+    );
     }
-  }
 
   Widget _buildErrorState(HistoryGudangProvider provider) {
     return Center(

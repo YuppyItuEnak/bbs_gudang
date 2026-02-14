@@ -51,7 +51,7 @@ class _InfoPenerimaanBarangEditState extends State<InfoPenerimaanBarangEdit> {
 
       await tw.loadUserCompanies(
         token: auth.token!,
-        userId: auth.user!.id!,
+        userId: auth.user!.id,
         responsibilityId: responsibilityId!,
       );
 

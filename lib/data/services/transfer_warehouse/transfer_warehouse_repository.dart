@@ -122,10 +122,12 @@ class TransferWarehouseRepository {
           final Map<String, dynamic> errorBody = json.decode(response.body);
           errorMessage = errorBody['message'] ?? errorMessage;
         } catch (e) {
-          if (response.statusCode == 401)
+          if (response.statusCode == 401) {
             errorMessage = "Sesi telah berakhir, silakan login ulang.";
-          if (response.statusCode >= 500)
+          }
+          if (response.statusCode >= 500) {
             errorMessage = "Terjadi gangguan pada server.";
+          }
         }
         throw errorMessage;
       }
@@ -166,10 +168,12 @@ class TransferWarehouseRepository {
         final Map<String, dynamic> errorBody = json.decode(response.body);
         errorMessage = errorBody['message'] ?? errorMessage;
       } catch (e) {
-        if (response.statusCode == 401)
+        if (response.statusCode == 401) {
           errorMessage = "Sesi telah berakhir, silakan login ulang.";
-        if (response.statusCode >= 500)
+        }
+        if (response.statusCode >= 500) {
           errorMessage = "Terjadi gangguan pada server.";
+        }
       }
       throw errorMessage;
     }
@@ -238,10 +242,12 @@ class TransferWarehouseRepository {
           errorMessage = _parseErrorMessage(errorBody['message']);
         }
       } catch (e) {
-        if (response.statusCode == 401)
+        if (response.statusCode == 401) {
           errorMessage = "Sesi telah berakhir, silakan login ulang.";
-        if (response.statusCode >= 500)
+        }
+        if (response.statusCode >= 500) {
           errorMessage = "Terjadi gangguan pada server.";
+        }
       }
       throw errorMessage;
     }

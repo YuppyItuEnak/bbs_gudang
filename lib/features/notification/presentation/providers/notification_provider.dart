@@ -3,7 +3,7 @@ import 'package:bbs_gudang/data/services/notification/notification_repository.da
 import 'package:flutter/material.dart';
 
 class NotificationProvider extends ChangeNotifier {
-  NotificationRepository _notificationRepository = NotificationRepository();
+  final NotificationRepository _notificationRepository = NotificationRepository();
 
   List<NotificationModel> _listNotifications = [];
   List<NotificationModel> get listNotifications => _listNotifications;

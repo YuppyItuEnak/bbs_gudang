@@ -14,7 +14,7 @@ class ItemCard extends StatefulWidget {
     super.key,
     required this.nama,
     required this.kode,
-    this.stock = 0,
+    this.stock = 0.0,
     required this.initialQty,
     required this.onQtyChanged,
     this.isSelectionMode = false, // Default false agar fitur lama tidak berubah
@@ -95,7 +95,7 @@ class _ItemCardState extends State<ItemCard> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      "Total Stock: ${widget.stock.toInt()}",
+                      "Total Stock: ${widget.stock}",
                       style: TextStyle(
                         color: Colors.blue.shade700,
                         fontSize: 12,

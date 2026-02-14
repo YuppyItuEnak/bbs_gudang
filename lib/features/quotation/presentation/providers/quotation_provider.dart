@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../../../../data/models/quotation/quotation_model.dart';
 import '../../../../data/models/quotation/quotation_detail_model.dart';
 import '../../../../data/services/quotation/quotation_repository.dart';
-import '../../../../data/models/customer/customer_model.dart';
 import '../../../../data/services/customer/customer_repository.dart';
 
 class QuotationProvider with ChangeNotifier {

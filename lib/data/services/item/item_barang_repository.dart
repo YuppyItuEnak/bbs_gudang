@@ -71,7 +71,7 @@ class ItemBarangRepository {
       Map<String, double> stocks = {};
       if (items.isNotEmpty && warehouseId != null) {
         debugPrint("Fetching stocks for warehouseId: $warehouseId");
-        final List<String> itemIds = items.map((item) => item.id!).toList();
+        final List<String> itemIds = items.map((item) => item.id).toList();
 
         stocks = await getStockItem(
           token: token,

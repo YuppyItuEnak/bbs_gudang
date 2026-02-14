@@ -1,4 +1,3 @@
-import 'package:bbs_gudang/data/models/list_item/list_item_model.dart';
 import 'package:bbs_gudang/data/models/transfer_warehouse/company_warehouse_model.dart';
 import 'package:bbs_gudang/data/models/transfer_warehouse/transfer_company_model.dart';
 import 'package:bbs_gudang/data/models/transfer_warehouse/transfer_warehouse_model.dart';

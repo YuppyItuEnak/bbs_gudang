@@ -104,10 +104,12 @@ JUMLAH ITEM: ${provider.selectedItems.length}
 """);
 
       // Cek apakah ada yang null secara spesifik
-      if (provider.purchaseOrderId == null)
+      if (provider.purchaseOrderId == null) {
         debugPrint("⚠️ WARNING: purchase_order_id is NULL");
-      if (provider.purchaseRequestId == null)
+      }
+      if (provider.purchaseRequestId == null) {
         debugPrint("⚠️ WARNING: purchase_request_id is NULL");
+      }
 
       debugPrint("📦 FULL JSON PAYLOAD:");
       debugPrint("📦 SUBMIT PB [$status]");

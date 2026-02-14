@@ -269,11 +269,9 @@ class HomeHistorySection extends StatelessWidget {
     }
 
     // Sekarang baris ini bisa dijangkau (Reachable)
-    if (detailPage != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => detailPage!),
-      );
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => detailPage!),
+    );
     }
-  }
 }

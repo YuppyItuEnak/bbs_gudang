@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 class StockAdjustmentProvider extends ChangeNotifier {
   final StockAdjustmentRepository _repo = StockAdjustmentRepository();
 
-  List<StockAdjustmentModel> _data = [];
+  final List<StockAdjustmentModel> _data = [];
   List<StockAdjustmentModel> _filterData = [];
   StockAdjustmentModel? _detailData;
   bool _isLoading = false;

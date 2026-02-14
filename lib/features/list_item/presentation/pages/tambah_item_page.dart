@@ -36,7 +36,7 @@ class _TambahItemState extends State<TambahItem> {
 
     if (itemProvider.items.isNotEmpty) {
       final List<String> itemIds = itemProvider.items
-          .map((e) => e.id!)
+          .map((e) => e.id)
           .toList();
 
       itemProvider.getStockItems(
@@ -136,7 +136,7 @@ class _TambahItemState extends State<TambahItem> {
         builder: (context, provider, _) {
           final filteredItems = widget.isOpnameMode
               ? provider.items
-                    .where((item) => item.itemTypeName?.toUpperCase() != "JASA")
+                    .where((item) => item.itemTypeName.toUpperCase() != "JASA")
                     .toList()
               : provider.items;
           return Column(

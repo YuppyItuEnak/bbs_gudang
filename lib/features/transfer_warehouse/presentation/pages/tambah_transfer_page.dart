@@ -331,7 +331,7 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
     }
 
     return DropdownButtonFormField<String>(
-      value: provider.companies.any((c) => c.id == selectedCompany)
+      initialValue: provider.companies.any((c) => c.id == selectedCompany)
           ? selectedCompany
           : null,
       hint: const Text("Pilih Company"),
@@ -353,14 +353,12 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
           selectedGudangTujuan = null;
         });
 
-        if (val != null) {
-          // debugPrint("Masuk");
-          context.read<TransferWarehouseProvider>().loadWarehouseCompany(
-            unitBusinessId: val,
-            token: context.read<AuthProvider>().token!,
-          );
-        }
-      },
+        // debugPrint("Masuk");
+        context.read<TransferWarehouseProvider>().loadWarehouseCompany(
+          unitBusinessId: val,
+          token: context.read<AuthProvider>().token!,
+        );
+            },
     );
   }
 
@@ -389,7 +387,7 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
     final isEnabled = selectedCompany != null && provider.warehouses.isNotEmpty;
 
     return DropdownButtonFormField<String>(
-      value: provider.warehouses.any((w) => w.id == value) ? value : null,
+      initialValue: provider.warehouses.any((w) => w.id == value) ? value : null,
       hint: Text(hint),
       isExpanded: true,
       decoration: InputDecoration(

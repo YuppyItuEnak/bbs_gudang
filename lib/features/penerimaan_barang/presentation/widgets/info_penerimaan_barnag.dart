@@ -59,7 +59,7 @@ class InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
 
       tw.loadUserCompanies(
         token: auth.token!,
-        userId: auth.user!.id!,
+        userId: auth.user!.id,
         responsibilityId: responsibilityId!,
       );
     });
@@ -444,7 +444,6 @@ class InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
     Function(String) onChanged,
     String hint, {
     int maxLines = 1,
-    String? errorText,
   }) {
     return TextField(
       controller: controller,

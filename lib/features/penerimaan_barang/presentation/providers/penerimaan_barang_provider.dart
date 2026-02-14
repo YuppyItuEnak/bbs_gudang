@@ -24,7 +24,7 @@ class PenerimaanBarangProvider extends ChangeNotifier {
   List<AvailablePoModel> get listPO => _listPO;
 
   int _page = 1;
-  int _paginate = 10;
+  final int _paginate = 10;
 
   bool _hasMore = true;
 
@@ -526,7 +526,7 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     supplierSjNo = model.noSjSupplier;
     headerNote = model.notes;
 
-    invoiceDate = model.date != null ? model.date : null;
+    invoiceDate = model.date;
 
     // DETAIL ITEM
     selectedItems = model.details.map((e) {

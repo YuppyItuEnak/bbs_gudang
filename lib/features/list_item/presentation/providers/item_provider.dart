@@ -27,7 +27,7 @@ class ItemBarangProvider extends ChangeNotifier {
   String? itemGroup;
   String? itemDivision;
 
-  Map<String, double> _itemStocks = {};
+  final Map<String, double> _itemStocks = {};
   Map<String, double> get itemStocks => _itemStocks;
 
   Future<void> fetchItems({

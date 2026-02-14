@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:bbs_gudang/features/auth/presentation/pages/login_page.dart';
 import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
-import 'package:bbs_gudang/features/home/presentation/pages/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';

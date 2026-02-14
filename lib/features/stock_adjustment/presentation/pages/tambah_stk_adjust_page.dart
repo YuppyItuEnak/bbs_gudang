@@ -346,7 +346,7 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
                   provider.setSelectedOpname(selectedHeader);
                   await provider.selectOpname(
                     token: context.read<AuthProvider>().token!,
-                    opnameId: val!,
+                    opnameId: val,
                   );
                   setState(() {
                     selectedItems = provider.selectedItems
@@ -584,8 +584,9 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
     final provider = context.read<StockAdjustmentProvider>();
 
     // 1. Validasi Input Dasar
-    if (provider.generatedCode == null)
+    if (provider.generatedCode == null) {
       return _showError("Kode adjustment belum tergenerate");
+    }
     if (selectedCompanyId == null) return _showError("Company belum dipilih");
     if (selectedWarehouseId == null) return _showError("Gudang belum dipilih");
     if (selectedDate == null) return _showError("Tanggal belum dipilih");

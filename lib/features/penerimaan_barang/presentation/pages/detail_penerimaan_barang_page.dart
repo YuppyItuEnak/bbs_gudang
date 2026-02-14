@@ -138,7 +138,7 @@ class _DetailPenerimaanBarangPageState
                               context,
                               MaterialPageRoute(
                                 builder: (_) =>
-                                    EditPenerimaanBarangPage(pbId: header.id!),
+                                    EditPenerimaanBarangPage(pbId: header.id),
                               ),
                             );
 

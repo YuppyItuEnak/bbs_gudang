@@ -374,8 +374,9 @@ class PengeluaranBarangRepository {
       }
 
       // Fallback error standard
-      if (response.statusCode == 401)
+      if (response.statusCode == 401) {
         throw "Sesi berakhir, silakan login ulang.";
+      }
       if (response.statusCode >= 500) throw "Server sedang gangguan (500).";
 
       throw decoded['message'] ??
@@ -388,16 +389,21 @@ class PengeluaranBarangRepository {
   String _parseGeneralError(String msg) {
     final lowMsg = msg.toLowerCase();
 
-    if (lowMsg.contains('insufficient'))
+    if (lowMsg.contains('insufficient')) {
       return "Stok barang di gudang tidak mencukupi.";
-    if (lowMsg.contains('period closed'))
+    }
+    if (lowMsg.contains('period closed')) {
       return "Periode transaksi sudah ditutup.";
-    if (lowMsg.contains('unauthorized'))
+    }
+    if (lowMsg.contains('unauthorized')) {
       return "Sesi habis, silakan login ulang.";
-    if (lowMsg.contains('already shipped'))
+    }
+    if (lowMsg.contains('already shipped')) {
       return "Pesanan ini sudah pernah dikirim.";
-    if (lowMsg.contains('credit limit'))
+    }
+    if (lowMsg.contains('credit limit')) {
       return "Batas kredit customer terlampaui.";
+    }
 
     return msg;
   }

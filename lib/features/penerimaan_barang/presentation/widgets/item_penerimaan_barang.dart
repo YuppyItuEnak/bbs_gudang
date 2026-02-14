@@ -36,7 +36,7 @@ class _ItemPenerimaanBarangState extends State<ItemPenerimaanBarang> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
 
-              if (widget.allowAdd)
+              
                 TextButton.icon(
                   onPressed: () async {
                     final token = context.read<AuthProvider>().token;
@@ -115,13 +115,19 @@ class _ItemPenerimaanBarangState extends State<ItemPenerimaanBarang> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                name,
-                style: const TextStyle(
-                  color: Colors.green,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow:
+                      TextOverflow.ellipsis, // Akan jadi "Nama Barang Yan..."
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
+              const SizedBox(width: 10),
               if (!widget.isEdit)
                 GestureDetector(
                   onTap: () => provider.removeItem(index),
