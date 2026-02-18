@@ -141,11 +141,14 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                         controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.symmetric(horizontal: 20),
+                        // MODIFIKASI 1: Tambahkan loading ke hitungan hanya jika sedang loading data tambahan
                         itemCount:
                             provider.pbDetails.length +
-                            (provider.hasMore ? 1 : 0),
+                            (provider.hasMore && provider.isLoadingPbDetail
+                                ? 1
+                                : 0),
                         itemBuilder: (context, index) {
-                          /// LOADING BAWAH
+                          // MODIFIKASI 2: Cek apakah index ini adalah slot untuk loading tambahan
                           if (index == provider.pbDetails.length) {
                             return const Padding(
                               padding: EdgeInsets.symmetric(vertical: 20),
@@ -154,16 +157,16 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                           }
 
                           final item = provider.pbDetails[index];
-
                           final String itemId = item['id'];
                           final String itemName = item['item_name'];
                           final String itemCode = item['item_code'];
-
                           final int currentQty = _qtyMap[itemId] ?? 0;
+                          final double stockValue = ((item['qty'] ?? 0) as num).toDouble();
 
                           return ItemCard(
                             nama: itemName,
                             kode: itemCode,
+                            stock: stockValue,
                             initialQty: currentQty,
                             onQtyChanged: (newQty) {
                               setState(() {
@@ -203,7 +206,8 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                                     "name": item["item_name"],
 
                                     "qty_order": item["qty"],
-                                    "qty_receipt": item['qty_receipt'], // default awal
+                                    "qty_receipt":
+                                        item['qty_receipt'], // default awal
                                   };
                                 })
                                 .toList();

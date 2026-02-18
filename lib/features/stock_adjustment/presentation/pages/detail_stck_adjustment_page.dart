@@ -59,11 +59,6 @@ class _DetailStckAdjustmentPageState extends State<DetailStckAdjustmentPage> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // 2. Handle Error
-          if (provider.error != null) {
-            return Center(child: Text("Error: ${provider.error}"));
-          }
-
           // 3. Handle Empty Data
           final data = provider.detailData;
           if (data == null) {

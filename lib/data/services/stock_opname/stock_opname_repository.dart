@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:ffi';
+import 'dart:io';
 import 'package:bbs_gudang/core/constants/api_constants.dart';
 import 'package:bbs_gudang/data/models/stock_opname/stock_opname_detail.dart';
 import 'package:bbs_gudang/data/models/stock_opname/stock_opname_model.dart';
@@ -23,6 +24,8 @@ class StockOpnameRepository {
         queryParameters: {
           'include': 'm_unit_bussiness,m_warehouse',
           'no_pagination': 'true',
+          'order_by': 'date',
+          'order_type': 'DESC',
         },
       );
 
@@ -35,7 +38,19 @@ class StockOpnameRepository {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('HTTP ${response.statusCode}');
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401) {
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          }
+          if (response.statusCode >= 500) {
+            errorMessage = "Terjadi gangguan pada server.";
+          }
+        }
+        throw errorMessage;
       }
 
       final decoded = jsonDecode(response.body);
@@ -45,8 +60,14 @@ class StockOpnameRepository {
       final List listData = decoded['data'];
 
       return listData.map((e) => StockOpnameModel.fromJson(e)).toList();
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
-      throw Exception('Failed to load stock opname report: $e');
+      rethrow;
     }
   }
 
@@ -75,12 +96,30 @@ class StockOpnameRepository {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Failed load opname detail');
+        String errorMessage = "Gagal memuat data (${response.statusCode})";
+        try {
+          final Map<String, dynamic> errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          if (response.statusCode == 401) {
+            errorMessage = "Sesi telah berakhir, silakan login ulang.";
+          }
+          if (response.statusCode >= 500) {
+            errorMessage = "Terjadi gangguan pada server.";
+          }
+        }
+        throw errorMessage;
       }
 
       final decoded = jsonDecode(response.body);
 
       return StockOpnameModel.fromJson(decoded['data']);
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
       print('❌ ERROR FETCH DETAIL PENERIMAAN BARANG: $e');
       rethrow;
@@ -105,11 +144,35 @@ class StockOpnameRepository {
     debugPrint('STATUS CODE: ${response.statusCode}');
     debugPrint('RESPONSE BODY: ${response.body}');
 
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception('Gagal menyimpan Stock Opname');
-    }
-
     final json = jsonDecode(response.body);
+
+    // 1. Handle Error (Bukan 200/201)
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      if (json is Map<String, dynamic>) {
+        // A. Parsing Error Validasi per Field (Laravel/Express style)
+        if (json['errors'] != null && json['errors'] is Map) {
+          final errors = json['errors'] as Map<String, dynamic>;
+          final List<String> errorMessages = [];
+
+          errors.forEach((field, msgs) {
+            if (msgs is List && msgs.isNotEmpty) {
+              errorMessages.add(
+                _formatValidationError(field, msgs.first.toString()),
+              );
+            }
+          });
+
+          if (errorMessages.isNotEmpty) throw errorMessages.join("\n");
+        }
+
+        // B. Parsing Pesan Umum dari Backend
+        if (json['message'] != null) {
+          throw _parseGeneralError(json['message']);
+        }
+      }
+
+      throw "Gagal menyimpan stock opname (${response.statusCode})";
+    }
 
     return StockOpnameModel.fromJson(json['data']); // ✅ FIX
   }
@@ -139,7 +202,19 @@ class StockOpnameRepository {
 
     // ✅ FIX SESUAI RESPONSE BACKEND
     if (json['success'] != true) {
-      throw Exception(json['message'] ?? 'Generate code error');
+      String errorMessage = "Gagal memuat data (${response.statusCode})";
+      try {
+        final Map<String, dynamic> errorBody = json.decode(response.body);
+        errorMessage = errorBody['message'] ?? errorMessage;
+      } catch (e) {
+        if (response.statusCode == 401) {
+          errorMessage = "Sesi telah berakhir, silakan login ulang.";
+        }
+        if (response.statusCode >= 500) {
+          errorMessage = "Terjadi gangguan pada server.";
+        }
+      }
+      throw errorMessage;
     }
 
     return json['data']; // ✅ OPC-2601-0006
@@ -168,16 +243,89 @@ class StockOpnameRepository {
       // Cek apakah response sukses (status 200 atau 201)
       if (response.statusCode == 200 || response.statusCode == 201) {
         return responseData;
-      } else {
-        // Ambil pesan error dari body jika ada, jika tidak pakai default message
-        final message =
-            responseData['message'] ??
-            'Gagal memperbarui data (Status: ${response.statusCode})';
-        throw message;
       }
+
+      // 2. Jika Gagal, Parsing Error
+      if (responseData is Map<String, dynamic>) {
+        // A. Cek Error Validasi per Baris (contoh: qty_physic kosong)
+        if (responseData['errors'] != null && responseData['errors'] is Map) {
+          final errors = responseData['errors'] as Map<String, dynamic>;
+          final List<String> errorMessages = [];
+
+          errors.forEach((field, msgs) {
+            if (msgs is List && msgs.isNotEmpty) {
+              errorMessages.add(
+                _formatValidationError(field, msgs.first.toString()),
+              );
+            }
+          });
+
+          if (errorMessages.isNotEmpty) throw errorMessages.join("\n");
+        }
+
+        // B. Cek Pesan Umum (contoh: Periode sudah ditutup)
+        if (responseData['message'] != null) {
+          throw _parseGeneralError(responseData['message']);
+        }
+      }
+
+      // Fallback berdasarkan status code
+      if (response.statusCode == 401) {
+        throw "Sesi telah berakhir, silakan login ulang.";
+      }
+      if (response.statusCode >= 500) throw "Terjadi gangguan pada server.";
+
+      throw "Gagal memperbarui data opname (${response.statusCode})";
+    } on SocketException {
+      throw "Tidak ada koneksi internet. Silakan cek sinyal Anda.";
+    } on HttpException {
+      throw "Layanan tidak ditemukan.";
+    } on FormatException {
+      throw "Format data tidak sesuai.";
     } catch (e) {
-      // Teruskan error ke layer provider
       rethrow;
     }
+  }
+
+  String _parseGeneralError(String msg) {
+    final lowMsg = msg.toLowerCase();
+
+    if (lowMsg.contains('period closed')) {
+      return "Periode opname sudah ditutup.";
+    }
+    if (lowMsg.contains('unauthorized')) {
+      return "Sesi habis, silakan login kembali.";
+    }
+    if (lowMsg.contains('already exists')) {
+      return "Data opname untuk gudang ini sudah ada.";
+    }
+    if (lowMsg.contains('locked')) {
+      return "Data sedang dikunci oleh proses lain.";
+    }
+
+    return msg;
+  }
+
+  String _formatValidationError(String field, String originalMessage) {
+    final Map<String, String> fieldNames = {
+      'warehouse_id': 'Gudang',
+      'transaction_date': 'Tanggal Opname',
+      'notes': 'Keterangan',
+      'item_id': 'Barang',
+      'qty_physic': 'Jumlah Fisik', // Field khusus Opname
+      'qty_book': 'Jumlah Buku/Sistem', // Field khusus Opname
+      'uom_id': 'Satuan',
+    };
+
+    // Menangani error detail barang (details.0.qty_physic)
+    if (field.contains('details.')) {
+      final parts = field.split('.');
+      final index = int.tryParse(parts[1]) ?? 0;
+      final detailField = parts.last;
+      final humanField = fieldNames[detailField] ?? detailField;
+      return "Baris ke-${index + 1} ($humanField): ${originalMessage.toLowerCase()}";
+    }
+
+    return "${fieldNames[field] ?? field}: ${originalMessage.toLowerCase()}";
   }
 }

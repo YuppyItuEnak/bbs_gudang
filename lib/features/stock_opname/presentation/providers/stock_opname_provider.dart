@@ -1,6 +1,4 @@
-import 'dart:ffi';
 
-import 'package:bbs_gudang/data/models/stock_opname/stock_opname_detail.dart';
 import 'package:bbs_gudang/data/models/stock_opname/stock_opname_model.dart';
 import 'package:bbs_gudang/data/services/stock_opname/stock_opname_repository.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +7,7 @@ class StockOpnameProvider extends ChangeNotifier {
   final StockOpnameRepository _opnameRepository = StockOpnameRepository();
 
   List<StockOpnameModel> _reports = [];
+  List<StockOpnameModel> _filteredReports = [];
   StockOpnameModel? _listDetail;
   bool _isLoading = false;
   String? _errorMessage;
@@ -18,6 +17,7 @@ class StockOpnameProvider extends ChangeNotifier {
   bool _hasMore = true;
 
   List<StockOpnameModel> get reports => _reports;
+  List<StockOpnameModel> get filteredReports => _filteredReports;
   StockOpnameModel? get listDetail => _listDetail;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -34,6 +34,24 @@ class StockOpnameProvider extends ChangeNotifier {
   }
 
   int get overStockCount => _reports.length;
+
+  void searchStockOpname(String query) {
+    if (query.isEmpty) {
+      _filteredReports = _reports;
+    } else {
+      _filteredReports = _reports.where((element) {
+        final code = element.code ?? "";
+        final date = element.date.toString() ?? "";
+        final warehouse = element.warehouse?.name ?? "";
+        final searchText = query;
+
+        return code.contains(searchText) ||
+            date.contains(searchText) ||
+            warehouse.contains(searchText);
+      }).toList();
+    }
+    notifyListeners();
+  }
 
   Future<void> fetchStockOpnameReport({
     required String token,
@@ -67,27 +85,29 @@ class StockOpnameProvider extends ChangeNotifier {
 
       if (result.isEmpty) {
         _hasMore = false;
-      }
+      }else{
+        final existingIds = _reports.map((e) => e.id).toSet();
+      
+      
+      final uniqueNewData = result.where((item) => !existingIds.contains(item.id)).toList();
 
-      _reports.addAll(result);
-
-      /// ✅ SORT PALING PENTING
+      _reports.addAll(uniqueNewData);
+      _filteredReports = List.from(_reports);
       _reports.sort((a, b) {
-        // 1️⃣ sort by date DESC (null-safe)
-        final aDate = a.date ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bDate = b.date ?? DateTime.fromMillisecondsSinceEpoch(0);
-
-        final dateCompare = bDate.compareTo(aDate);
-        if (dateCompare != 0) return dateCompare;
-
-        // 2️⃣ kalau tanggal sama → sort by code number DESC
-        final aNum = int.tryParse(a.code.split('-').last) ?? 0;
-        final bNum = int.tryParse(b.code.split('-').last) ?? 0;
-
-        return bNum.compareTo(aNum);
+         final aDate = a.date ?? DateTime.fromMillisecondsSinceEpoch(0);
+         final bDate = b.date ?? DateTime.fromMillisecondsSinceEpoch(0);
+         final dateCompare = bDate.compareTo(aDate);
+         if (dateCompare != 0) return dateCompare;
+         final aNum = int.tryParse(a.code.split('-').last) ?? 0;
+         final bNum = int.tryParse(b.code.split('-').last) ?? 0;
+         return bNum.compareTo(aNum);
       });
+      
+      _filteredReports = List.from(_reports); // Pastikan filter juga tersortir
 
       _page++;
+      }
+
     } catch (e) {
       _errorMessage = e.toString();
     } finally {

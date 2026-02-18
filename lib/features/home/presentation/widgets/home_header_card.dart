@@ -1,3 +1,4 @@
+import 'package:bbs_gudang/features/notification/presentation/providers/notification_provider.dart';
 import 'package:bbs_gudang/features/penerimaan_barang/presentation/pages/penerimaan_barang_page.dart';
 import 'package:bbs_gudang/features/pengeluaran_barang/presentation/pages/pengeluaran_barang_page.dart';
 import 'package:bbs_gudang/features/stock_adjustment/presentation/pages/stk_adjustment_page.dart';
@@ -46,10 +47,32 @@ class HomeHeaderCard extends StatelessWidget {
                 ],
               ),
               const Spacer(),
-              const Icon(
-                Icons.notifications_none,
-                color: Colors.white,
-                size: 28,
+              Consumer<NotificationProvider>(
+                builder: (context, provider, child) {
+                  // Ambil jumlah notifikasi
+                  int count = provider.listNotifications.length;
+
+                  return Badge(
+                    isLabelVisible:
+                        count > 0, // Sembunyikan jika tidak ada notifikasi
+                    label: Text(
+                      count.toString(),
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                    ),
+                    backgroundColor: Colors.red,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.notifications_none,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      onPressed: () {
+                        // Navigasi ke halaman notifikasi atau buka menu
+                        _showNotificationPanel(context, provider);
+                      },
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -147,6 +170,72 @@ class HomeHeaderCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showNotificationPanel(
+    BuildContext context,
+    NotificationProvider provider,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Notifikasi Terbaru",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const Divider(),
+              if (provider.listNotifications.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text("Tidak ada notifikasi baru"),
+                )
+              else
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: provider.listNotifications.length,
+                    itemBuilder: (context, index) {
+                      final item = provider.listNotifications[index];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: item.action == 'approval'
+                              ? Colors.orange.shade100
+                              : Colors.blue.shade100,
+                          child: Icon(
+                            item.action == 'approval'
+                                ? Icons.assignment
+                                : Icons.info,
+                            color: item.action == 'approval'
+                                ? Colors.orange
+                                : Colors.blue,
+                          ),
+                        ),
+                        title: Text(
+                          item.title,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(item.message),
+                        onTap: () {
+                          // Logika untuk navigasi berdasarkan entity_type atau entity_id
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

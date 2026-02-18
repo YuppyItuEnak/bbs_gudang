@@ -65,9 +65,16 @@ class _TransferWarehousePageState extends State<TransferWarehousePage> {
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Cari",
+                    child: TextField(
+                      // Hapus 'const' karena kita akan menambahkan properti
+                      onChanged: (value) {
+                        // Panggil fungsi search dari provider
+                        context
+                            .read<TransferWarehouseProvider>()
+                            .searchTransferWarehouse(value);
+                      },
+                      decoration: const InputDecoration(
+                        hintText: "Cari nomor transfer atau gudang...",
                         prefixIcon: Icon(Icons.search, color: Colors.grey),
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(vertical: 12),
@@ -97,16 +104,6 @@ class _TransferWarehousePageState extends State<TransferWarehousePage> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                // Error State
-                if (provider.errorMessage != null) {
-                  return Center(
-                    child: Text(
-                      provider.errorMessage!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  );
-                }
-
                 // Empty State
                 if (provider.listTransferWarehouse.isEmpty) {
                   return const Center(
@@ -115,7 +112,7 @@ class _TransferWarehousePageState extends State<TransferWarehousePage> {
                 }
 
                 // Data State
-                final data = provider.listTransferWarehouse;
+                final data = provider.filteredTransferWarehouse;
 
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -360,10 +357,10 @@ class _TransferWarehousePageState extends State<TransferWarehousePage> {
       case "DRAFT":
         bgColor = Colors.grey;
         break;
-      case "APPROVED":
+      case "POSTED":
         bgColor = Colors.green;
         break;
-      case "PROCESS":
+      case "SUBMITTED":
         bgColor = Colors.blue;
         break;
       case "REJECTED":

@@ -30,10 +30,7 @@ class _PenerimaanBarangPageState extends State<PenerimaanBarangPage> {
         final provider = context.read<PenerimaanBarangProvider>();
 
         if (_token != null && provider.hasMore && !provider.isLoading) {
-          provider.fetchPenerimaanBarang(
-            token: _token!,
-            loadMore: true,
-          );
+          provider.fetchPenerimaanBarang(token: _token!, loadMore: true);
         }
       }
     });
@@ -81,93 +78,117 @@ class _PenerimaanBarangPageState extends State<PenerimaanBarangPage> {
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          Expanded(
-            child: Consumer<PenerimaanBarangProvider>(
-              builder: (context, provider, _) {
-                // LOADING AWAL
-                if (provider.isLoading &&
-                    provider.listPenerimaanBarang.isEmpty) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+      body: Consumer<PenerimaanBarangProvider>(
+        builder: (context, provider, _) {
+          // LOADING AWAL
+          if (provider.isLoading && provider.listPenerimaanBarang.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-                if (provider.errorMessage != null &&
-                    provider.listPenerimaanBarang.isEmpty) {
-                  return Center(child: Text(provider.errorMessage!));
-                }
+          if (provider.errorMessage != null &&
+              provider.listPenerimaanBarang.isEmpty) {
+            return Center(child: Text(provider.errorMessage!));
+          }
 
-                if (provider.listPenerimaanBarang.isEmpty) {
-                  return const Center(
-                    child: Text("Data penerimaan barang kosong"),
-                  );
-                }
+          // Ambil list yang sudah difilter
+          final displayList = provider.filterPenerimaanBarang;
 
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    await provider.fetchPenerimaanBarang(
-                      token: _token!,
-                      isRefresh: true,
-                    );
-                  },
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    itemCount:
-                        provider.listPenerimaanBarang.length +
-                        (provider.hasMore ? 1 : 0),
+          return Column(
+            children: [
+              // 🔥 PINDAHKAN KE SINI dan masukkan argumen 'provider'
+              _buildSearchBar(provider),
 
-                    itemBuilder: (context, index) {
-                      if (index >= provider.listPenerimaanBarang.length) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
-
-                      final item = provider.listPenerimaanBarang[index];
-
-                      return PenerimaanBarangCard(
-                        data: {
-                          "po_no": item.code.toString(),
-                          "si_no": item.noSjSupplier ?? '-',
-                          "vendor": item.supplierName.toString(),
-                          "nopol": item.policeNumber ?? '-',
-                          "driver": item.driverName ?? '-',
-                          "date": item.date != null
-                              ? DateFormat('dd/MM/yyyy').format(item.date!)
-                              : '-',
-                        },
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  DetailPenerimaanBarangPage(id: item.id),
-                            ),
+              Expanded(
+                child: provider.listPenerimaanBarang.isEmpty
+                    ? const Center(child: Text("Data penerimaan barang kosong"))
+                    : RefreshIndicator(
+                        onRefresh: () async {
+                          await provider.fetchPenerimaanBarang(
+                            token: _token!,
+                            isRefresh: true,
                           );
                         },
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+                        child: displayList.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  "Data tidak ditemukan",
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              )
+                            : ListView.builder(
+                                controller: _scrollController,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 10,
+                                ),
+                                itemCount:
+                                    displayList.length +
+                                    (provider.hasMore ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (index >= displayList.length) {
+                                    return const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 20,
+                                      ),
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                  }
+
+                                  final item = displayList[index];
+
+                                  return PenerimaanBarangCard(
+                                    data: {
+                                      "po_no": item.code.toString(),
+                                      "si_no": item.noSjSupplier ?? '-',
+                                      "vendor": item.supplierName.toString(),
+                                      "nopol": item.policeNumber ?? '-',
+                                      "driver": item.driverName ?? '-',
+                                      "date": item.date != null
+                                          ? DateFormat(
+                                              'dd/MM/yyyy',
+                                            ).format(item.date!)
+                                          : '-',
+                                      "status": item.status ?? 'Unknown',
+                                    },
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              DetailPenerimaanBarangPage(
+                                                id: item.id,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                      ),
+              ),
+            ],
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const TambahPenerimaanBarangPage(),
+              builder: (context) => ChangeNotifierProvider(
+                // Provider ini baru tercipta saat tombol diklik
+                create: (_) => PenerimaanBarangProvider(),
+                child: const TambahPenerimaanBarangPage(),
+              ),
             ),
           );
+
+          // 2. Jika result == true, berarti ada data baru yang berhasil di-submit
+          if (result == true) {
+            _refreshData();
+          }
         },
         backgroundColor: const Color(0xFF4CAF50),
         child: const Icon(Icons.add, color: Colors.white, size: 30),
@@ -175,7 +196,35 @@ class _PenerimaanBarangPageState extends State<PenerimaanBarangPage> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Future<void> _refreshData() async {
+    final provider = context.read<PenerimaanBarangProvider>();
+    final token = context.read<AuthProvider>().token;
+
+    if (token != null) {
+      _showLoadingDialog(context);
+
+      await provider.fetchPenerimaanBarang(token: token, isRefresh: true);
+
+      if (mounted) {
+        Navigator.pop(context); 
+        // Paksa ListView scroll ke paling atas agar data terbaru kelihatan
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+      }
+    }
+  }
+
+  void _showLoadingDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) =>
+          const Center(child: CircularProgressIndicator(color: Colors.green)),
+    );
+  }
+
+  Widget _buildSearchBar(PenerimaanBarangProvider provider) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Row(
@@ -184,15 +233,22 @@ class _PenerimaanBarangPageState extends State<PenerimaanBarangPage> {
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey.shade200),
               ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  hintText: "Cari",
+              child: TextField(
+                // 🔥 HUBUNGKAN KE FUNGSI SEARCH
+                onChanged: (value) {
+                  provider.searchPenerimaanBarang(value);
+                },
+                decoration: const InputDecoration(
+                  hintText: "Cari nomor Pengeluaran Barang atau customer...",
                   prefixIcon: Icon(Icons.search, color: Colors.grey),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 12),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 15,
+                  ),
                 ),
               ),
             ),
@@ -202,7 +258,7 @@ class _PenerimaanBarangPageState extends State<PenerimaanBarangPage> {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.grey.shade200),
             ),
             child: const Icon(Icons.tune, color: Colors.black87),

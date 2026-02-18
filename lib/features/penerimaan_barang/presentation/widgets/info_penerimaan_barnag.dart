@@ -21,13 +21,26 @@ class InfoPenerimaanBarang extends StatefulWidget {
   });
 
   @override
-  State<InfoPenerimaanBarang> createState() => _InfoPenerimaanBarangState();
+  State<InfoPenerimaanBarang> createState() => InfoPenerimaanBarangState();
 }
 
-class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
+class InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
+  late TextEditingController _sjController;
+  late TextEditingController _invoiceController;
+  late TextEditingController _policeController;
+  late TextEditingController _driverController;
+  late TextEditingController _noteController;
+
   @override
   void initState() {
     super.initState();
+
+    final p = context.read<PenerimaanBarangProvider>();
+    _sjController = TextEditingController(text: p.supplierSjNo);
+    _invoiceController = TextEditingController(text: p.supplierInvoiceNo);
+    _policeController = TextEditingController(text: p.policeNo);
+    _driverController = TextEditingController(text: p.driverName);
+    _noteController = TextEditingController(text: p.headerNote);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
@@ -46,10 +59,69 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
 
       tw.loadUserCompanies(
         token: auth.token!,
-        userId: auth.user!.id!,
+        userId: auth.user!.id,
         responsibilityId: responsibilityId!,
       );
     });
+  }
+
+  @override
+  void dispose() {
+    // Jangan lupa dispose agar tidak memory leak
+    _sjController.dispose();
+    _invoiceController.dispose();
+    _policeController.dispose();
+    _driverController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  bool validateForm() {
+    final p = context.read<PenerimaanBarangProvider>();
+
+    if (p.selectedPO == null) {
+      _showSnackBar("Nomor PO wajib dipilih");
+      return false;
+    }
+
+    if (p.unitBusinessId == null) {
+      _showSnackBar("Company wajib dipilih");
+      return false;
+    }
+
+    if (p.warehouseId == null) {
+      _showSnackBar("Warehouse wajib dipilih");
+      return false;
+    }
+
+    if (_sjController.text.isEmpty) {
+      _showSnackBar("Nomor SJ Supplier tidak boleh kosong");
+      return false;
+    }
+
+    if (_invoiceController.text.isEmpty) {
+      _showSnackBar("Nomor Invoice Supplier tidak boleh kosong");
+      return false;
+    }
+
+    if (_policeController.text.isEmpty) {
+      _showSnackBar("Nomor Police tidak boleh kosong");
+      return false;
+    }
+
+    if (_driverController.text.isEmpty) {
+      _showSnackBar("Driver tidak boleh kosong");
+      return false;
+    }
+
+
+    return true;
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
   }
 
   @override
@@ -87,32 +159,37 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
 
           _label("No. SJ Supplier"),
           _textInput(
+            _sjController,
             (v) => context.read<PenerimaanBarangProvider>().setSupplierSjNo(v),
-            "SJ-001",
+            "Nomor SJ Supplier",
           ),
 
           _label("No. Invoice Supplier"),
           _textInput(
+            _invoiceController,
             (v) => context
                 .read<PenerimaanBarangProvider>()
                 .setSupplierInvoiceNo(v),
-            "INV-001",
+            "Nomor Invoice Supplier",
           ),
 
           _label("Nomor Polisi"),
           _textInput(
+            _policeController,
             (v) => context.read<PenerimaanBarangProvider>().setPoliceNo(v),
-            "W 9028 Y",
+            "Nomor Polisi",
           ),
 
           _label("Nama Supir"),
           _textInput(
+            _driverController,
             (v) => context.read<PenerimaanBarangProvider>().setDriverName(v),
-            "Yatno",
+            "Nama",
           ),
 
           _label("Catatan Header"),
           _textInput(
+            _noteController,
             (v) => context.read<PenerimaanBarangProvider>().setHeaderNote(v),
             "Catatan",
             maxLines: 3,
@@ -363,11 +440,13 @@ class _InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
   }
 
   Widget _textInput(
+    TextEditingController controller,
     Function(String) onChanged,
     String hint, {
     int maxLines = 1,
   }) {
     return TextField(
+      controller: controller,
       maxLines: maxLines,
       onChanged: onChanged,
       decoration: InputDecoration(

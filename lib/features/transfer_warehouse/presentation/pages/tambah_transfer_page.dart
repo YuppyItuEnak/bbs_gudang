@@ -95,6 +95,7 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
                     onChanged: (val) {
                       setState(() {
                         selectedGudangAwal = val;
+                        debugPrint("Selected Gudang Awal: $selectedGudangAwal");
                         if (selectedGudangTujuan == val) {
                           selectedGudangTujuan = null;
                         }
@@ -178,11 +179,14 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
                       ),
                       onPressed: () async {
                         final token = context.read<AuthProvider>().token;
-
+                        print("Mengirim Warehouse ID: $selectedGudangAwal");
                         final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => TambahItem(token: token!),
+                            builder: (_) => TambahItem(
+                              token: token!,
+                              warehouseId: selectedGudangAwal,
+                            ),
                           ),
                         );
 
@@ -299,7 +303,8 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
         sourceWarehouseId: selectedGudangAwal!,
         destinationWarehouseId: selectedGudangTujuan!,
         status: status,
-        notes: _catatanController.text, date: _dateController.text,
+        notes: _catatanController.text,
+        date: _dateController.text,
       );
 
       ScaffoldMessenger.of(
@@ -326,7 +331,7 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
     }
 
     return DropdownButtonFormField<String>(
-      value: provider.companies.any((c) => c.id == selectedCompany)
+      initialValue: provider.companies.any((c) => c.id == selectedCompany)
           ? selectedCompany
           : null,
       hint: const Text("Pilih Company"),
@@ -348,14 +353,12 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
           selectedGudangTujuan = null;
         });
 
-        if (val != null) {
-          // debugPrint("Masuk");
-          context.read<TransferWarehouseProvider>().loadWarehouseCompany(
-            unitBusinessId: val,
-            token: context.read<AuthProvider>().token!,
-          );
-        }
-      },
+        // debugPrint("Masuk");
+        context.read<TransferWarehouseProvider>().loadWarehouseCompany(
+          unitBusinessId: val,
+          token: context.read<AuthProvider>().token!,
+        );
+            },
     );
   }
 
@@ -384,7 +387,7 @@ class _TambahTransferPageState extends State<TambahTransferPage> {
     final isEnabled = selectedCompany != null && provider.warehouses.isNotEmpty;
 
     return DropdownButtonFormField<String>(
-      value: provider.warehouses.any((w) => w.id == value) ? value : null,
+      initialValue: provider.warehouses.any((w) => w.id == value) ? value : null,
       hint: Text(hint),
       isExpanded: true,
       decoration: InputDecoration(

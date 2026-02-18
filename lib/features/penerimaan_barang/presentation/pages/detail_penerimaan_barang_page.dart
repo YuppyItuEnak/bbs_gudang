@@ -59,9 +59,6 @@ class _DetailPenerimaanBarangPageState
           }
 
           // ERROR
-          if (provider.errorMessage != null) {
-            return Center(child: Text(provider.errorMessage!));
-          }
 
           // DATA KOSONG
           if (provider.data == null) {
@@ -70,8 +67,6 @@ class _DetailPenerimaanBarangPageState
 
           final header = provider.data!;
           final details = header.details ?? [];
-
-          debugPrint("purchaseorderid: ${provider.data?.purchaseOrderId}");
 
           return Column(
             children: [
@@ -136,12 +131,14 @@ class _DetailPenerimaanBarangPageState
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
+                            
+
                             // TODO: arahkan ke halaman edit PB
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) =>
-                                    EditPenerimaanBarangPage(pbId: header.id!),
+                                    EditPenerimaanBarangPage(pbId: header.id),
                               ),
                             );
 
@@ -168,7 +165,7 @@ class _DetailPenerimaanBarangPageState
                         ),
                       ),
 
-                    if (header.status == "DRAFT") const SizedBox(width: 12),
+                    const SizedBox(width: 12),
 
                     /// 🔙 KEMBALI — SELALU ADA
                     Expanded(

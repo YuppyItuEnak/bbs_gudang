@@ -71,7 +71,7 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
       ),
       body: Column(
         children: [
-          /// SEARCH BAR (belum difungsikan)
+          /// 🔍 SEARCH BAR
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Container(
@@ -86,9 +86,13 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
                   ),
                 ],
               ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  hintText: "Cari",
+              child: TextField(
+                // 🔥 Hubungkan ke fungsi search di Provider
+                onChanged: (value) {
+                  context.read<StockAdjustmentProvider>().search(value);
+                },
+                decoration: const InputDecoration(
+                  hintText: "Cari nomor, tanggal, atau gudang...",
                   prefixIcon: Icon(Icons.search, color: Colors.grey),
                   suffixIcon: Icon(Icons.tune, color: Colors.black87),
                   border: InputBorder.none,
@@ -98,50 +102,57 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
             ),
           ),
 
-          /// LIST DATA DARI PROVIDER
+          /// 📄 LIST DATA
           Expanded(
             child: Consumer<StockAdjustmentProvider>(
               builder: (context, provider, _) {
-                if (provider.isLoading && provider.data.isEmpty) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (provider.error != null) {
-                  return Center(child: Text(provider.error!));
-                }
-
-                if (provider.data.isEmpty) {
-                  return const Center(child: Text("Data kosong"));
-                }
+              
+                final dataList = provider.filterData;
 
                 return RefreshIndicator(
                   onRefresh: () async {
                     final token = context.read<AuthProvider>().token!;
                     await provider.fetchStockAdjustments(
                       token: token,
-                      loadMore: true,
+                      loadMore:
+                          false, // Biasanya refresh mengambil data dari awal
                     );
                   },
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    itemCount:
-                        provider.data.length + (provider.hasMore ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == provider.data.length) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
+                  // Pengecekan isEmpty dipindah ke sini agar SearchBar tetap tampil
+                  child: dataList.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.2,
+                            ),
+                            const Center(
+                              child: Text("Data tidak ditemukan atau kosong"),
+                            ),
+                          ],
+                        )
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          itemCount:
+                              dataList.length + (provider.hasMore ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == dataList.length) {
+                              return const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            }
 
-                      final item = provider.data[index];
-                      return _buildAdjustmentCard(item);
-                    },
-                  ),
+                            final item = dataList[index];
+                            return _buildAdjustmentCard(item);
+                          },
+                        ),
                 );
               },
             ),
@@ -181,7 +192,7 @@ class _StkAdjustmentPageState extends State<StkAdjustmentPage> {
     String statusText = item.status ?? "-";
 
     switch (statusText.toUpperCase()) {
-      case "APPROVED":
+      case "POSTED":
         statusColor = Colors.green;
         break;
       case "REJECTED":

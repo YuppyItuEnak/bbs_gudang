@@ -66,11 +66,11 @@ class DeliveryPlanDetailModel {
   });
 
   factory DeliveryPlanDetailModel.fromJson(Map<String, dynamic> json) {
-    debugPrint("🧪 DETAIL ID: ${json['id']}");
-    debugPrint("🧪 RAW ITEMS KEY: ${json['t_delivery_plan_d_items']}");
-    debugPrint(
-      "🧪 ITEMS TYPE: ${json['t_delivery_plan_d_items']?.runtimeType}",
-    );
+    // debugPrint("🧪 DETAIL ID: ${json['id']}");
+    // debugPrint("🧪 RAW ITEMS KEY: ${json['t_delivery_plan_d_items']}");
+    // debugPrint(
+    //   "🧪 ITEMS TYPE: ${json['t_delivery_plan_d_items']?.runtimeType}",
+    // );
 
     return DeliveryPlanDetailModel(
       id: json['id'] ?? '',
@@ -148,7 +148,9 @@ class DeliveryPlanDetailItemModel {
       uomValue: parseInt(json['uom_value']),
       uomUnit: json['uom_unit'] ?? '',
 
-      item: json['m_item'] != null ? ItemBarangModel.fromJson(json['m_item']) : null,
+      item: json['m_item'] != null
+          ? ItemBarangModel.fromJson(json['m_item'])
+          : null,
       uom: json['tdpDetailItemUom'] != null
           ? ItemUomModel.fromJson(json['tdpDetailItemUom'])
           : null,
@@ -230,6 +232,7 @@ class SalesOrderModel {
   final String? top_id;
   final DateTime? date;
   final String? expedition;
+  final String? delivery_area_id;
   final String? expeditionType;
   final String? customerName;
 
@@ -239,6 +242,7 @@ class SalesOrderModel {
     this.top_id,
     this.date,
     this.expedition,
+    this.delivery_area_id,
     this.expeditionType,
     this.customerName,
   });
@@ -250,6 +254,7 @@ class SalesOrderModel {
       top_id: json['top_id'],
       date: DateTime.tryParse(json['date'] ?? ''),
       expedition: json['expedition'],
+      delivery_area_id: json['delivery_area_id'],
       expeditionType: json['expedition_type'],
       customerName: json['customer_name'],
     );

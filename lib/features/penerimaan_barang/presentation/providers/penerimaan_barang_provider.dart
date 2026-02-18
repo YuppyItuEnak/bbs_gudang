@@ -24,7 +24,7 @@ class PenerimaanBarangProvider extends ChangeNotifier {
   List<AvailablePoModel> get listPO => _listPO;
 
   int _page = 1;
-  int _paginate = 10;
+  final int _paginate = 10;
 
   bool _hasMore = true;
 
@@ -154,14 +154,27 @@ class PenerimaanBarangProvider extends ChangeNotifier {
   }
 
   void setSelectedItems(List<Map<String, dynamic>> items) {
+    // 1. Simpan nilai qty yang sudah diinput user sebelumnya ke dalam Map (Key: ID, Value: Qty)
+    final existingQtys = {
+      for (var item in selectedItems)
+        (item["item_id"] ?? item["id"]): item["qty_receipt"],
+    };
+
+    // 2. Map items baru sambil mengecek apakah item tersebut sudah punya qty lama
     selectedItems = items.map((item) {
+      final itemId = item["item_id"] ?? item["id"];
+
+      // Jika item sudah ada di list sebelumnya, pakai Qty lama.
+      // Jika benar-benar baru, pakai default 1 (atau item["qty_receipt"] jika ada)
+      int initialQty = existingQtys[itemId] ?? item["qty_receipt"] ?? 1;
+
       return {
         "purchase_order_d_id": item["purchase_order_d_id"] ?? item["id"],
-        "item_id": item["item_id"],
-        "item_code": item["code"] ?? "-",
-        "item_name": item["name"] ?? "-",
+        "item_id": itemId,
+        "item_code": item["code"] ?? item["item_code"] ?? "-",
+        "item_name": item["name"] ?? item["item_name"] ?? "-",
         "qty_order": item["qty"] ?? item["qty_order"] ?? 0,
-        "qty_receipt": item["qty_receipt"] ?? 0,
+        "qty_receipt": initialQty,
       };
     }).toList();
 
@@ -322,6 +335,7 @@ class PenerimaanBarangProvider extends ChangeNotifier {
   Future<void> loadPoDetail({
     required String token,
     required String poId,
+    bool isEdit = false,
   }) async {
     try {
       isLoadingPoDetail = true;
@@ -330,10 +344,12 @@ class PenerimaanBarangProvider extends ChangeNotifier {
       final result = await _repository.fetchPoDetail(token: token, poId: poId);
 
       // ================= HEADER =================
+
       supplierId = result['supplier_id'];
       purchaseRequestId = result['purchase_request_id'];
-      warehouseId = result['warehouse_id'];
-
+      if (!isEdit) {
+        warehouseId = result['warehouse_id'];
+      }
       supplierName = result['supplier_name'];
       prCode = result['purchase_request_code'];
       itemGroup = result['item_group_coa'];
@@ -341,6 +357,7 @@ class PenerimaanBarangProvider extends ChangeNotifier {
 
       debugPrint("supplierId: $supplierId");
       debugPrint("purchaseRequestId: $purchaseRequestId");
+
       debugPrint("warehouseId: $warehouseId");
       debugPrint("warehouse_name: $warehouseName");
       debugPrint("PB: $pbCode");
@@ -350,28 +367,30 @@ class PenerimaanBarangProvider extends ChangeNotifier {
       debugPrint("itemGroupCoaId: $itemGroupCoaId");
 
       // ================= ITEM DETAIL PO =================
-      final List poDetails = result['items'] ?? [];
+      if (!isEdit) {
+        final List poDetails = result['items'] ?? [];
 
-      selectedItems = poDetails.map((d) {
-        debugPrint("MAPPING ITEM PO DETAIL:");
-        debugPrint("PO DETAIL ID: ${d['id']}");
-        debugPrint("ITEM NAME: ${d['item_name']}");
-        debugPrint("QTY ORDER: ${d['qty']}");
+        selectedItems = poDetails.map((d) {
+          debugPrint("MAPPING ITEM PO DETAIL:");
+          debugPrint("PO DETAIL ID: ${d['id']}");
+          debugPrint("ITEM NAME: ${d['item_name']}");
+          debugPrint("QTY ORDER: ${d['qty']}");
 
-        return {
-          // ⚠️ WAJIB — backend pakai ini
-          "purchase_order_d_id": d['id'],
+          return {
+            // ⚠️ WAJIB — backend pakai ini
+            "purchase_order_d_id": d['id'],
 
-          // info item
-          "item_id": d['item_id'],
-          "code": d['item_code'],
-          "name": d['item_name'],
+            // info item
+            "item_id": d['item_id'],
+            "code": d['item_code'],
+            "name": d['item_name'],
 
-          // qty
-          "qty_order": d['qty'],
-          "qty_receipt": 0, // default input user
-        };
-      }).toList();
+            // qty
+            "qty_order": d['qty'],
+            "qty_receipt": 0, // default input user
+          };
+        }).toList();
+      }
 
       debugPrint("===== SELECTED ITEMS AFTER LOAD =====");
       debugPrint(selectedItems.toString());
@@ -383,9 +402,40 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     }
   }
 
+  void syncSelectedPo(String? poId) {
+    if (poId == null || _listPO.isEmpty) return;
+
+    try {
+      selectedPO = _listPO.firstWhere((element) => element.id == poId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint("PO ID $poId tidak ditemukan di list dropdown");
+    }
+  }
+
   void resetPr() {
     prCode = null;
     itemGroup = null;
+  }
+
+  List<PenerimaanBarangModel> _filterPenerimaanBarang = [];
+  List<PenerimaanBarangModel> get filterPenerimaanBarang =>
+      _filterPenerimaanBarang;
+
+  void searchPenerimaanBarang(String query) {
+    if (query.isEmpty) {
+      _filterPenerimaanBarang = _listPenerimaanBarang;
+    } else {
+      _filterPenerimaanBarang = _listPenerimaanBarang.where((element) {
+        final code = element.code ?? "";
+        final unitBisnis = element.supplierName ?? "";
+        final searchText = query;
+
+        return code.contains(searchText) || unitBisnis.contains(searchText);
+      }).toList();
+    }
+
+    notifyListeners();
   }
 
   Future<void> fetchPenerimaanBarang({
@@ -393,14 +443,14 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     bool isRefresh = false,
     bool loadMore = false,
   }) async {
-    // 🔴 STOP kalau sedang load more atau sudah tidak ada page lagi
-    if (_isLoading) return;
-    if (!_hasMore && !isRefresh) return;
+    // Jika refresh, abaikan status _isLoading agar tidak kena return
+    if (_isLoading && !isRefresh) return;
+    if (!isRefresh && !_hasMore) return;
 
     if (isRefresh) {
       _page = 1;
       _hasMore = true;
-      _listPenerimaanBarang.clear();
+      // Jangan clear di sini jika ingin UX yang mulus (biarkan list lama tetap ada sampai data baru datang)
     }
 
     _isLoading = true;
@@ -418,33 +468,34 @@ class PenerimaanBarangProvider extends ChangeNotifier {
           List<PenerimaanBarangModel>.from(result['data']);
 
       final pagination = result['pagination'];
-
-      final int currentPage =
-          int.tryParse(pagination['page']?.toString() ?? '') ?? _page;
-
       final int totalPages =
-          int.tryParse(pagination['totalPages']?.toString() ?? '') ?? _page;
+          int.tryParse(pagination['totalPages']?.toString() ?? '1') ?? 1;
 
-      // =========================
-      // TAMBAH DATA
-      // =========================
-      if (_page == 1) {
+      if (isRefresh) {
+        // Ganti total list dengan data terbaru dari page 1
         _listPenerimaanBarang = newData;
+        _filterPenerimaanBarang = newData;
       } else {
-        _listPenerimaanBarang.addAll(newData);
+        for (var item in newData) {
+          bool isExist = _listPenerimaanBarang.any(
+            (existing) => existing.id == item.id,
+          );
+          if (!isExist) {
+            _listPenerimaanBarang.add(item);
+            _filterPenerimaanBarang.add(item);
+          }
+        }
       }
 
-      // =========================
-      // LOGIKA STOP PAGINATION
-      // =========================
-      if (currentPage >= totalPages || newData.isEmpty) {
-        _hasMore = false; // 🔴 STOP LOAD
+      // Update status pagination
+      if (_page >= totalPages || newData.isEmpty) {
+        _hasMore = false;
       } else {
-        _page++; // LANJUT PAGE BERIKUTNYA
+        _hasMore = true;
+        _page++;
       }
     } catch (e) {
       _errorMessage = e.toString();
-      debugPrint("❌ ERROR FETCH PENERIMAAN BARANG: $e");
       _hasMore = false;
     } finally {
       _isLoading = false;
@@ -458,7 +509,7 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     supplierId = model.supplierId;
     supplierName = model.supplierName;
 
-    purchaseOrderId = model.purchaseOrder?.id;
+    purchaseOrderId = model.purchaseOrderId;
     purchaseRequestId = model.purchaseRequestId;
 
     unitBusinessId = model.unitBussinessId;
@@ -475,7 +526,7 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     supplierSjNo = model.noSjSupplier;
     headerNote = model.notes;
 
-    invoiceDate = model.date != null ? model.date : null;
+    invoiceDate = model.date;
 
     // DETAIL ITEM
     selectedItems = model.details.map((e) {
@@ -572,14 +623,19 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     required String token,
     required Map<String, dynamic> payload,
   }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
     try {
-      // 🔹 3. Submit stock opname
       result = await _repository.createPenerimaanBarang(
         token: token,
         payload: payload,
       );
     } catch (e) {
       rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 

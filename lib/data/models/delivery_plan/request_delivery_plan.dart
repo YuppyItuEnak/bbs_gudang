@@ -67,7 +67,7 @@ class SuratJalanDetailPayload {
 
 class SuratJalanItemPayload {
   final String itemId;
-  final int qty;
+  int qty;
   final int price;
   final double weight;
   final String uomId;

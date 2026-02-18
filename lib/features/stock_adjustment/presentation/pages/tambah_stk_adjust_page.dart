@@ -92,7 +92,7 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
     final token = context.read<AuthProvider>().token!;
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => TambahItem(token: token)),
+      MaterialPageRoute(builder: (_) => TambahItem(token: token,  warehouseId: selectedWarehouseId,)),
     );
 
     if (result != null && result is List) {
@@ -333,6 +333,12 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
           onChanged: selectedWarehouseId == null
               ? null
               : (val) async {
+                  debugPrint("Selected Opname ID: $val");
+
+                  if (val == null) {
+                    debugPrint("Error: ID Opname yang dipilih NULL");
+                    return;
+                  }
                   setState(() => selectedOpnameId = val);
                   final selectedHeader = provider.opnames.firstWhere(
                     (e) => e['id'] == val,
@@ -340,7 +346,7 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
                   provider.setSelectedOpname(selectedHeader);
                   await provider.selectOpname(
                     token: context.read<AuthProvider>().token!,
-                    opnameId: val!,
+                    opnameId: val,
                   );
                   setState(() {
                     selectedItems = provider.selectedItems
@@ -577,48 +583,98 @@ class _TambahStkAdjustPageState extends State<TambahStkAdjustPage> {
     final auth = context.read<AuthProvider>();
     final provider = context.read<StockAdjustmentProvider>();
 
-    if (provider.generatedCode == null)
+    // 1. Validasi Input Dasar
+    if (provider.generatedCode == null) {
       return _showError("Kode adjustment belum tergenerate");
+    }
     if (selectedCompanyId == null) return _showError("Company belum dipilih");
     if (selectedWarehouseId == null) return _showError("Gudang belum dipilih");
     if (selectedDate == null) return _showError("Tanggal belum dipilih");
     if (selectedItems.isEmpty) return _showError("Item belum ditambahkan");
 
-    final payload = {
-      "code": provider.generatedCode,
-      "unit_bussiness_id": selectedCompanyId,
-      "warehouse_id": selectedWarehouseId,
-      "date": DateFormat('yyyy-MM-dd').format(selectedDate!),
-      "notes": _catatanController.text,
-      "submitted_by": auth.user!.id,
-      "status": sendApproval ? "SUBMITTED" : "DRAFT",
-      "inventory_adjustment_account_id":
-          provider.selectedOpname?['inventory_adjustment_account_id'],
-      "total_diff": provider.selectedOpname?['total_diff'] ?? 0,
-      "io_multiplier": 1,
-      "t_inventory_s_adjustment_d": selectedItems.map((e) {
-        final qtyBefore = e['qty_before'] ?? 0;
-        final qtyAfter = e['qty_after'] ?? e['qty'] ?? 0;
-        return {
-          "item_id": e['item_id'],
-          "item_code": e['code'],
-          "item_uom_id": e['item_uom_id'],
-          "item_group_coa_id": e['item_group_coa_id'],
-          "reason": "From Stock Opname",
-          "notes": "",
-          "qty_before": qtyBefore,
-          "qty_after": qtyAfter,
-          "adjustment": qtyAfter - qtyBefore,
-          "cost": e['cost'] ?? 0,
-        };
-      }).toList(),
-    };
+    // 2. Tampilkan Loading Dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) =>
+          const Center(child: CircularProgressIndicator(color: Colors.white)),
+    );
 
     try {
+      // 3. Cek Permission/Approval jika perlu
+
+      if (sendApproval) {
+        final canSubmit = await provider.checkCanSubmit(
+          token: auth.token!,
+          authUserId: auth.user!.id,
+          menuId: '4ad48011-9a08-4073-bde0-10f88bfebc81',
+          unitBusinessId: selectedCompanyId,
+        );
+
+        if (!canSubmit) {
+          if (mounted) Navigator.pop(context); // TUTUP LOADING
+          _showError('Anda tidak memiliki otoritas untuk submit approval');
+          return;
+        }
+      }
+      debugPrint("========== PROSES SUBMIT DIMULAI ==========");
+      debugPrint("Variable selectedOpnameId saat ini: $selectedOpnameId");
+      debugPrint("Data selectedOpname di Provider: ${provider.selectedOpname}");
+      // 4. Siapkan Payload
+      final payload = {
+        "code": provider.generatedCode,
+        "unit_bussiness_id": selectedCompanyId,
+        "warehouse_id": selectedWarehouseId,
+        "opname_id": selectedOpnameId,
+        "date": DateFormat('yyyy-MM-dd').format(selectedDate!),
+        "notes": _catatanController.text,
+        "submitted_by": auth.user!.id,
+        "status": sendApproval ? "POSTED" : "DRAFT",
+        "inventory_adjustment_account_id":
+            provider.selectedOpname?['inventory_adjustment_account_id'],
+        "total_diff": provider.selectedOpname?['total_diff'] ?? 0,
+        "io_multiplier": 1,
+        "t_inventory_s_adjustment_d": selectedItems.map((e) {
+          final qtyBefore = (e['qty_before'] as num).toDouble();
+          final qtyAfter = (e['qty_after'] ?? e['qty'] as num).toDouble();
+          return {
+            "item_id": e['item_id'],
+            "item_code": e['code'],
+            "item_uom_id": e['item_uom_id'],
+            "item_group_coa_id": e['item_group_coa_id'],
+            "reason": "From Stock Opname",
+            "notes": "",
+            "qty_before": qtyBefore,
+            "qty_after": qtyAfter,
+            "adjustment": qtyAfter - qtyBefore,
+            "cost": e['cost'] ?? 0,
+          };
+        }).toList(),
+      };
+      debugPrint("FULL PAYLOAD KE API: ${jsonEncode(payload)}");
+      // 5. Eksekusi API
       await provider.createAdjustment(token: auth.token!, payload: payload);
-      Navigator.pop(context, true);
+      await provider.fetchStockAdjustments(token: auth.token!, loadMore: false);
+      
+      if (mounted) {
+        Navigator.pop(context);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              sendApproval ? "Berhasil POSTED" : "Berhasil simpan DRAFT",
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true);
+      }
     } catch (e) {
-      _showError(e.toString());
+      
+      if (mounted) {
+        Navigator.pop(context); 
+        _showError("Gagal menyimpan data: ${e.toString()}");
+      }
     }
   }
 

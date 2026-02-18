@@ -7,8 +7,15 @@ import 'package:provider/provider.dart';
 
 class TambahItem extends StatefulWidget {
   final String token;
+  final bool isOpnameMode;
+  final String? warehouseId;
 
-  const TambahItem({super.key, required this.token});
+  const TambahItem({
+    super.key,
+    required this.token,
+    this.isOpnameMode = false,
+    this.warehouseId,
+  });
 
   @override
   State<TambahItem> createState() => _TambahItemState();
@@ -21,6 +28,25 @@ class _TambahItemState extends State<TambahItem> {
 
   Timer? _debounce; // untuk debounce search
 
+  void _fetchStocksForVisibleItems() {
+    debugPrint("warehouseId: ${widget.warehouseId}");
+    if (widget.warehouseId == null) return;
+
+    final itemProvider = context.read<ItemBarangProvider>();
+
+    if (itemProvider.items.isNotEmpty) {
+      final List<String> itemIds = itemProvider.items
+          .map((e) => e.id)
+          .toList();
+
+      itemProvider.getStockItems(
+        token: widget.token,
+        itemIds: itemIds,
+        warehouseId: widget.warehouseId!, // Menggunakan warehouseId dari widget
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -29,8 +55,11 @@ class _TambahItemState extends State<TambahItem> {
     Future.microtask(() {
       context.read<ItemBarangProvider>().fetchItems(
         token: widget.token,
+        warehouseId: widget.warehouseId,
         refresh: true,
       );
+
+      _fetchStocksForVisibleItems();
     });
 
     // PAGINATION SCROLL
@@ -45,7 +74,7 @@ class _TambahItemState extends State<TambahItem> {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 150) {
       if (!provider.isLoading && provider.hasMore) {
-        provider.fetchItems(token: widget.token, nextPage: true);
+        provider.fetchItems(token: widget.token,warehouseId: widget.warehouseId, nextPage: true);
       }
     }
   }
@@ -57,6 +86,7 @@ class _TambahItemState extends State<TambahItem> {
     _debounce = Timer(const Duration(milliseconds: 500), () {
       context.read<ItemBarangProvider>().fetchItems(
         token: widget.token,
+        warehouseId: widget.warehouseId,
         refresh: true,
         name: value,
       );
@@ -70,6 +100,8 @@ class _TambahItemState extends State<TambahItem> {
       name: _searchController.text,
     );
   }
+
+  // Tambahkan fungsi ini di dalam class _TambahItemState
 
   @override
   void dispose() {
@@ -102,6 +134,11 @@ class _TambahItemState extends State<TambahItem> {
       ),
       body: Consumer<ItemBarangProvider>(
         builder: (context, provider, _) {
+          final filteredItems = widget.isOpnameMode
+              ? provider.items
+                    .where((item) => item.itemTypeName.toUpperCase() != "JASA")
+                    .toList()
+              : provider.items;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -154,8 +191,14 @@ class _TambahItemState extends State<TambahItem> {
                   child: Builder(
                     builder: (_) {
                       // LOADING AWAL
-                      if (provider.isLoading && provider.items.isEmpty) {
+                      if (provider.isLoading && filteredItems.isEmpty) {
                         return const Center(child: CircularProgressIndicator());
+                      }
+
+                      if (filteredItems.isEmpty) {
+                        return const Center(
+                          child: Text("Tidak ada item yang dapat diopname"),
+                        );
                       }
 
                       // ERROR
@@ -185,27 +228,49 @@ class _TambahItemState extends State<TambahItem> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         itemCount:
-                            provider.items.length + (provider.hasMore ? 1 : 0),
+                            filteredItems.length + (provider.hasMore ? 1 : 0),
                         itemBuilder: (context, index) {
                           // LOADING BAWAH (NEXT PAGE)
-                          if (index == provider.items.length) {
+                          if (index == filteredItems.length) {
                             return const Padding(
                               padding: EdgeInsets.symmetric(vertical: 20),
                               child: Center(child: CircularProgressIndicator()),
                             );
                           }
 
-                          final item = provider.items[index];
+                          final item = filteredItems[index];
                           final currentQty = _qtyMap[item.id] ?? 0;
+                          final double stockValue =
+                              provider.itemStocks[item.id] ?? 0.0;
 
                           return ItemCard(
                             nama: item.name,
                             kode: item.code,
+                            stock: stockValue,
                             initialQty: currentQty,
+                            isSelectionMode: widget
+                                .isOpnameMode, // Menyembunyikan selector +/- di Card
                             onQtyChanged: (newQty) {
                               setState(() {
                                 _qtyMap[item.id] = newQty;
                               });
+                            },
+                            // --- IMPLEMENTASI DI SINI ---
+                            onTap: () {
+                              if (widget.isOpnameMode) {
+                                // Langsung kembalikan item yang dipilih ke halaman sebelumnya
+                                Navigator.pop(context, [
+                                  {
+                                    "id": item.id,
+                                    "code": item.code,
+                                    "name": item.name,
+                                    "item_uom_id": item.itemUomId,
+                                    "item_group_coa_id": item.itemGroupCoaId,
+                                    "qty":
+                                        0, // Berikan qty default 1, nanti diedit di halaman Opname
+                                  },
+                                ]);
+                              }
                             },
                           );
                         },

@@ -1,4 +1,3 @@
-import 'package:bbs_gudang/data/models/list_item/list_item_model.dart';
 import 'package:bbs_gudang/data/models/transfer_warehouse/company_warehouse_model.dart';
 import 'package:bbs_gudang/data/models/transfer_warehouse/transfer_company_model.dart';
 import 'package:bbs_gudang/data/models/transfer_warehouse/transfer_warehouse_model.dart';
@@ -38,6 +37,33 @@ class TransferWarehouseProvider extends ChangeNotifier {
 
   bool isSubmitting = false;
   List<Map<String, dynamic>> transactions = [];
+
+  List<TransferWarehouseModel> _filteredTransferWarehouse = [];
+
+  List<TransferWarehouseModel> get filteredTransferWarehouse =>
+      _filteredTransferWarehouse;
+
+
+  void searchTransferWarehouse(String query) {
+    if (query.isEmpty) {
+      _filteredTransferWarehouse = List.from(_listTransferWarehouse);
+    } else {
+      _filteredTransferWarehouse = _listTransferWarehouse.where((transfer) {
+        final codeLower = transfer.code.toLowerCase();
+        final sourceWarehouseLower =
+            transfer.sourceWarehouse.name.toLowerCase();
+        final destinationWarehouseLower =
+            transfer.destinationWarehouse.name.toLowerCase();
+        final date = transfer.date.toString().toLowerCase();
+        final searchLower = query.toLowerCase();
+
+        return codeLower.contains(searchLower) ||
+            sourceWarehouseLower.contains(searchLower) ||
+            destinationWarehouseLower.contains(searchLower) || date.contains(searchLower);
+      }).toList();
+    }
+    notifyListeners();
+  }
 
   void setTransactions(List<Map<String, dynamic>> data) {
     transactions = data;
@@ -118,10 +144,10 @@ class TransferWarehouseProvider extends ChangeNotifier {
     required String status,
     required String date,
     String? notes,
-    required String unitBusinessName, // Tambahan untuk m_unit_bussiness
-    required String sourceWarehouseName, // Tambahan untuk source_warehouse
+    required String unitBusinessName, 
+    required String sourceWarehouseName, 
     required String
-    destinationWarehouseName, // Tambahan untuk destination_warehouse
+    destinationWarehouseName, 
   }) async {
     isSubmitting = true;
     notifyListeners();
@@ -185,6 +211,7 @@ class TransferWarehouseProvider extends ChangeNotifier {
   }) async {
     if (refresh) {
       _listTransferWarehouse = [];
+      _filteredTransferWarehouse = [];
     }
 
     _isLoading = true;
@@ -196,6 +223,7 @@ class TransferWarehouseProvider extends ChangeNotifier {
           .fetchListTransferWarehouse(token: token);
 
       _listTransferWarehouse = result;
+      _filteredTransferWarehouse = List.from(result);
     } catch (e) {
       _errorMessage = e.toString();
       debugPrint("❌ ERROR FETCH Transfer Warehouse: $e");

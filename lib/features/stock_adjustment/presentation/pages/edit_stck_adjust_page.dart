@@ -115,7 +115,7 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
     final token = context.read<AuthProvider>().token!;
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => TambahItem(token: token)),
+      MaterialPageRoute(builder: (_) => TambahItem(token: token, warehouseId: selectedWarehouseId,)),
     );
 
     if (result != null && result is List) {
@@ -179,7 +179,7 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
       );
 
       if (!canSubmit) {
-        _showError(provider.error ?? 'Tidak bisa submit approval');
+        _showError('Anda tidak memiliki otoritas untuk submit approval');
         return;
       }
     }
@@ -190,7 +190,7 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
       "opname_id": selectedOpnameId,
       "notes": _catatanController.text,
       "submitted_by": auth.user!.id,
-      "status": sendApproval ? "SUBMITTED" : "DRAFT",
+      "status": sendApproval ? "POSTED" : "DRAFT",
       "date": DateTime.now().toIso8601String().split('T').first,
       "inventory_adjustment_account_id":
           provider.selectedOpname?['inventory_adjustment_account_id'],
@@ -615,6 +615,16 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
     required List<DropdownMenuItem<String>> items,
     required ValueChanged<String?>? onChanged,
   }) {
+    // Pengecekan Keamanan:
+    // Pastikan 'value' ada di dalam daftar 'items'. Jika tidak ada, paksa jadi null.
+    String? safeValue = value;
+    if (value != null) {
+      final bool hasValue = items.any((item) => item.value == value);
+      if (!hasValue) {
+        safeValue = null;
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -624,7 +634,7 @@ class _EditStkAdjustPageState extends State<EditStkAdjustPage> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           isExpanded: true,
-          value: value,
+          value: safeValue, // Gunakan safeValue
           hint: Text(hint, style: const TextStyle(fontSize: 13)),
           items: items,
           onChanged: onChanged,

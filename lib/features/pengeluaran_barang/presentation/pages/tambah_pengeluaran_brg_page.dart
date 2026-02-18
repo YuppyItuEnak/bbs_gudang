@@ -32,6 +32,8 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
   final driverCtrl = TextEditingController();
   final noDOCtrl = TextEditingController();
 
+  final Map<String, int> _editedQuantities = {};
+
   @override
   void initState() {
     super.initState();
@@ -54,8 +56,8 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
     final unitBusiness = dp.unitBussiness!;
 
     return SuratJalanRequestModel(
-      deliveryPlanId: dp.id!,
-      unitBusinessId: unitBusiness.id!,
+      deliveryPlanId: dp.id,
+      unitBusinessId: unitBusiness.id,
       status: status, // 🔥 DINAMIS
       date: DateFormat('yyyy-MM-dd').format(DateTime.now()),
       vehicle: dp.vehicle?.name,
@@ -70,13 +72,14 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
           npwp: detail.npwp ?? '',
           topId: detail.salesOrder?.top_id ?? '',
           items: detail.items.map((item) {
+            final currentQty = _editedQuantities[item.item!.id] ?? item.qtyDp;
             return SuratJalanItemPayload(
-              itemId: item.item!.id!,
-              qty: item.qtyDp,
+              itemId: item.item!.id,
+              qty: currentQty,
               price: item.price ?? 0,
               weight: (item.weight ?? 0).toDouble(),
               uomId: item.uom?.id ?? '',
-              uomUnit: item.uomUnit!,
+              uomUnit: item.uomUnit,
               uomValue: item.uomValue ?? 1,
             );
           }).toList(),
@@ -90,20 +93,20 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
     final detail = pb.detailDPCode;
     if (detail == null) return;
 
-    final firstDetail = detail.details?.isNotEmpty == true
-        ? detail.details!.first
+    final firstDetail = detail.details.isNotEmpty == true
+        ? detail.details.first
         : null;
 
     companyCtrl.text = detail.unitBussiness?.name ?? '';
-    deliveryAreaCtrl.text = detail.deliveryArea?.code ?? '';
+    deliveryAreaCtrl.text = detail.deliveryArea?.code ?? '-';
     licensePlateCtrl.text = detail.nopol ?? '';
-    totalWeightCtrl.text = detail.weight?.toString() ?? '';
+    totalWeightCtrl.text = detail.weight.toString() ?? '';
     dateCtrl.text = detail.date != null
         ? DateFormat('dd/MM/yyyy').format(detail.date!)
         : '';
 
     vehicleCtrl.text = detail.vehicle?.name ?? '';
-    totalAmountCtrl.text = detail.total?.toString() ?? '';
+    totalAmountCtrl.text = detail.total.toString() ?? '';
     driverCtrl.text = detail.driver ?? '';
 
     // ✅ EXPEDITION dari SALES ORDER di DETAILS
@@ -136,7 +139,6 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
       body: Consumer<PengeluaranBarangProvider>(
         builder: (context, pb, _) {
           // Trigger autofill when detail loaded
-          _autoFill(pb);
 
           final selectedId = pb.selectedDeliveryPlanId;
 
@@ -155,7 +157,7 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                       /// ===== NO DP DROPDOWN =====
                       const SizedBox(height: 10),
                       const Text(
-                        "No. Pengeluaran Barang",
+                        "No. Delivery Plan",
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -180,12 +182,25 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                                 ? selectedId
                                 : null,
 
-                            items: uniqueList.map((e) {
-                              return DropdownMenuItem<String>(
-                                value: e.id,
-                                child: Text(e.code),
-                              );
-                            }).toList(),
+                            items: uniqueList.isEmpty
+                                ? [
+                                    const DropdownMenuItem<String>(
+                                      value: null,
+                                      enabled: false, // Agar tidak bisa dipilih
+                                      child: Text(
+                                        "No Pengeluaran Barang Kosong",
+                                        style: TextStyle(
+                                          color: Colors.redAccent,
+                                        ),
+                                      ),
+                                    ),
+                                  ]
+                                : uniqueList.map((e) {
+                                    return DropdownMenuItem<String>(
+                                      value: e.id,
+                                      child: Text(e.code),
+                                    );
+                                  }).toList(),
 
                             onChanged: (value) async {
                               if (value == null) return;
@@ -200,6 +215,8 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                                   token: token,
                                   id: value,
                                 );
+
+                                _autoFill(pb);
 
                                 // 2️⃣ Ambil unit business ID dari detail DP
                                 final unitBusinessId =
@@ -275,7 +292,6 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                       //   controller: totalAmountCtrl,
                       //   hint: "Total Amount",
                       // ),
-
                       TmbhPengeluaranInputField(
                         label: "Driver",
                         controller: driverCtrl,
@@ -311,6 +327,9 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                                   final qtySo = item.qtySo;
                                   final qtyDp = item.qtyDp;
                                   final sisa = qtySo - qtyDp;
+                                  final itemId = item.item!.id;
+                                  final currentQty =
+                                      _editedQuantities[itemId] ?? item.qtyDp;
 
                                   return ItemPengeluaranTile(
                                     noSo: soCode,
@@ -318,10 +337,53 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                                         ? "Generating..."
                                         : (pb.DOCode ?? "-"),
                                     namaBarang: namaBarang,
-                                    qty: "${qtyDp} ${item.uomUnit}",
+                                    qty: "$qtyDp ${item.uomUnit}",
                                     qtySo: qtySo.toString(),
                                     qtyDikirim: qtyDp.toString(),
                                     sisa: sisa.toString(),
+
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.remove_circle_outline,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () {
+                                            if (currentQty > 0) {
+                                              setState(
+                                                () =>
+                                                    _editedQuantities[itemId] =
+                                                        currentQty - 1,
+                                              );
+                                            }
+                                          },
+                                        ),
+                                        Text(
+                                          "$currentQty",
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.add_circle_outline,
+                                            color: Colors.green,
+                                          ),
+                                          onPressed: () {
+                                            // Batasi tambah agar tidak melebihi Qty SO jika diperlukan
+                                            if (currentQty < item.qtySo) {
+                                              setState(
+                                                () =>
+                                                    _editedQuantities[itemId] =
+                                                        currentQty + 1,
+                                              );
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    ),
                                   );
                                 }),
                               )
@@ -345,16 +407,15 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                         onPressed: pb.isLoading
                             ? null
                             : () async {
+                                if (!_isInputValid(pb)) return;
                                 final token = context
                                     .read<AuthProvider>()
                                     .token;
-                                if (token == null || pb.detailDPCode == null)
+                                if (token == null || pb.detailDPCode == null) {
                                   return;
+                                }
 
                                 final payload = _buildPayload(pb, status: 1);
-
-                                debugPrint("📦 PAYLOAD SJ (DRAFT):");
-                                debugPrint(payload.toJson().toString());
 
                                 final success = await pb
                                     .createPengeluaranBarang(
@@ -362,16 +423,30 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                                       payload: payload,
                                     );
 
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      success
-                                          ? "Draft berhasil disimpan"
-                                          : pb.errorMessage ??
-                                                "Gagal simpan draft",
-                                    ),
-                                  ),
-                                );
+                                if (success) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          "Draft berhasil disimpan",
+                                        ),
+                                      ),
+                                    );
+                                    // 🔙 KEMBALI KE HALAMAN LIST
+                                    Navigator.pop(context, true);
+                                  }
+                                } else {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          pb.errorMessage ??
+                                              "Gagal simpan draft",
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
                               },
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFF4CAF50)),
@@ -398,16 +473,15 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                         onPressed: pb.isLoading
                             ? null
                             : () async {
+                                if (!_isInputValid(pb)) return;
                                 final token = context
                                     .read<AuthProvider>()
                                     .token;
-                                if (token == null || pb.detailDPCode == null)
+                                if (token == null || pb.detailDPCode == null) {
                                   return;
+                                }
 
                                 final payload = _buildPayload(pb, status: 2);
-
-                                debugPrint("📦 PAYLOAD SJ (POSTED):");
-                                debugPrint(payload.toJson().toString());
 
                                 final success = await pb
                                     .createPengeluaranBarang(
@@ -416,21 +490,28 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
                                     );
 
                                 if (success) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        "Pengeluaran Barang berhasil diposting",
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          "Pengeluaran Barang berhasil diposting",
+                                        ),
                                       ),
-                                    ),
-                                  );
+                                    );
+                                    // 🔙 KEMBALI KE HALAMAN LIST
+                                    Navigator.pop(context, true);
+                                  }
                                 } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        pb.errorMessage ?? "Gagal posting data",
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          pb.errorMessage ??
+                                              "Gagal posting data",
+                                        ),
                                       ),
-                                    ),
-                                  );
+                                    );
+                                  }
                                 }
                               },
                         style: ElevatedButton.styleFrom(
@@ -458,5 +539,18 @@ class _TambahPengeluaranBrgPageState extends State<TambahPengeluaranBrgPage> {
         },
       ),
     );
+  }
+
+  bool _isInputValid(PengeluaranBarangProvider pb) {
+    if (pb.detailDPCode == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Pilih Delivery Plan terlebih dahulu!"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return false;
+    }
+    return true;
   }
 }

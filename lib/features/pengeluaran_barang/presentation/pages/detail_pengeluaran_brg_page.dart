@@ -121,7 +121,7 @@ class _DetailPengeluaranBrgPageState extends State<DetailPengeluaranBrgPage> {
                             qty: "${item.qty} ${item.uomUnit}",
                             qtySo: item.qtySnapshot.toString(),
                             qtyDiterima: item.qty.toString(),
-                            sisa: (item.qtySnapshot - item.qty).toString(),
+                            sisa: (item.qtySnapshot - item.qty).toString(), 
                           );
                         },
                       ),
@@ -266,6 +266,7 @@ class _DetailPengeluaranBrgPageState extends State<DetailPengeluaranBrgPage> {
     required String qtySo,
     required String qtyDiterima,
     required String sisa,
+
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
@@ -335,14 +336,6 @@ class _DetailPengeluaranBrgPageState extends State<DetailPengeluaranBrgPage> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            "Deskripsi : Lorem Ipsum",
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
-          ),
-          const Text(
-            "Catatan : -",
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
-          ),
         ],
       ),
     );

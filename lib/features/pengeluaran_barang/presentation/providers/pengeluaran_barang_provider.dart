@@ -12,18 +12,19 @@ class PengeluaranBarangProvider extends ChangeNotifier {
       PengeluaranBarangRepository();
 
   bool _isLoading = false;
-  bool _isLoadMore = false;
+  final bool _isLoadMore = false;
   String? _errorMessage;
   List<PengeluaranBarangModel> _listPengeluaranBarang = [];
+  List<PengeluaranBarangModel> _filterPengeluaranBarang = [];
   PengeluaranBarangModel? _detaiilPengeluaranBarang;
 
   List<DeliveryPlanCodeModel> _listDeliveryPlanCode = [];
 
   List<DeliveryPlanCodeModel> get listDeliveryPlanCode => _listDeliveryPlanCode;
 
-  int _page = 1;
+  final int _page = 1;
   final int _limit = 100;
-  bool _hasMore = true;
+  final bool _hasMore = true;
 
   bool get isLoading => _isLoading;
   bool get isLoadMore => _isLoadMore;
@@ -31,6 +32,8 @@ class PengeluaranBarangProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   List<PengeluaranBarangModel> get listPengeluaranBarang =>
       _listPengeluaranBarang;
+  List<PengeluaranBarangModel> get filterPengeluaranBarang =>
+      _filterPengeluaranBarang;
   PengeluaranBarangModel? get detailPengeluaranBarang =>
       _detaiilPengeluaranBarang;
 
@@ -51,6 +54,21 @@ class PengeluaranBarangProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _createdSuratJalan = [];
   List<Map<String, dynamic>> get createdSuratJalan => _createdSuratJalan;
 
+  void searchPengeluaranBarang(String query) {
+    if (query.isEmpty) {
+      _filterPengeluaranBarang = List.from(_listPengeluaranBarang);
+    } else {
+      _filterPengeluaranBarang = _listPengeluaranBarang.where((element) {
+        final code = element.code;
+        final customer = element.customerModel?.name?? "";
+        final searchText = query;
+
+        return code.contains(searchText) || customer.contains(searchText);
+      }).toList();
+    }
+    notifyListeners();
+  }
+
   Future<void> fetchListPengeluaranBrg({required String token}) async {
     _isLoading = true;
     _errorMessage = null;
@@ -62,6 +80,7 @@ class PengeluaranBarangProvider extends ChangeNotifier {
       );
 
       _listPengeluaranBarang = result;
+      _filterPengeluaranBarang = List.from(result);
 
       debugPrint("✅ SUCCESS FETCH ALL: ${result.length} data");
     } catch (e, stack) {
@@ -138,9 +157,17 @@ class PengeluaranBarangProvider extends ChangeNotifier {
           .fetchDetailDeliveryPlanCode(token: token, id: id);
 
       _detailDPCode = result;
-      print(
-        "DEBUG PROVIDER: Item Berhasil Dimuat, Jumlah: ${_detailDPCode?.details.length}",
-      );
+      // debugPrint("--- 🟢 DEBUG DETAIL DP CODE 🟢 ---");
+      // debugPrint("ID DP: ${_detailDPCode?.id}");
+      // debugPrint("No. DP: ${_detailDPCode?.code}");
+      // debugPrint(
+      //   "Delivery Area: ${_detailDPCode?.deliveryArea?.code} (ID: ${_detailDPCode?.deliveryAreaId})",
+      // );
+      // debugPrint("Nopol: ${_detailDPCode?.nopol}");
+      // debugPrint("Jumlah Group Detail: ${_detailDPCode?.details.length}");
+      // print(
+      //   "DEBUG PROVIDER: Item Berhasil Dimuat, Jumlah: ${_detailDPCode?.details.length}",
+      // );
     } catch (e) {
       _errorMessage = e.toString();
 
@@ -247,7 +274,7 @@ class PengeluaranBarangProvider extends ChangeNotifier {
 
   Future<void> updatePengeluaranBrg({
     required String token,
-    required int status, // Pastikan ada parameter ini
+    required int status,
     String? nopol,
     String? vehicle,
     required Function(String message) onSuccess,
@@ -257,57 +284,66 @@ class PengeluaranBarangProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Gunakan detailDPCode sebagai sumber karena ini yang menampung perubahan qty dari dialog
       if (detailDPCode == null) throw "Data detail tidak ditemukan";
 
-      // Susun Payload
       final Map<String, dynamic> payload = {
         "delivery_plan_id": selectedDeliveryPlanId,
         "unit_bussiness_id": detailPengeluaranBarang?.unitBussinessId,
-        "status": status, // Menerima status dari UI (1 atau 2)
+        "status": status,
         "date": DateFormat('yyyy-MM-dd').format(DateTime.now()),
         "delivery_area": detailDPCode?.deliveryArea?.code ?? "",
         "vehicle": vehicle ?? detailDPCode?.vehicle?.name ?? "",
         "nopol": nopol,
-        "details": detailDPCode!.details.map((detail) {
-          return {
-            "so_id": detail.salesOrder?.id,
-            "ref_code": detail.salesOrder?.code,
-            "ref_name": detail.salesOrder?.customerName,
-            "npwp": "",
-            "top_id": detail.salesOrder?.top_id,
-            "ship_to": detail.shipToName,
-            "customer_id": detail.customer?.id,
-            "customer_name": detail.customer?.name,
-            "items": detail.items.map((item) {
-              return {
-                "item_id": item.item?.id,
-                "qty": item.qtyDp ?? 0, // Inilah nilai yang diambil dari UI
-                "price": item.price ?? 0,
-                "uom_id": item.uom?.id,
-                "uom_unit": item.uomUnit,
-                "uom_value": 1,
-              };
-            }).toList(),
-          };
+        "details": detailDPCode!.details.expand((detail) {
+          return detail.items.map((item) {
+            return {
+              "so_id": detail.salesOrder?.id,
+              "ref_code": detail.salesOrder?.code,
+              "ref_name": detail.salesOrder?.customerName,
+              "top_id": detail.salesOrder?.top_id,
+              "ship_to": detail.shipToName,
+              "customer_id": detail.customer?.id,
+              "customer_name": detail.customer?.name,
+              // Data Item diletakkan sejajar di sini, bukan di dalam list "items"
+              "item_id": item.item?.id ?? item.itemId,
+              "qty": item.qtyDp ?? 0,
+              "price": item.price ?? 0,
+              "uom_id": item.uom?.id,
+              "uom_unit": item.uomUnit,
+              "uom_value": 1,
+            };
+          });
         }).toList(),
       };
 
-      // === DEBUG PAYLOAD ===
-      debugPrint("🚀 SENDING PAYLOAD TO API:");
-      debugPrint(jsonEncode(payload));
-      // =====================
+      final String prettyPayload = const JsonEncoder.withIndent(
+        '  ',
+      ).convert(payload);
+      debugPrint("🚀 SENDING FULL PAYLOAD:\n$prettyPayload");
 
       final result = await _pengeluaranBarangRepository.updatePengeluaranBrg(
         token: token,
-        pbId: detailPengeluaranBarang!.id!,
+        pbId: detailPengeluaranBarang!.id,
         payload: payload,
       );
 
       if (result.isNotEmpty) {
         onSuccess("Berhasil memperbarui data");
-      }
 
-      await fetchDetailPengeluaranBrg(token: token, id: detailPengeluaranBarang!.id);
+        // PERBAIKAN FLOW:
+        // Ambil data terbaru dari server
+        await fetchDetailPengeluaranBrg(
+          token: token,
+          id: detailPengeluaranBarang!.id,
+        );
+
+        // SINKRONISASI: Setelah fetch PB terbaru, pastikan detailDPCode juga diperbarui
+        // agar UI yang membaca detailDPCode tidak menampilkan data lama/kosong
+        if (selectedDeliveryPlanId != null) {
+          await fetchDetailDPCode(token: token, id: selectedDeliveryPlanId!);
+        }
+      }
     } catch (e) {
       debugPrint("❌ ERROR UPDATE: $e");
       onError(e.toString());

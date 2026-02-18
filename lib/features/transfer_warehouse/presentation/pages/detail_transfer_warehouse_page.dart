@@ -209,7 +209,7 @@ class _DetailTransferWarehousePageState
                               context,
                               MaterialPageRoute(
                                 builder: (_) => EditTransferWarehousePage(
-                                  transferId: header.id!,
+                                  transferId: header.id,
                                 ),
                               ),
                             );
