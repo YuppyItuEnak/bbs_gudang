@@ -10,7 +10,7 @@ class SplashScreen extends StatelessWidget {
       backgroundColor: AppColors.darkBlue,
       body: Center(
         child: Image.asset(
-          'lib/assets/Logo BBS Warna 1.png',
+          'lib/assets/Logo_BBS_Warna_1.png',
           width: 200,
           height: 200,
           fit: BoxFit.contain,
