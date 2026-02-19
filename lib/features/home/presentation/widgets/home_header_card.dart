@@ -1,5 +1,6 @@
 import 'package:bbs_gudang/features/notification/presentation/providers/notification_provider.dart';
 import 'package:bbs_gudang/features/penerimaan_barang/presentation/pages/penerimaan_barang_page.dart';
+import 'package:bbs_gudang/features/pengeluaran_barang/presentation/pages/kartu_stock_page.dart';
 import 'package:bbs_gudang/features/pengeluaran_barang/presentation/pages/pengeluaran_barang_page.dart';
 import 'package:bbs_gudang/features/stock_adjustment/presentation/pages/stk_adjustment_page.dart';
 import 'package:bbs_gudang/features/stock_adjustment/presentation/providers/stock_adjustment_provider.dart';
@@ -94,14 +95,14 @@ class HomeHeaderCard extends StatelessWidget {
               ),
               SizedBox(width: 16),
               HomeMenuCard(
-                title: "Pengeluaran",
+                title: "Kartu Stock",
                 icon: Icons.description_outlined,
                 bgColor: Color(0xFFE3F2FD),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const PengeluaranBarangPage(),
+                      builder: (context) => const KartuStockPage(),
                     ),
                   );
                 },

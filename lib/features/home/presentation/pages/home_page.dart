@@ -1,3 +1,4 @@
+import 'package:bbs_gudang/data/services/kartu_stock/kartu_stock_repository.dart';
 import 'package:bbs_gudang/features/home/presentation/providers/history_gudang_provider.dart';
 import 'package:bbs_gudang/features/home/presentation/widgets/home_header_card.dart';
 import 'package:bbs_gudang/features/notification/presentation/providers/notification_provider.dart';
@@ -116,9 +117,13 @@ class _HomePageState extends State<HomePage> {
             context,
             MaterialPageRoute(builder: (_) => const TransferWarehousePage()),
           );
-          // final cobaRepo = PengeluaranBarangRepository();
+          // final cobaRepo = KartuStockRepository();
           // final token = context.read<AuthProvider>().token;
-          // final data = cobaRepo.fetchDeliveryPlanCode(token: token!);
+          // final data = cobaRepo.fetchRecapStock(
+          //   token: token!,
+          //   startDate: '2026-01-31',
+          //   endDate: '2026-02-27',
+          // );
           // print("Data Fetching Repo: ${data}");
         },
         backgroundColor: const Color(0xFFFFC107),
