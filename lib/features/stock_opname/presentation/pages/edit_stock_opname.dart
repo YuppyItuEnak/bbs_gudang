@@ -579,37 +579,37 @@ class _EditStockOpnamePageState extends State<EditStockOpnamePage> {
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryGreen,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: (isFormValid && !isSubmitting)
-                  ? () => _handleUpdate("POSTED")
-                  : null,
-              child: isSubmitting
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text(
-                      "UPDATE & POST",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-            ),
-          ),
+          // Expanded(
+          //   child: ElevatedButton(
+          //     style: ElevatedButton.styleFrom(
+          //       backgroundColor: primaryGreen,
+          //       padding: const EdgeInsets.symmetric(vertical: 14),
+          //       elevation: 0,
+          //       shape: RoundedRectangleBorder(
+          //         borderRadius: BorderRadius.circular(12),
+          //       ),
+          //     ),
+          //     onPressed: (isFormValid && !isSubmitting)
+          //         ? () => _handleUpdate("POSTED")
+          //         : null,
+          //     child: isSubmitting
+          //         ? const SizedBox(
+          //             height: 20,
+          //             width: 20,
+          //             child: CircularProgressIndicator(
+          //               strokeWidth: 2,
+          //               color: Colors.white,
+          //             ),
+          //           )
+          //         : const Text(
+          //             "UPDATE & POST",
+          //             style: TextStyle(
+          //               color: Colors.white,
+          //               fontWeight: FontWeight.bold,
+          //             ),
+          //           ),
+          //   ),
+          // ),
         ],
       ),
     );

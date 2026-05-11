@@ -9,6 +9,7 @@ class ItemCard extends StatefulWidget {
   // --- Tambahkan Parameter Baru ---
   final bool isSelectionMode;
   final VoidCallback? onTap;
+  final String stockLabel;
 
   const ItemCard({
     super.key,
@@ -17,8 +18,9 @@ class ItemCard extends StatefulWidget {
     this.stock = 0.0,
     required this.initialQty,
     required this.onQtyChanged,
-    this.isSelectionMode = false, // Default false agar fitur lama tidak berubah
+    this.isSelectionMode = false,
     this.onTap,
+    this.stockLabel = 'Total Stock',
   });
 
   @override
@@ -32,6 +34,14 @@ class _ItemCardState extends State<ItemCard> {
   void initState() {
     super.initState();
     qty = widget.initialQty;
+  }
+
+  @override
+  void didUpdateWidget(ItemCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialQty != oldWidget.initialQty) {
+      qty = widget.initialQty;
+    }
   }
 
   void _updateQty(int newQty) {
@@ -95,7 +105,7 @@ class _ItemCardState extends State<ItemCard> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      "Total Stock: ${widget.stock}",
+                      "${widget.stockLabel}: ${widget.stock}",
                       style: TextStyle(
                         color: Colors.blue.shade700,
                         fontSize: 12,

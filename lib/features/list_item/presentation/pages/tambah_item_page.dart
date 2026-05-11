@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:bbs_gudang/data/models/list_item/list_item_model.dart';
 import 'package:bbs_gudang/features/list_item/presentation/providers/item_provider.dart';
 import 'package:bbs_gudang/features/transfer_warehouse/presentation/widgets/item_card.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,7 @@ class TambahItem extends StatefulWidget {
 class _TambahItemState extends State<TambahItem> {
   final ScrollController _scrollController = ScrollController();
   final Map<String, int> _qtyMap = {};
+  final Set<String> _selectedIds = {};
   final TextEditingController _searchController = TextEditingController();
 
   Timer? _debounce; // untuk debounce search
@@ -66,7 +68,9 @@ class _TambahItemState extends State<TambahItem> {
     _scrollController.addListener(_onScroll);
   }
 
-  bool get hasSelectedItem => _qtyMap.values.any((qty) => qty > 0);
+  bool get hasSelectedItem => widget.isOpnameMode
+      ? _selectedIds.isNotEmpty
+      : _qtyMap.values.any((qty) => qty > 0);
 
   void _onScroll() {
     final provider = context.read<ItemBarangProvider>();
@@ -101,7 +105,104 @@ class _TambahItemState extends State<TambahItem> {
     );
   }
 
-  // Tambahkan fungsi ini di dalam class _TambahItemState
+  Widget _buildCheckboxItemTile(
+    ItemBarangModel item,
+    bool isChecked,
+    double stockValue,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isChecked) {
+            _selectedIds.remove(item.id);
+          } else {
+            _selectedIds.add(item.id);
+          }
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            color: isChecked ? Colors.green.shade300 : Colors.transparent,
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.code,
+                    style: TextStyle(
+                      color: Colors.grey.shade400,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      "Total Stock: $stockValue",
+                      style: TextStyle(
+                        color: Colors.blue.shade700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Checkbox(
+              value: isChecked,
+              onChanged: (val) {
+                setState(() {
+                  if (val == true) {
+                    _selectedIds.add(item.id);
+                  } else {
+                    _selectedIds.remove(item.id);
+                  }
+                });
+              },
+              activeColor: Colors.green,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -239,38 +340,29 @@ class _TambahItemState extends State<TambahItem> {
                           }
 
                           final item = filteredItems[index];
-                          final currentQty = _qtyMap[item.id] ?? 0;
                           final double stockValue =
                               provider.itemStocks[item.id] ?? 0.0;
 
+                          if (widget.isOpnameMode) {
+                            final isChecked = _selectedIds.contains(item.id);
+                            return _buildCheckboxItemTile(
+                              item,
+                              isChecked,
+                              stockValue,
+                            );
+                          }
+
+                          final currentQty = _qtyMap[item.id] ?? 0;
                           return ItemCard(
                             nama: item.name,
                             kode: item.code,
                             stock: stockValue,
                             initialQty: currentQty,
-                            isSelectionMode: widget
-                                .isOpnameMode, // Menyembunyikan selector +/- di Card
+                            isSelectionMode: false,
                             onQtyChanged: (newQty) {
                               setState(() {
                                 _qtyMap[item.id] = newQty;
                               });
-                            },
-                            // --- IMPLEMENTASI DI SINI ---
-                            onTap: () {
-                              if (widget.isOpnameMode) {
-                                // Langsung kembalikan item yang dipilih ke halaman sebelumnya
-                                Navigator.pop(context, [
-                                  {
-                                    "id": item.id,
-                                    "code": item.code,
-                                    "name": item.name,
-                                    "item_uom_id": item.itemUomId,
-                                    "item_group_coa_id": item.itemGroupCoaId,
-                                    "qty":
-                                        0, // Berikan qty default 1, nanti diedit di halaman Opname
-                                  },
-                                ]);
-                              }
                             },
                           );
                         },
@@ -289,30 +381,45 @@ class _TambahItemState extends State<TambahItem> {
                   child: ElevatedButton(
                     onPressed: hasSelectedItem
                         ? () {
-                            final selectedItems = _qtyMap.entries
-                                .where((e) => e.value > 0)
-                                .map((e) {
-                                  final item = context
-                                      .read<ItemBarangProvider>()
-                                      .items
-                                      .firstWhere((i) => i.id == e.key);
-
-                                  return {
-                                    "id": item.id,
-                                    "code": item.code,
-                                    "name": item.name,
-                                    "item_uom_id":
-                                        item.itemUomId, // DIAMBIL DARI MODEL
-                                    "item_group_coa_id": item
-                                        .itemGroupCoaId, // DIAMBIL DARI MODEL
-                                    "qty": e.value,
-                                  };
-                                })
-                                .toList();
-
-                            Navigator.pop(context, selectedItems);
+                            if (widget.isOpnameMode) {
+                              final allItems =
+                                  context.read<ItemBarangProvider>().items;
+                              final selectedItems = _selectedIds.map((id) {
+                                final item = allItems.firstWhere(
+                                  (i) => i.id == id,
+                                );
+                                return {
+                                  "id": item.id,
+                                  "code": item.code,
+                                  "name": item.name,
+                                  "item_uom_id": item.itemUomId,
+                                  "item_group_coa_id": item.itemGroupCoaId,
+                                  "qty": 0,
+                                };
+                              }).toList();
+                              Navigator.pop(context, selectedItems);
+                            } else {
+                              final selectedItems = _qtyMap.entries
+                                  .where((e) => e.value > 0)
+                                  .map((e) {
+                                    final item = context
+                                        .read<ItemBarangProvider>()
+                                        .items
+                                        .firstWhere((i) => i.id == e.key);
+                                    return {
+                                      "id": item.id,
+                                      "code": item.code,
+                                      "name": item.name,
+                                      "item_uom_id": item.itemUomId,
+                                      "item_group_coa_id": item.itemGroupCoaId,
+                                      "qty": e.value,
+                                    };
+                                  })
+                                  .toList();
+                              Navigator.pop(context, selectedItems);
+                            }
                           }
-                        : null, // ⬅️ disable
+                        : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4CAF50),
                       disabledBackgroundColor: Colors.grey.shade400,

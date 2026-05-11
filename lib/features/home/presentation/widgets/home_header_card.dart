@@ -150,19 +150,27 @@ class HomeHeaderCard extends StatelessWidget {
                 /// UNDERSTOCK → STOCK ADJUSTMENT
                 Consumer<StockAdjustmentProvider>(
                   builder: (context, adjustmentProvider, _) {
-                    return HomeStockInfo(
-                      count: "${adjustmentProvider.data.length} Items",
-                      label: "Understock",
-                      icon: Icons.mail_outline,
-                      iconColor: Colors.red,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const StkAdjustmentPage(),
-                          ),
-                        );
-                      },
+                    // Tentukan kondisi apakah widget ini aktif atau tidak
+                    bool isDisabled = true; // Set ke true untuk mencoba efeknya
+
+                    return Opacity(
+                      opacity: isDisabled
+                          ? 0.5
+                          : 1.0, // Membuat visual jadi agak pudar
+                      child: AbsorbPointer(
+                        absorbing:
+                            isDisabled, // Mematikan fungsi klik jika true
+                        child: HomeStockInfo(
+                          count: "${adjustmentProvider.data.length} Items",
+                          label: "Understock",
+                          icon: Icons.mail_outline,
+                          // Mengubah warna ikon menjadi abu-abu jika disable
+                          iconColor: isDisabled ? Colors.grey : Colors.red,
+                          onTap: () {
+                            // Logika navigasi di sini
+                          },
+                        ),
+                      ),
                     );
                   },
                 ),

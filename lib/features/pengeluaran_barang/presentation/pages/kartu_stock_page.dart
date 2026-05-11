@@ -79,7 +79,7 @@ class _KartuStockPageState extends State<KartuStockPage> {
           return Column(
             children: [
               _buildSearchBar(provider),
-              _buildTotalWeightHeader(provider.totalWeight),
+              // _buildTotalWeightHeader(provider.totalWeight),
               Expanded(child: _buildBodyContent(provider)),
             ],
           );
@@ -137,6 +137,7 @@ class _KartuStockPageState extends State<KartuStockPage> {
             transactionCode: item.transactionCode ?? "-",
             date: item.date ?? "-",
             isOut: isOut,
+            uomSatuan: item.uomSatuan ?? "-",
           ),
         );
       },
@@ -246,6 +247,7 @@ class _KartuStockPageState extends State<KartuStockPage> {
     required String transactionCode,
     required String date,
     required bool isOut,
+    required String uomSatuan,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
@@ -289,6 +291,11 @@ class _KartuStockPageState extends State<KartuStockPage> {
               fontSize: 14,
               color: Colors.black87,
             ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "Satuan Unit: $uomSatuan",
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
           ),
           const SizedBox(height: 8),
           Row(
@@ -409,6 +416,18 @@ class _KartuStockPageState extends State<KartuStockPage> {
                 ),
                 Text(
                   item.customerSupplier ?? "N/A",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                const Text(
+                  "Satuan Unit",
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+                Text(
+                  item.uomSatuan ?? "-",
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,

@@ -194,7 +194,7 @@ JUMLAH ITEM: ${provider.selectedItems.length}
                             : () =>
                                   _submitPB(context: context, status: "DRAFT"),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey,
+                          backgroundColor: Colors.green,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -212,31 +212,31 @@ JUMLAH ITEM: ${provider.selectedItems.length}
                     const SizedBox(width: 12),
 
                     /// 🚀 POSTED
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: isSubmitting
-                            ? null
-                            : () =>
-                                  _submitPB(context: context, status: "POSTED"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: isSubmitting
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : const Text(
-                                "Posted",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
-                    ),
+                    // Expanded(
+                    //   child: ElevatedButton(
+                    //     onPressed: isSubmitting
+                    //         ? null
+                    //         : () =>
+                    //               _submitPB(context: context, status: "POSTED"),
+                    //     style: ElevatedButton.styleFrom(
+                    //       backgroundColor: Colors.green,
+                    //       shape: RoundedRectangleBorder(
+                    //         borderRadius: BorderRadius.circular(12),
+                    //       ),
+                    //     ),
+                    //     child: isSubmitting
+                    //         ? const CircularProgressIndicator(
+                    //             color: Colors.white,
+                    //           )
+                    //         : const Text(
+                    //             "Posted",
+                    //             style: TextStyle(
+                    //               color: Colors.white,
+                    //               fontWeight: FontWeight.bold,
+                    //             ),
+                    //           ),
+                    //   ),
+                    // ),
                   ],
                 ),
               ),

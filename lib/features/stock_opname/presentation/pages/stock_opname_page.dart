@@ -63,50 +63,7 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
 
           return Column(
             children: [
-              /// 🔍 SEARCH BAR (Sekarang berada di luar pengecekan isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: TextField(
-                          onChanged: (value) {
-                            provider.searchStockOpname(value);
-                          },
-                          decoration: const InputDecoration(
-                            hintText: "Cari nomor Pengeluaran Barang...",
-                            prefixIcon: Icon(Icons.search, color: Colors.grey),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 15,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: const Icon(Icons.tune, color: Colors.black87),
-                    ),
-                  ],
-                ),
-              ),
+              _buildSearchBar(provider),
 
               /// 📄 LIST ATAU EMPTY STATE
               Expanded(
@@ -166,6 +123,78 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
             );
           }
         },
+      ),
+    );
+  }
+
+  /// ================= SEARCH BAR + FILTER CHIPS =================
+  Widget _buildSearchBar(StockOpnameProvider provider) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: TextField(
+              onChanged: (value) {
+                provider.searchStockOpname(value);
+              },
+              decoration: const InputDecoration(
+                hintText: "Cari nomor Stock Opname atau gudang...",
+                prefixIcon: Icon(Icons.search, color: Colors.grey),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 15,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _statusChip(provider, null, 'Semua'),
+              const SizedBox(width: 8),
+              _statusChip(provider, 'DRAFT', 'Draft'),
+              const SizedBox(width: 8),
+              _statusChip(provider, 'POSTED', 'Posted'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusChip(
+    StockOpnameProvider provider,
+    String? status,
+    String label,
+  ) {
+    final isSelected = provider.selectedStatusFilter == status;
+    return GestureDetector(
+      onTap: () => provider.setStatusFilter(status),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF4CAF50) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF4CAF50) : Colors.grey.shade300,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black54,
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
       ),
     );
   }

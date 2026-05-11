@@ -17,7 +17,7 @@ class KartuStockRepository {
     try {
       final uri =
           Uri.parse(
-            "$baseUrl/fn/t_inventory_ledger/getInventoryLedgerDetailReport",
+            "$baseUrl/fn/t_inventory_ledger/getInventoryLedgerDetailReportMobile",
           ).replace(
             queryParameters: {
               'start_date': startDate,
@@ -25,6 +25,8 @@ class KartuStockRepository {
               'limit': '100',
             },
           );
+
+      debugPrint('🔗 Fetching Kartu Stock from: $uri');
 
       final response = await http.get(
         uri,

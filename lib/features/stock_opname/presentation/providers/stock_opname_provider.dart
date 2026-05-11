@@ -35,21 +35,33 @@ class StockOpnameProvider extends ChangeNotifier {
 
   int get overStockCount => _reports.length;
 
-  void searchStockOpname(String query) {
-    if (query.isEmpty) {
-      _filteredReports = _reports;
-    } else {
-      _filteredReports = _reports.where((element) {
-        final code = element.code ?? "";
-        final date = element.date.toString() ?? "";
-        final warehouse = element.warehouse?.name ?? "";
-        final searchText = query;
+  String _searchQuery = '';
+  String? _selectedStatusFilter;
+  String? get selectedStatusFilter => _selectedStatusFilter;
 
-        return code.contains(searchText) ||
-            date.contains(searchText) ||
-            warehouse.contains(searchText);
-      }).toList();
-    }
+  void searchStockOpname(String query) {
+    _searchQuery = query;
+    _applyFilters();
+  }
+
+  void setStatusFilter(String? status) {
+    _selectedStatusFilter = status;
+    _applyFilters();
+  }
+
+  void _applyFilters() {
+    _filteredReports = _reports.where((element) {
+      final matchesSearch = _searchQuery.isEmpty ||
+          (element.code).contains(_searchQuery) ||
+          (element.date.toString()).contains(_searchQuery) ||
+          (element.warehouse?.name ?? '').contains(_searchQuery);
+
+      final matchesStatus = _selectedStatusFilter == null ||
+          element.status == _selectedStatusFilter;
+
+      return matchesSearch && matchesStatus;
+    }).toList();
+
     notifyListeners();
   }
 
@@ -87,24 +99,20 @@ class StockOpnameProvider extends ChangeNotifier {
         _hasMore = false;
       }else{
         final existingIds = _reports.map((e) => e.id).toSet();
-      
-      
       final uniqueNewData = result.where((item) => !existingIds.contains(item.id)).toList();
 
       _reports.addAll(uniqueNewData);
-      _filteredReports = List.from(_reports);
       _reports.sort((a, b) {
-         final aDate = a.date ?? DateTime.fromMillisecondsSinceEpoch(0);
-         final bDate = b.date ?? DateTime.fromMillisecondsSinceEpoch(0);
-         final dateCompare = bDate.compareTo(aDate);
-         if (dateCompare != 0) return dateCompare;
-         final aNum = int.tryParse(a.code.split('-').last) ?? 0;
-         final bNum = int.tryParse(b.code.split('-').last) ?? 0;
-         return bNum.compareTo(aNum);
+        final aDate = a.date ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bDate = b.date ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final dateCompare = bDate.compareTo(aDate);
+        if (dateCompare != 0) return dateCompare;
+        final aNum = int.tryParse(a.code.split('-').last) ?? 0;
+        final bNum = int.tryParse(b.code.split('-').last) ?? 0;
+        return bNum.compareTo(aNum);
       });
-      
-      _filteredReports = List.from(_reports); // Pastikan filter juga tersortir
 
+      _applyFilters();
       _page++;
       }
 

@@ -64,16 +64,14 @@ class HomeBottomNav extends StatelessWidget {
             // KANAN - ITEM PROFILE
             Expanded(
               child: InkWell(
-                onTap: () => onTap(2), // UBAH INI JADI 1
+                onTap: () => onTap(1),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
                       Icons.person_outline_rounded,
                       size: 30,
-                      color:
-                          currentIndex ==
-                              2 // UBAH INI JADI 1
+                      color: currentIndex == 1
                           ? const Color(0xFF4CAF50)
                           : Colors.grey.shade400,
                     ),
@@ -82,12 +80,10 @@ class HomeBottomNav extends StatelessWidget {
                       "Profile",
                       style: TextStyle(
                         fontSize: 12,
-                        color:
-                            currentIndex ==
-                                2 // UBAH INI JADI 1
+                        color: currentIndex == 1
                             ? const Color(0xFF4CAF50)
                             : Colors.grey.shade400,
-                        fontWeight: currentIndex == 2
+                        fontWeight: currentIndex == 1
                             ? FontWeight.bold
                             : FontWeight.normal,
                       ),

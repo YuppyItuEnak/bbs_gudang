@@ -248,6 +248,42 @@ class PenerimaanBarangRepository {
     return body;
   }
 
+  Future<Map<String, dynamic>> fetchPoOutstandingItems({
+    required String token,
+    required String purchaseOrderId,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/fn/t_penerimaan_barang/getPoOutstandingItems',
+    ).replace(
+      queryParameters: {
+        'purchase_order_id': purchaseOrderId,
+        'page': page.toString(),
+        'paginate': limit.toString(),
+      },
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    debugPrint('📦 GET PO OUTSTANDING ITEMS STATUS: ${response.statusCode}');
+    debugPrint('📦 GET PO OUTSTANDING ITEMS BODY: ${response.body}');
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed fetch PO outstanding items (${response.statusCode})',
+      );
+    }
+
+    return jsonDecode(response.body);
+  }
+
   Future<PenerimaanBarangModel> createPenerimaanBarang({
     required String token,
     required Map<String, dynamic> payload,

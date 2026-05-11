@@ -68,7 +68,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       _buildHomeContent(),
-      const TransferWarehousePage(),
+      // const TransferWarehousePage(),
       const ProfilePage(),
     ];
 
@@ -93,14 +93,14 @@ class _HomePageState extends State<HomePage> {
         return Stack(
           children: [
             HomeHeaderCard(auth: auth),
-            DraggableScrollableSheet(
-              initialChildSize: 0.55,
-              minChildSize: 0.45,
-              maxChildSize: 0.95,
-              builder: (context, scrollController) {
-                return HomeHistorySection(scrollController: scrollController);
-              },
-            ),
+            // DraggableScrollableSheet(
+            //   initialChildSize: 0.55,
+            //   minChildSize: 0.45,
+            //   maxChildSize: 0.95,
+            //   builder: (context, scrollController) {
+            //     return HomeHistorySection(scrollController: scrollController);
+            //   },
+            // ),
           ],
         );
       },
@@ -108,43 +108,50 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildFAB() {
+    // Set ini ke true untuk kondisi disable
+    bool isDisabled = true;
+
     return SizedBox(
       width: 80,
       height: 80,
-      child: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const TransferWarehousePage()),
-          );
-          // final cobaRepo = KartuStockRepository();
-          // final token = context.read<AuthProvider>().token;
-          // final data = cobaRepo.fetchRecapStock(
-          //   token: token!,
-          //   startDate: '2026-01-31',
-          //   endDate: '2026-02-27',
-          // );
-          // print("Data Fetching Repo: ${data}");
-        },
-        backgroundColor: const Color(0xFFFFC107),
-        elevation: 4,
-        shape: const CircleBorder(),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.shopping_cart_outlined, color: Colors.white, size: 28),
-            SizedBox(height: 2),
-            Text(
-              "Transfer\nWarehouse",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 9,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                height: 1.0,
+      child: AbsorbPointer(
+        absorbing: isDisabled, // Mencegah interaksi jika true
+        child: FloatingActionButton(
+          // Menyetel onPressed ke null secara otomatis memberikan efek "disabled" pada beberapa style
+          onPressed: isDisabled
+              ? null
+              : () {
+                  // Navigator.push(...)
+                },
+          // Warna background saat disable biasanya menggunakan abu-abu yang lebih terang/soft
+          backgroundColor: isDisabled
+              ? Colors.grey.shade400
+              : const Color.fromARGB(255, 145, 145, 145),
+          elevation: isDisabled
+              ? 0
+              : 4, // Hilangkan bayangan saat disable agar terlihat "datar"
+          shape: const CircleBorder(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.shopping_cart_outlined,
+                color: isDisabled ? Colors.white70 : Colors.white,
+                size: 28,
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                "Transfer\nWarehouse",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: isDisabled ? Colors.white70 : Colors.white,
+                  fontWeight: FontWeight.bold,
+                  height: 1.0,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -161,7 +161,19 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildSectionLabel("Daftar Item"),
+                      Row(
+                        children: [
+                          _buildSectionLabel("Daftar Item"),
+                          const Text(
+                            ' *',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
                       if (selectedItems.isNotEmpty)
                         Text(
                           "${selectedItems.length} Item dipilih",
@@ -173,6 +185,17 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
                         ),
                     ],
                   ),
+                  if (selectedItems.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Minimal 1 item harus ditambahkan',
+                        style: TextStyle(
+                          color: Colors.red.shade400,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 12),
                   selectedItems.isEmpty
                       ? _buildInitialAddButton()
@@ -206,6 +229,8 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
       builder: (_, provider, __) {
         return _dropdownFieldWrapper(
           label: "Company",
+          isRequired: true,
+          isEmpty: selectedCompanyId == null,
           child: DropdownButton<String>(
             value: selectedCompanyId,
             hint: const Text("Pilih Unit Bisnis"),
@@ -236,6 +261,8 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
         bool isDisabled = selectedCompanyId == null;
         return _dropdownFieldWrapper(
           label: "Gudang",
+          isRequired: true,
+          isEmpty: selectedWarehouseId == null,
           child: DropdownButton<String>(
             value: selectedWarehouseId,
             hint: Text(isDisabled ? "Pilih Company dulu" : "Pilih Gudang"),
@@ -258,6 +285,8 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
       builder: (_, provider, __) {
         return _dropdownFieldWrapper(
           label: "User PIC",
+          isRequired: true,
+          isEmpty: selectedUserPICId == null,
           child: provider.isLoading
               ? const SizedBox(
                   height: 20,
@@ -382,7 +411,7 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
                   children: [
                     _qtyActionBtn(Icons.remove, () {
                       setState(() {
-                        if (selectedItems[index]['qty'] > 1) {
+                        if (selectedItems[index]['qty'] > 0) {
                           selectedItems[index]['qty']--;
                         } else {
                           _confirmRemoveItem(index);
@@ -505,44 +534,62 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryGreen,
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: isFormValid
-                  ? () => _submitStockOpname("POSTED")
-                  : null,
-              child: const Text(
-                "POSTING",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
+          // Expanded(
+          //   child: ElevatedButton(
+          //     style: ElevatedButton.styleFrom(
+          //       backgroundColor: primaryGreen,
+          //       padding: const EdgeInsets.symmetric(vertical: 15),
+          //       elevation: 0,
+          //       shape: RoundedRectangleBorder(
+          //         borderRadius: BorderRadius.circular(12),
+          //       ),
+          //     ),
+          //     onPressed: isFormValid
+          //         ? () => _submitStockOpname("POSTED")
+          //         : null,
+          //     child: const Text(
+          //       "POSTING",
+          //       style: TextStyle(
+          //         color: Colors.white,
+          //         fontWeight: FontWeight.bold,
+          //       ),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );
   }
 
-  // Wrapper untuk merapikan Dropdown
-  Widget _dropdownFieldWrapper({required String label, required Widget child}) {
+  Widget _dropdownFieldWrapper({
+    required String label,
+    required Widget child,
+    bool isRequired = false,
+    bool isEmpty = false,
+  }) {
+    final bool showError = isRequired && isEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade700,
-            fontWeight: FontWeight.w500,
+        RichText(
+          text: TextSpan(
+            text: label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+            children: isRequired
+                ? const [
+                    TextSpan(
+                      text: ' *',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ]
+                : [],
           ),
         ),
         const SizedBox(height: 6),
@@ -551,10 +598,21 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
+            border: Border.all(
+              color: showError ? Colors.red.shade400 : Colors.grey.shade300,
+              width: showError ? 1.5 : 1,
+            ),
           ),
           child: child,
         ),
+        if (showError)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 4),
+            child: Text(
+              'Field ini wajib diisi',
+              style: TextStyle(color: Colors.red.shade400, fontSize: 11),
+            ),
+          ),
       ],
     );
   }

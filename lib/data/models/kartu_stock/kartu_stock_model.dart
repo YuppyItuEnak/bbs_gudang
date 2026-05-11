@@ -20,6 +20,7 @@ class KartuStockModel {
   final num? valueIn;
   final String? valueOut;
   final String? valueBalance;
+  final String? uomSatuan;
 
   KartuStockModel({
     this.no,
@@ -43,6 +44,7 @@ class KartuStockModel {
     this.valueIn,
     this.valueOut,
     this.valueBalance,
+    this.uomSatuan,
   });
 
   factory KartuStockModel.fromJson(Map<String, dynamic> json) {
@@ -77,6 +79,7 @@ class KartuStockModel {
       valueIn: json['value_in'] is num ? json['value_in'] : 0,
       valueOut: parseToString(json['value_out']),
       valueBalance: parseToString(json['value_balance']),
+      uomSatuan: json['uom'] ?? '-',
     );
   }
 }

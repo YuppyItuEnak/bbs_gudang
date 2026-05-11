@@ -154,18 +154,13 @@ class PenerimaanBarangProvider extends ChangeNotifier {
   }
 
   void setSelectedItems(List<Map<String, dynamic>> items) {
-    // 1. Simpan nilai qty yang sudah diinput user sebelumnya ke dalam Map (Key: ID, Value: Qty)
     final existingQtys = {
       for (var item in selectedItems)
         (item["item_id"] ?? item["id"]): item["qty_receipt"],
     };
 
-    // 2. Map items baru sambil mengecek apakah item tersebut sudah punya qty lama
     selectedItems = items.map((item) {
       final itemId = item["item_id"] ?? item["id"];
-
-      // Jika item sudah ada di list sebelumnya, pakai Qty lama.
-      // Jika benar-benar baru, pakai default 1 (atau item["qty_receipt"] jika ada)
       int initialQty = existingQtys[itemId] ?? item["qty_receipt"] ?? 1;
 
       return {
@@ -174,10 +169,17 @@ class PenerimaanBarangProvider extends ChangeNotifier {
         "item_code": item["code"] ?? item["item_code"] ?? "-",
         "item_name": item["name"] ?? item["item_name"] ?? "-",
         "qty_order": item["qty"] ?? item["qty_order"] ?? 0,
+        "qty_outstanding": item["qty_outstanding"] ?? 0,
         "qty_receipt": initialQty,
       };
     }).toList();
 
+    notifyListeners();
+  }
+
+  void updateQtyReceipt(int index, int qty) {
+    if (qty < 1) return;
+    selectedItems[index]["qty_receipt"] = qty;
     notifyListeners();
   }
 
@@ -279,10 +281,10 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      final res = await _repository.fetchAvailablePBDetails(
+      final res = await _repository.fetchPoOutstandingItems(
         token: token,
         purchaseOrderId: poId,
-        page: page,
+        page: _page,
         limit: limit,
       );
 
@@ -422,18 +424,32 @@ class PenerimaanBarangProvider extends ChangeNotifier {
   List<PenerimaanBarangModel> get filterPenerimaanBarang =>
       _filterPenerimaanBarang;
 
-  void searchPenerimaanBarang(String query) {
-    if (query.isEmpty) {
-      _filterPenerimaanBarang = _listPenerimaanBarang;
-    } else {
-      _filterPenerimaanBarang = _listPenerimaanBarang.where((element) {
-        final code = element.code ?? "";
-        final unitBisnis = element.supplierName ?? "";
-        final searchText = query;
+  String _searchQuery = '';
+  String? _selectedStatusFilter;
+  String? get selectedStatusFilter => _selectedStatusFilter;
 
-        return code.contains(searchText) || unitBisnis.contains(searchText);
-      }).toList();
-    }
+  void searchPenerimaanBarang(String query) {
+    _searchQuery = query;
+    _applyFilters();
+  }
+
+  void setStatusFilter(String? status) {
+    _selectedStatusFilter = status;
+    _applyFilters();
+  }
+
+  void _applyFilters() {
+    _filterPenerimaanBarang = _listPenerimaanBarang.where((element) {
+      final matchesSearch = _searchQuery.isEmpty ||
+          (element.code ?? '').contains(_searchQuery) ||
+          (element.supplierName ?? '').contains(_searchQuery);
+
+      final matchesStatus = _selectedStatusFilter == null ||
+          (element.status?.toLowerCase() ==
+              _selectedStatusFilter!.toLowerCase());
+
+      return matchesSearch && matchesStatus;
+    }).toList();
 
     notifyListeners();
   }
@@ -472,9 +488,7 @@ class PenerimaanBarangProvider extends ChangeNotifier {
           int.tryParse(pagination['totalPages']?.toString() ?? '1') ?? 1;
 
       if (isRefresh) {
-        // Ganti total list dengan data terbaru dari page 1
         _listPenerimaanBarang = newData;
-        _filterPenerimaanBarang = newData;
       } else {
         for (var item in newData) {
           bool isExist = _listPenerimaanBarang.any(
@@ -482,10 +496,11 @@ class PenerimaanBarangProvider extends ChangeNotifier {
           );
           if (!isExist) {
             _listPenerimaanBarang.add(item);
-            _filterPenerimaanBarang.add(item);
           }
         }
       }
+
+      _applyFilters();
 
       // Update status pagination
       if (_page >= totalPages || newData.isEmpty) {
