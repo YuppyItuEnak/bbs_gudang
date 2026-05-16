@@ -132,8 +132,7 @@ class _KartuStockPageState extends State<KartuStockPage> {
           child: _buildStockCard(
             itemCode: item.itemCode ?? "-",
             itemName: item.itemName ?? "Tanpa Nama",
-            weight:
-                "${item.weightOut != "0" ? item.weightOut : item.weightIn} KG",
+            qty: item.weightPerUnit ?? "0",
             transactionCode: item.transactionCode ?? "-",
             date: item.date ?? "-",
             isOut: isOut,
@@ -243,7 +242,7 @@ class _KartuStockPageState extends State<KartuStockPage> {
   Widget _buildStockCard({
     required String itemCode,
     required String itemName,
-    required String weight,
+    required String qty,
     required String transactionCode,
     required String date,
     required bool isOut,
@@ -274,11 +273,11 @@ class _KartuStockPageState extends State<KartuStockPage> {
                 itemCode,
                 style: const TextStyle(color: Colors.grey, fontSize: 11),
               ),
-              Icon(
-                isOut ? Icons.wifi_tethering_off : Icons.get_app,
-                color: isOut ? Colors.red.shade400 : Colors.green.shade400,
-                size: 20,
-              ),
+              // Icon(
+              //   Icons.,
+              //   color: Colors.green.shade400,
+              //   size: 20,
+              // ),
             ],
           ),
           const SizedBox(height: 4),
@@ -301,7 +300,7 @@ class _KartuStockPageState extends State<KartuStockPage> {
           Row(
             children: [
               Text(
-                weight,
+                "Weight/Unit: $qty KG",
                 style: const TextStyle(
                   color: Colors.grey,
                   fontSize: 13,
@@ -353,7 +352,9 @@ class _KartuStockPageState extends State<KartuStockPage> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Icon(
-                        isOut ? Icons.wifi_tethering_off : Icons.get_app,
+                        isOut
+                            ? Icons.monitor_weight
+                            : Icons.monitor_weight_outlined,
                         color: Colors.white,
                         size: 16,
                       ),
@@ -391,15 +392,12 @@ class _KartuStockPageState extends State<KartuStockPage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          isOut ? "Qty Out" : "Qty In",
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
-                          ),
+                        const Text(
+                          "Weight/Unit",
+                          style: TextStyle(color: Colors.grey, fontSize: 12),
                         ),
                         Text(
-                          "${isOut ? item.weightOut : item.weightIn} KG",
+                          "${item.weightPerUnit ?? '0'} KG",
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -415,7 +413,7 @@ class _KartuStockPageState extends State<KartuStockPage> {
                   style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
                 Text(
-                  item.customerSupplier ?? "N/A",
+                  "${item.customerCode} - ${item.customerSupplier}",
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,

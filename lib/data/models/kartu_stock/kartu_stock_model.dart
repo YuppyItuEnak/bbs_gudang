@@ -21,6 +21,8 @@ class KartuStockModel {
   final String? valueOut;
   final String? valueBalance;
   final String? uomSatuan;
+  final String? customerName;
+  final String? customerCode;
 
   KartuStockModel({
     this.no,
@@ -45,6 +47,8 @@ class KartuStockModel {
     this.valueOut,
     this.valueBalance,
     this.uomSatuan,
+    this.customerName,
+    this.customerCode,
   });
 
   factory KartuStockModel.fromJson(Map<String, dynamic> json) {
@@ -80,6 +84,8 @@ class KartuStockModel {
       valueOut: parseToString(json['value_out']),
       valueBalance: parseToString(json['value_balance']),
       uomSatuan: json['uom'] ?? '-',
+      customerName: json['customer_name'] ?? '',
+      customerCode: json['customer_code'] ?? '',
     );
   }
 }
