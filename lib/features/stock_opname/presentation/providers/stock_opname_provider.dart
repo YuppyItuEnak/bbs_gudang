@@ -51,10 +51,11 @@ class StockOpnameProvider extends ChangeNotifier {
 
   void _applyFilters() {
     _filteredReports = _reports.where((element) {
-      final matchesSearch = _searchQuery.isEmpty ||
-          (element.code).contains(_searchQuery) ||
-          (element.date.toString()).contains(_searchQuery) ||
-          (element.warehouse?.name ?? '').contains(_searchQuery);
+      final q = _searchQuery.toLowerCase();
+      final matchesSearch = q.isEmpty ||
+          (element.code).toLowerCase().contains(q) ||
+          (element.date.toString()).toLowerCase().contains(q) ||
+          (element.warehouse?.name ?? '').toLowerCase().contains(q);
 
       final matchesStatus = _selectedStatusFilter == null ||
           element.status == _selectedStatusFilter;

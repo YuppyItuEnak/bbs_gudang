@@ -184,8 +184,13 @@ class _ItemCardPBState extends State<_ItemCardPB> {
       return;
     }
     final outstanding = (widget.item['qty_outstanding'] as num?)?.toInt();
-    final clamped =
-        outstanding != null && parsed > outstanding ? outstanding : parsed;
+    final tolerance = (widget.item['excess_tolerance'] as num?)?.toDouble() ?? 0;
+    final maxQty = (outstanding != null && outstanding > 0)
+        ? (outstanding * (1 + tolerance / 100)).floor()
+        : null;
+    debugPrint('🔍 TOLERANCE APPLY: outstanding=$outstanding, tolerance=$tolerance%, maxQty=$maxQty, parsed=$parsed');
+    final clamped = maxQty != null && parsed > maxQty ? maxQty : parsed;
+    debugPrint('🔍 TOLERANCE APPLY: clamped=$clamped');
     widget.provider.updateQtyReceipt(widget.index, clamped);
   }
 
@@ -197,6 +202,10 @@ class _ItemCardPBState extends State<_ItemCardPB> {
     final int qtyOrder = (item["qty_order"] as num?)?.toInt() ?? 0;
     final int qtyOutstanding = (item["qty_outstanding"] as num?)?.toInt() ?? 0;
     final int qtyReceipt = (item["qty_receipt"] as num?)?.toInt() ?? 1;
+    final double tolerance = (item["excess_tolerance"] as num?)?.toDouble() ?? 0;
+    final int maxQty = qtyOutstanding > 0
+        ? (qtyOutstanding * (1 + tolerance / 100)).floor()
+        : 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -267,6 +276,12 @@ class _ItemCardPBState extends State<_ItemCardPB> {
                 value: "$qtyOutstanding",
                 color: Colors.orange,
               ),
+              if (tolerance > 0)
+                _infoBadge(
+                  label: "Maks. Terima",
+                  value: "$maxQty (+${tolerance.toStringAsFixed(0)}%)",
+                  color: Colors.purple,
+                ),
             ],
           ),
 
@@ -286,7 +301,7 @@ class _ItemCardPBState extends State<_ItemCardPB> {
                 ),
               ),
               const Spacer(),
-              _buildCounter(qtyReceipt, qtyOutstanding),
+              _buildCounter(qtyReceipt, maxQty > 0 ? maxQty : qtyOutstanding),
             ],
           ),
         ],

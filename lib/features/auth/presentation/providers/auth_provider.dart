@@ -193,14 +193,20 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> fetchUserPIC({required String token}) async {
+  Future<void> fetchUserPIC({
+    required String token,
+    String? unitBusinessId,
+  }) async {
     _isLoading = true;
     notifyListeners();
     try {
-      _userPIC = await _authRepository.fetchUserPIC(token: token);
+      _userPIC = await _authRepository.fetchUserPIC(
+        token: token,
+        unitBusinessId: unitBusinessId,
+      );
     } catch (e) {
       throw Exception('Gagal mengambil data User PIC');
-    }finally {
+    } finally {
       _isLoading = false;
       notifyListeners();
     }

@@ -170,9 +170,15 @@ class PenerimaanBarangProvider extends ChangeNotifier {
         "item_name": item["name"] ?? item["item_name"] ?? "-",
         "qty_order": item["qty"] ?? item["qty_order"] ?? 0,
         "qty_outstanding": item["qty_outstanding"] ?? 0,
+        "excess_tolerance": item["excess_tolerance"],
         "qty_receipt": initialQty,
       };
     }).toList();
+
+    debugPrint('🔍 TOLERANCE PROVIDER selectedItems:');
+    for (final it in selectedItems) {
+      debugPrint('  ${it["item_code"]} → excess_tolerance=${it["excess_tolerance"]}, qty_outstanding=${it["qty_outstanding"]}');
+    }
 
     notifyListeners();
   }
@@ -281,20 +287,55 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      final res = await _repository.fetchPoOutstandingItems(
-        token: token,
-        purchaseOrderId: poId,
-        page: _page,
-        limit: limit,
-      );
+      final results = await Future.wait([
+        _repository.fetchAvailablePBDetails(
+          token: token,
+          purchaseOrderId: poId,
+          page: _page,
+          limit: limit,
+        ),
+        _repository.fetchPoOutstandingItems(
+          token: token,
+          purchaseOrderId: poId,
+          page: _page,
+          limit: limit,
+        ),
+      ]);
 
-      final List list = res['data'] ?? [];
+      final detailsRes = results[0];
+      final outstandingRes = results[1];
 
-      if (list.isEmpty) {
+      final List detailList = detailsRes['data'] ?? [];
+      final List outstandingList = outstandingRes['data'] ?? [];
+
+      // Map: purchase_order_d_id → qty_outstanding
+      final Map<String, num> outstandingMap = {};
+      for (final item in outstandingList) {
+        final id = item['id'] as String?;
+        if (id != null) {
+          outstandingMap[id] = (item['qty_outstanding'] ?? 0) as num;
+        }
+      }
+
+      if (detailList.isEmpty) {
         _hasMore = false;
       } else {
-        pbDetails.addAll(List<Map<String, dynamic>>.from(list));
-        _page++;
+        final merged = detailList.map((item) {
+          final Map<String, dynamic> m = Map<String, dynamic>.from(item as Map);
+          m['qty_outstanding'] = outstandingMap[item['id']] ?? 0;
+          return m;
+        }).toList();
+
+        pbDetails.addAll(List<Map<String, dynamic>>.from(merged));
+
+        final pagination = detailsRes['pagination'];
+        final int totalPages =
+            int.tryParse(pagination?['totalPages']?.toString() ?? '1') ?? 1;
+        if (_page >= totalPages) {
+          _hasMore = false;
+        } else {
+          _page++;
+        }
       }
     } catch (e) {
       _errorMessage = e.toString();
@@ -440,9 +481,11 @@ class PenerimaanBarangProvider extends ChangeNotifier {
 
   void _applyFilters() {
     _filterPenerimaanBarang = _listPenerimaanBarang.where((element) {
-      final matchesSearch = _searchQuery.isEmpty ||
-          (element.code ?? '').contains(_searchQuery) ||
-          (element.supplierName ?? '').contains(_searchQuery);
+      final q = _searchQuery.toLowerCase();
+      final matchesSearch = q.isEmpty ||
+          (element.code ?? '').toLowerCase().contains(q) ||
+          (element.supplierName ?? '').toLowerCase().contains(q) ||
+          (element.noSjSupplier ?? '').toLowerCase().contains(q);
 
       final matchesStatus = _selectedStatusFilter == null ||
           (element.status?.toLowerCase() ==
@@ -555,6 +598,8 @@ class PenerimaanBarangProvider extends ChangeNotifier {
         "item_type": e.item?.itemTypeName ?? '',
         "qty_received": e.qtyReceived,
         "qty_receipt": e.qtyReceipt,
+        "qty_order": e.poDetail?.qty ?? 0,
+        "qty_outstanding": e.poDetail?.qty ?? 0,
         "qty_closing": e.qtyReceipt ?? 0,
         // "item_uom_id": e.,
         // "item_uom": e.itemUom,
@@ -604,15 +649,21 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchListPO({required String token}) async {
+  Future<void> fetchListPO({
+    required String token,
+    String? unitBusinessId,
+  }) async {
     _isLoadingPO = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _listPO = await _repository.fetchListPO(token: token);
+      _listPO = await _repository.fetchListPO(
+        token: token,
+        unitBusinessId: unitBusinessId,
+      );
     } catch (e) {
-      _errorMessage = e.toString(); // ✅ SIMPAN ERROR
+      _errorMessage = e.toString();
       _listPO = [];
     } finally {
       _isLoadingPO = false;

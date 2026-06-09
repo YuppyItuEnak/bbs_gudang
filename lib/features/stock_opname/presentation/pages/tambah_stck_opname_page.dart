@@ -21,6 +21,7 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
 
   final TextEditingController _notesController = TextEditingController();
   final List<Map<String, dynamic>> selectedItems = [];
+  final Map<String, TextEditingController> _qtyControllers = {};
 
   // Warna Brand (diambil dari nuansa hijau di gambar profil)
   final Color primaryGreen = const Color(0xFF4CAF50);
@@ -29,8 +30,10 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = context.read<AuthProvider>();
+      final tw = context.read<TransferWarehouseProvider>();
+
       String? responsibilityId;
       if (auth.user!.userDetails.isNotEmpty) {
         final primary = auth.user!.userDetails.firstWhere(
@@ -40,18 +43,27 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
         responsibilityId = primary.fResponsibility;
       }
 
-      context.read<TransferWarehouseProvider>().loadUserCompanies(
+      await tw.loadUserCompanies(
         token: auth.token!,
         userId: auth.user!.id,
         responsibilityId: responsibilityId!,
       );
-      context.read<AuthProvider>().fetchUserPIC(token: auth.token!);
+
+      if (tw.companies.isNotEmpty) {
+        final company = tw.companies.first;
+        setState(() => selectedCompanyId = company.id);
+        tw.loadWarehouseCompany(token: auth.token!, unitBusinessId: company.id);
+        auth.fetchUserPIC(token: auth.token!, unitBusinessId: company.id);
+      }
     });
   }
 
   @override
   void dispose() {
     _notesController.dispose();
+    for (final c in _qtyControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -73,11 +85,14 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
     if (result != null && result is List) {
       setState(() {
         for (final item in result) {
+          final id = item['id'].toString();
           final index = selectedItems.indexWhere((e) => e['id'] == item['id']);
           if (index != -1) {
             selectedItems[index]['qty'] += item['qty'];
+            _qtyControllers[id]?.text = '${selectedItems[index]['qty']}';
           } else {
             selectedItems.add(item);
+            _qtyControllers[id] = TextEditingController(text: '${item['qty']}');
           }
         }
       });
@@ -150,7 +165,7 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
                   const SizedBox(height: 24),
                   _buildSectionLabel("Informasi Umum"),
                   const SizedBox(height: 12),
-                  _buildCompanyDropdown(),
+                  _buildCompanyReadOnly(),
                   const SizedBox(height: 16),
                   _buildWarehouseDropdown(),
                   const SizedBox(height: 16),
@@ -224,31 +239,30 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
     );
   }
 
-  Widget _buildCompanyDropdown() {
+  Widget _buildCompanyReadOnly() {
     return Consumer<TransferWarehouseProvider>(
-      builder: (_, provider, __) {
+      builder: (_, tw, __) {
+        String name = '-';
+        if (tw.isLoadingCompany) {
+          name = 'Memuat...';
+        } else if (selectedCompanyId != null && tw.companies.isNotEmpty) {
+          try {
+            name = tw.companies.firstWhere((c) => c.id == selectedCompanyId).name;
+          } catch (_) {}
+        }
         return _dropdownFieldWrapper(
           label: "Company",
           isRequired: true,
-          isEmpty: selectedCompanyId == null,
-          child: DropdownButton<String>(
-            value: selectedCompanyId,
-            hint: const Text("Pilih Unit Bisnis"),
-            isExpanded: true,
-            underline: const SizedBox(),
-            items: provider.companies
-                .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
-                .toList(),
-            onChanged: (val) {
-              setState(() {
-                selectedCompanyId = val;
-                selectedWarehouseId = null;
-              });
-              context.read<TransferWarehouseProvider>().loadWarehouseCompany(
-                token: context.read<AuthProvider>().token!,
-                unitBusinessId: val!,
-              );
-            },
+          isEmpty: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              name,
+              style: const TextStyle(
+                color: Colors.black54,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         );
       },
@@ -413,20 +427,55 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
                       setState(() {
                         if (selectedItems[index]['qty'] > 0) {
                           selectedItems[index]['qty']--;
+                          _qtyControllers[item['id'].toString()]?.text =
+                              '${selectedItems[index]['qty']}';
                         } else {
                           _confirmRemoveItem(index);
                         }
                       });
                     }),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Text(
-                        "${item['qty']}",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                    SizedBox(
+                      width: 48,
+                      child: TextField(
+                        controller: _qtyControllers[item['id'].toString()],
+                        textAlign: TextAlign.center,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: '0',
+                          hintStyle: TextStyle(color: Colors.grey.shade400),
+                          contentPadding: const EdgeInsets.only(bottom: 2),
+                          isDense: true,
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade400,
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(
+                              color: primaryGreen,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                        onChanged: (v) {
+                          final parsed = int.tryParse(v);
+                          if (parsed != null && parsed >= 0) {
+                            setState(() => selectedItems[index]['qty'] = parsed);
+                          }
+                        },
                       ),
                     ),
                     _qtyActionBtn(Icons.add, () {
-                      setState(() => selectedItems[index]['qty']++);
+                      setState(() {
+                        selectedItems[index]['qty']++;
+                        _qtyControllers[item['id'].toString()]?.text =
+                            '${selectedItems[index]['qty']}';
+                      });
                     }, isAdd: true),
                   ],
                 ),
@@ -489,6 +538,9 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
               elevation: 0,
             ),
             onPressed: () {
+              final id = selectedItems[index]['id'].toString();
+              _qtyControllers[id]?.dispose();
+              _qtyControllers.remove(id);
               setState(() => selectedItems.removeAt(index));
               Navigator.pop(context);
             },
@@ -500,7 +552,9 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
   }
 
   Widget _buildBottomButton() {
-    return Container(
+    return SafeArea(
+      top: false,
+      child: Container(
       padding: const EdgeInsets.fromLTRB(20, 15, 20, 30),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -558,6 +612,7 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
           // ),
         ],
       ),
+    ),
     );
   }
 

@@ -42,11 +42,10 @@ class InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
     _driverController = TextEditingController(text: p.driverName);
     _noteController = TextEditingController(text: p.headerNote);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = context.read<AuthProvider>();
       final tw = context.read<TransferWarehouseProvider>();
-
-      context.read<PenerimaanBarangProvider>().fetchListPO(token: auth.token!);
+      final pb = context.read<PenerimaanBarangProvider>();
 
       String? responsibilityId;
       if (auth.user!.userDetails.isNotEmpty) {
@@ -57,11 +56,22 @@ class InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
         responsibilityId = primary.fResponsibility;
       }
 
-      tw.loadUserCompanies(
+      await tw.loadUserCompanies(
         token: auth.token!,
         userId: auth.user!.id,
         responsibilityId: responsibilityId!,
       );
+
+      if (tw.companies.isNotEmpty && pb.unitBusinessId == null) {
+        final company = tw.companies.first;
+        pb.setUnitBusinessId(company.id);
+        pb.setUnitBusinessName(company.name);
+        pb.setWarehouseId(null);
+        tw.loadWarehouseCompany(token: auth.token!, unitBusinessId: company.id);
+        await pb.generateNoPB(token: auth.token!, unitBusinessId: company.id);
+      }
+
+      pb.fetchListPO(token: auth.token!, unitBusinessId: pb.unitBusinessId);
     });
   }
 
@@ -137,7 +147,11 @@ class InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
           _poDropdown(),
 
           _label("Company"),
-          _buildCompanyDropdown(),
+          _readOnlyField(
+            context.select<PenerimaanBarangProvider, String>(
+              (p) => p.unitBusinessName ?? "-",
+            ),
+          ),
 
           _label("No. PB"),
           _pbCode(),
@@ -154,7 +168,7 @@ class InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
           _label("Grup Item"),
           _itemGroupField(),
 
-          _label("Tgl Invoice Supplier"),
+          _label("Tgl Surat Jalan"),
           _invoiceDatePicker(),
 
           _label("No. SJ Supplier"),
@@ -404,6 +418,25 @@ class InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
   }
 
   // ================= UI HELPERS =================
+
+  Widget _readOnlyField(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.black54,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
 
   Widget _label(String text) => Padding(
     padding: const EdgeInsets.only(top: 16, bottom: 8),

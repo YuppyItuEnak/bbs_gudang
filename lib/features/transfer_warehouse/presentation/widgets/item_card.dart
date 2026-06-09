@@ -10,6 +10,7 @@ class ItemCard extends StatefulWidget {
   final bool isSelectionMode;
   final VoidCallback? onTap;
   final String stockLabel;
+  final double? receivedQty;
 
   const ItemCard({
     super.key,
@@ -21,6 +22,7 @@ class ItemCard extends StatefulWidget {
     this.isSelectionMode = false,
     this.onTap,
     this.stockLabel = 'Total Stock',
+    this.receivedQty,
   });
 
   @override
@@ -95,23 +97,48 @@ class _ItemCardState extends State<ItemCard> {
                     style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
                   ),
                   const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      "${widget.stockLabel}: ${widget.stock}",
-                      style: TextStyle(
-                        color: Colors.blue.shade700,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          "${widget.stockLabel}: ${widget.stock.toStringAsFixed(widget.stock.truncateToDouble() == widget.stock ? 0 : 2)}",
+                          style: TextStyle(
+                            color: Colors.blue.shade700,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
+                      if (widget.receivedQty != null && widget.receivedQty! > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            "Sudah Diterima: ${widget.receivedQty!.toStringAsFixed(widget.receivedQty!.truncateToDouble() == widget.receivedQty! ? 0 : 2)}",
+                            style: TextStyle(
+                              color: Colors.orange.shade700,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),

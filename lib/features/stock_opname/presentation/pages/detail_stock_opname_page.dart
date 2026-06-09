@@ -135,7 +135,9 @@ class _DetailStockOpnamePageState extends State<DetailStockOpnamePage> {
           ),
         ),
 
-        Padding(
+        SafeArea(
+          top: false,
+          child: Padding(
           padding: const EdgeInsets.all(20),
           child: Row(
             children: [
@@ -216,6 +218,7 @@ class _DetailStockOpnamePageState extends State<DetailStockOpnamePage> {
               ),
             ],
           ),
+        ),
         ),
       ],
     );

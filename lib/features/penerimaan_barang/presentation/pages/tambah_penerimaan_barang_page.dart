@@ -61,7 +61,7 @@ class _TambahPenerimaanBarangPageState
         /// 🔥 STATUS DINAMIS
         "status": status,
 
-        "date": dateStr,
+        "date": DateFormat('yyyy-MM-dd').format(DateTime.now()),
         "date_sj_supplier": dateStr,
 
         "t_penerimaan_barang_d": provider.selectedItems.map((item) {
@@ -114,6 +114,14 @@ JUMLAH ITEM: ${provider.selectedItems.length}
       debugPrint("📦 FULL JSON PAYLOAD:");
       debugPrint("📦 SUBMIT PB [$status]");
       debugPrint(payload.toString());
+
+      // Debug purchase_order_d_id per item
+      final detailItems = payload['t_penerimaan_barang_d'] as List? ?? [];
+      debugPrint('🔑 DETAIL ITEMS purchase_order_d_id CHECK (${detailItems.length} items):');
+      for (int i = 0; i < detailItems.length; i++) {
+        final d = detailItems[i];
+        debugPrint('  Item[$i] → purchase_order_d_id: ${d['purchase_order_d_id']}, item_id: ${d['item_id']}, qty_receipt: ${d['qty_receipt']}');
+      }
 
       await provider.submitPenerimaanBarang(token: token, payload: payload);
 
@@ -182,7 +190,9 @@ JUMLAH ITEM: ${provider.selectedItems.length}
             /// BUTTON SIMPAN
             Align(
               alignment: Alignment.bottomCenter,
-              child: Padding(
+              child: SafeArea(
+                top: false,
+                child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Row(
                   children: [
@@ -241,6 +251,7 @@ JUMLAH ITEM: ${provider.selectedItems.length}
                 ),
               ),
             ),
+          ),
           ],
         ),
       ),

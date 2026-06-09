@@ -21,13 +21,15 @@ class _DetailPenerimaanBarangPageState
   void initState() {
     super.initState();
 
-    final token = context.read<AuthProvider>().token;
-    if (token == null) return;
+    Future.microtask(() {
+      final token = context.read<AuthProvider>().token;
+      if (token == null) return;
 
-    context.read<PenerimaanBarangProvider>().fetchDetail(
-      token: token,
-      id: widget.id,
-    );
+      context.read<PenerimaanBarangProvider>().fetchDetail(
+        token: token,
+        id: widget.id,
+      );
+    });
   }
 
   @override
@@ -111,7 +113,7 @@ class _DetailPenerimaanBarangPageState
                               qtyUnit: d.poDetail?.uom ?? '-',
                               qtyPo: d.poDetail?.qty.toString() ?? '0',
                               qtyDiterima: d.qtyReceipt.toString(),
-                              sisaQty: d.prDetail?.qty.toString() ?? '0',
+                              sisaQty: (((d.poDetail?.qty ?? 0) - (d.qtyReceipt ?? 0)).clamp(0, double.maxFinite).toInt()).toString(),
                               harga: d.poDetail?.price ?? '0',
                             );
                           },
@@ -122,7 +124,9 @@ class _DetailPenerimaanBarangPageState
               ),
 
               // ===== TOMBOL KEMBALI =====
-              Padding(
+              SafeArea(
+                top: false,
+                child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Row(
                   children: [
@@ -190,6 +194,7 @@ class _DetailPenerimaanBarangPageState
                   ],
                 ),
               ),
+            ),
             ],
           );
         },

@@ -104,7 +104,7 @@ class _EditPenerimaanBarangPageState extends State<EditPenerimaanBarangPage> {
           print("EDIT MODE PO ID: ${provider.purchaseOrderId}");
 
           final price = _parseNum(item["price"]);
-          final qty = _parseNum(item["qty_received"] ?? item["qty_receipt"], 0);
+          final qty = _parseNum(item["qty_receipt"] ?? item["qty_received"], 0);
 
           return {
             "id": item["id"],
@@ -220,7 +220,9 @@ class _EditPenerimaanBarangPageState extends State<EditPenerimaanBarangPage> {
             ),
             Align(
               alignment: Alignment.bottomCenter,
-              child: Padding(
+              child: SafeArea(
+                top: false,
+                child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Row(
                   children: [
@@ -242,27 +244,27 @@ class _EditPenerimaanBarangPageState extends State<EditPenerimaanBarangPage> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: isSubmitting
-                            ? null
-                            : () => _submitEditPB(
-                                context: context,
-                                status: "POSTED",
-                              ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: isSubmitting
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : const Text("Posted"),
-                      ),
-                    ),
+                    // Expanded(
+                    //   child: ElevatedButton(
+                    //     onPressed: isSubmitting
+                    //         ? null
+                    //         : () => _submitEditPB(
+                    //             context: context,
+                    //             status: "POSTED",
+                    //           ),
+                    //     style: ElevatedButton.styleFrom(
+                    //       backgroundColor: Colors.green,
+                    //       shape: RoundedRectangleBorder(
+                    //         borderRadius: BorderRadius.circular(12),
+                    //       ),
+                    //     ),
+                    //     child: isSubmitting
+                    //         ? const CircularProgressIndicator(
+                    //             color: Colors.white,
+                    //           )
+                    //         : const Text("Posted"),
+                    //   ),
+                    // ),
                     if (isSubmitting)
                       Container(
                         color: Colors.black.withOpacity(0.3),
@@ -294,6 +296,7 @@ class _EditPenerimaanBarangPageState extends State<EditPenerimaanBarangPage> {
                 ),
               ),
             ),
+          ),
           ],
         ),
       ),

@@ -23,6 +23,7 @@ class _EditStockOpnamePageState extends State<EditStockOpnamePage> {
   String? stockOpnameNo;
   final TextEditingController _notesController = TextEditingController();
   final List<Map<String, dynamic>> selectedItems = [];
+  final Map<String, TextEditingController> _qtyControllers = {};
   bool _isInitialLoading = true;
   final TextEditingController _dateController = TextEditingController();
   DateTime? _selectedDate;
@@ -61,7 +62,10 @@ class _EditStockOpnamePageState extends State<EditStockOpnamePage> {
               "${detail.date.day}-${detail.date.month}-${detail.date.year}";
 
           selectedItems.clear();
+          for (final c in _qtyControllers.values) c.dispose();
+          _qtyControllers.clear();
           for (var d in detail.details) {
+            final id = d.item?.id?.toString() ?? '';
             selectedItems.add({
               'id': d.item?.id,
               'name': d.item?.name,
@@ -70,6 +74,9 @@ class _EditStockOpnamePageState extends State<EditStockOpnamePage> {
               'uom_id': d.item?.itemUomId,
               'detail_id': d.id,
             });
+            _qtyControllers[id] = TextEditingController(
+              text: '${d.opnameQty}',
+            );
           }
         });
 
@@ -106,6 +113,9 @@ class _EditStockOpnamePageState extends State<EditStockOpnamePage> {
   void dispose() {
     _notesController.dispose();
     _dateController.dispose();
+    for (final c in _qtyControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -127,11 +137,14 @@ class _EditStockOpnamePageState extends State<EditStockOpnamePage> {
     if (result != null && result is List) {
       setState(() {
         for (final item in result) {
+          final id = item['id'].toString();
           final index = selectedItems.indexWhere((e) => e['id'] == item['id']);
           if (index != -1) {
             selectedItems[index]['qty'] += item['qty'];
+            _qtyControllers[id]?.text = '${selectedItems[index]['qty']}';
           } else {
             selectedItems.add(item);
+            _qtyControllers[id] = TextEditingController(text: '${item['qty']}');
           }
         }
       });
@@ -467,21 +480,50 @@ class _EditStockOpnamePageState extends State<EditStockOpnamePage> {
                         icon: Icons.remove,
                         onTap: () {
                           if (item['qty'] > 1) {
-                            setState(() => selectedItems[idx]['qty']--);
+                            setState(() {
+                              selectedItems[idx]['qty']--;
+                              _qtyControllers[item['id'].toString()]?.text =
+                                  '${selectedItems[idx]['qty']}';
+                            });
                           }
                         },
                       ),
 
-                      // Angka Qty
-                      Container(
-                        constraints: const BoxConstraints(minWidth: 40),
-                        alignment: Alignment.center,
-                        child: Text(
-                          "${item['qty']}",
+                      // Input Qty
+                      SizedBox(
+                        width: 48,
+                        child: TextField(
+                          controller: _qtyControllers[item['id'].toString()],
+                          textAlign: TextAlign.center,
+                          keyboardType: TextInputType.number,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
+                          decoration: InputDecoration(
+                            hintText: '0',
+                            hintStyle: TextStyle(color: Colors.grey.shade400),
+                            contentPadding: const EdgeInsets.only(bottom: 2),
+                            isDense: true,
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade400,
+                                width: 1,
+                              ),
+                            ),
+                            focusedBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: primaryGreen,
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                          onChanged: (v) {
+                            final parsed = int.tryParse(v);
+                            if (parsed != null && parsed >= 0) {
+                              setState(() => selectedItems[idx]['qty'] = parsed);
+                            }
+                          },
                         ),
                       ),
 
@@ -489,7 +531,11 @@ class _EditStockOpnamePageState extends State<EditStockOpnamePage> {
                       _qtyButton(
                         icon: Icons.add,
                         onTap: () {
-                          setState(() => selectedItems[idx]['qty']++);
+                          setState(() {
+                            selectedItems[idx]['qty']++;
+                            _qtyControllers[item['id'].toString()]?.text =
+                                '${selectedItems[idx]['qty']}';
+                          });
                         },
                       ),
                     ],
@@ -504,8 +550,12 @@ class _EditStockOpnamePageState extends State<EditStockOpnamePage> {
                       color: Colors.redAccent,
                       size: 20,
                     ),
-                    onPressed: () =>
-                        setState(() => selectedItems.removeAt(idx)),
+                    onPressed: () {
+                      final id = selectedItems[idx]['id'].toString();
+                      _qtyControllers[id]?.dispose();
+                      _qtyControllers.remove(id);
+                      setState(() => selectedItems.removeAt(idx));
+                    },
                   ),
                 ],
               ),
@@ -543,7 +593,9 @@ class _EditStockOpnamePageState extends State<EditStockOpnamePage> {
 
   Widget _buildBottomButton() {
     final isSubmitting = context.watch<StockOpnameProvider>().isLoading;
-    return Container(
+    return SafeArea(
+      top: false,
+      child: Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -612,6 +664,7 @@ class _EditStockOpnamePageState extends State<EditStockOpnamePage> {
           // ),
         ],
       ),
+    ),
     );
   }
 

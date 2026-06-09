@@ -227,6 +227,9 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                                       item['qty'] ??
                                       0) as num)
                                   .toDouble();
+                          final double qtyReceived = double.tryParse(
+                                item['qty_net_received']?.toString() ?? '0',
+                              ) ?? 0;
                           final bool isChecked = _checkedIds.contains(itemId);
 
                           return Row(
@@ -254,6 +257,7 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                                     stock: stockValue,
                                     stockLabel: 'Qty Outstanding',
                                     initialQty: currentQty,
+                                    receivedQty: qtyReceived,
                                     onQtyChanged: (newQty) {
                                       setState(() {
                                         _qtyMap[itemId] = newQty;
@@ -292,14 +296,21 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                                       .pbDetails
                                       .firstWhere((i) => i['id'] == id);
 
+                                  final excessTolerance = item["excess_tolerance"];
+                                  debugPrint('🔍 TOLERANCE CHECK item[${item["item_code"]}]:'
+                                      ' exchange_rate=$excessTolerance'
+                                      ', qty_outstanding=${item["qty_outstanding"]}'
+                                      ', qty=${item["qty"]}');
+
                                   return {
                                     "purchase_order_d_id": item["id"],
                                     "item_id": item["item_id"],
                                     "code": item["item_code"],
                                     "name": item["item_name"],
-                                    "qty_order": item["qty"],
+                                    "qty_order": item["qty_outstanding"] ?? item["qty"],
                                     "qty_outstanding": item["qty_outstanding"],
                                     "qty_receipt": _qtyMap[id] ?? 1,
+                                    "excess_tolerance": excessTolerance,
                                   };
                                 })
                                 .toList();

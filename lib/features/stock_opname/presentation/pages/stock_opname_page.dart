@@ -119,7 +119,6 @@ class _StockOpnamePageState extends State<StockOpnamePage> {
               token: token!,
               startDate: '',
               endDate: '',
-              loadMore: true,
             );
           }
         },

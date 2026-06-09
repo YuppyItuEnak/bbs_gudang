@@ -166,14 +166,22 @@ class AuthRepository {
     }
   }
 
-  Future<List<User>> fetchUserPIC({required String token}) async {
+  Future<List<User>> fetchUserPIC({
+    required String token,
+    String? unitBusinessId,
+  }) async {
     try {
+      final params = <String, String>{
+        'selectfield': 'id,name',
+        'no_pagination': 'true',
+      };
+      if (unitBusinessId != null) params['unit_bussiness_id'] = unitBusinessId;
+
       final uri = Uri.parse("$baseUrl/dynamic/user_default").replace(
-        queryParameters: {
-          'selectfield': 'id,name',
-          'no_pagination': 'true',
-        },
+        queryParameters: params,
       );
+
+      debugPrint('👤 FETCH USER PIC URI: $uri');
 
       final response = await http.get(
         uri,
@@ -183,15 +191,20 @@ class AuthRepository {
         },
       );
 
+      debugPrint('👤 FETCH USER PIC STATUS: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         final List data = body['data'];
-        print("Total User: ${data.length}");
+        debugPrint('👤 FETCH USER PIC TOTAL: ${data.length}');
+        debugPrint('👤 FETCH USER PIC DATA: $data');
         return data.map((e) => User.fromJson(e)).toList();
       } else {
+        debugPrint('👤 FETCH USER PIC ERROR BODY: ${response.body}');
         throw Exception('Gagal mengambil data User PIC');
       }
     } catch (e) {
+      debugPrint('👤 FETCH USER PIC EXCEPTION: $e');
       throw Exception('Gagal mengambil data User PIC');
     }
   }

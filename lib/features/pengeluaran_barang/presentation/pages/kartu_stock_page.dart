@@ -1,4 +1,4 @@
-import 'package:bbs_gudang/data/models/kartu_stock/kartu_stock_model.dart';
+import 'package:bbs_gudang/data/models/kartu_stock/stock_warehouse_model.dart';
 import 'package:bbs_gudang/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_gudang/features/pengeluaran_barang/presentation/pages/filter_kartu_stock.dart';
 import 'package:bbs_gudang/features/pengeluaran_barang/presentation/providers/kartu_stock_provider.dart';
@@ -14,41 +14,66 @@ class KartuStockPage extends StatefulWidget {
 
 class _KartuStockPageState extends State<KartuStockPage> {
   final TextEditingController _searchController = TextEditingController();
-  // Simpan range tanggal di state agar bisa dipanggil ulang saat refresh
-  String _currentStartDate = "2026-01-31";
-  String _currentEndDate = "2026-02-27";
+  List<String> _currentWarehouseIds = [];
+  List<String> _currentWarehouseNames = [];
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => _fetchData());
+    Future.microtask(() => _fetchWarehouses());
   }
 
-  // Fungsi fetch data awal/default
-  void _fetchData() {
+  void _fetchWarehouses() {
     final auth = context.read<AuthProvider>();
     if (auth.token != null) {
-      context.read<KartuStockProvider>().fetchRecapStock(
+      context.read<KartuStockProvider>().fetchWarehouses(token: auth.token!);
+    }
+  }
+
+  // Hitung periode bulan berjalan secara otomatis
+  String get _startDate {
+    final now = DateTime.now();
+    return "${now.year}-${now.month.toString().padLeft(2, '0')}-01";
+  }
+
+  String get _endDate {
+    final now = DateTime.now();
+    return "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+  }
+
+  void _fetchData() {
+    final auth = context.read<AuthProvider>();
+    if (auth.token != null && _currentWarehouseIds.isNotEmpty) {
+      context.read<KartuStockProvider>().fetchStockWarehouseReport(
         token: auth.token!,
-        startDate: _currentStartDate,
-        endDate: _currentEndDate,
+        startDate: _startDate,
+        endDate: _endDate,
+        warehouseIds: _currentWarehouseIds,
       );
     }
   }
 
-  // Fungsi untuk memproses data dari halaman filter
   void _fetchDataFiltered(Map<String, dynamic> filters) {
     final auth = context.read<AuthProvider>();
     if (auth.token != null) {
+      final ids = List<String>.from(filters['warehouseIds'] ?? []);
+      final provider = context.read<KartuStockProvider>();
       setState(() {
-        _currentStartDate = filters['startDate'];
-        _currentEndDate = filters['endDate'];
+        _currentWarehouseIds = ids;
+        _currentWarehouseNames = ids.map((id) {
+          return provider.warehouses
+                  .where((w) => w.id == id)
+                  .firstOrNull
+                  ?.name ??
+              id;
+        }).toList();
       });
 
-      context.read<KartuStockProvider>().fetchRecapStock(
+      provider.fetchStockWarehouseReport(
         token: auth.token!,
-        startDate: _currentStartDate,
-        endDate: _currentEndDate,
+        startDate: _startDate,
+        endDate: _endDate,
+        warehouseIds: ids,
       );
     }
   }
@@ -79,7 +104,8 @@ class _KartuStockPageState extends State<KartuStockPage> {
           return Column(
             children: [
               _buildSearchBar(provider),
-              // _buildTotalWeightHeader(provider.totalWeight),
+              if (_currentWarehouseIds.isNotEmpty)
+                _buildActiveFilterChips(provider),
               Expanded(child: _buildBodyContent(provider)),
             ],
           );
@@ -88,20 +114,79 @@ class _KartuStockPageState extends State<KartuStockPage> {
     );
   }
 
+  Widget _buildActiveFilterChips(KartuStockProvider provider) {
+    final warehouseNames = _currentWarehouseNames;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: SizedBox(
+        height: 32,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: warehouseNames.length,
+          separatorBuilder: (context, index) => const SizedBox(width: 6),
+          itemBuilder: (context, index) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Text(
+                warehouseNames[index],
+                style: const TextStyle(
+                  color: Colors.green,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildBodyContent(KartuStockProvider provider) {
+    if (_currentWarehouseIds.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.warehouse_outlined, size: 64, color: Colors.grey[300]),
+            const SizedBox(height: 16),
+            const Text(
+              "Pilih warehouse terlebih dahulu",
+              style: TextStyle(color: Colors.grey, fontSize: 15),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Gunakan tombol filter untuk memilih\nwarehouse dan periode",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (provider.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // PENTING: Gunakan filteredKartuStock, bukan listKartuStock asli
-    final dataList = provider.filteredKartuStock;
+    final dataList = provider.filteredStockWarehouse;
 
     if (dataList.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey[300]),
+            Icon(
+              Icons.inventory_2_outlined,
+              size: 64,
+              color: Colors.grey[300],
+            ),
             const SizedBox(height: 16),
             const Text(
               "Data tidak ditemukan",
@@ -124,21 +209,7 @@ class _KartuStockPageState extends State<KartuStockPage> {
       itemCount: dataList.length,
       itemBuilder: (context, index) {
         final item = dataList[index];
-        final bool isOut = (item.qtyOut ?? 0) > 0;
-
-        return InkWell(
-          onTap: () => _showDetailDialog(context, item),
-          borderRadius: BorderRadius.circular(12),
-          child: _buildStockCard(
-            itemCode: item.itemCode ?? "-",
-            itemName: item.itemName ?? "Tanpa Nama",
-            qty: item.weightPerUnit ?? "0",
-            transactionCode: item.transactionCode ?? "-",
-            date: item.date ?? "-",
-            isOut: isOut,
-            uomSatuan: item.uomSatuan ?? "-",
-          ),
-        );
+        return _buildStockCard(item);
       },
     );
   }
@@ -158,18 +229,17 @@ class _KartuStockPageState extends State<KartuStockPage> {
               child: TextField(
                 controller: _searchController,
                 onChanged: (value) {
-                  provider.searchKartuStock(value);
+                  provider.searchStockWarehouse(value);
                 },
                 decoration: InputDecoration(
-                  hintText: "Cari Kode atau Nama",
+                  hintText: "Cari Kode, Nama, atau Warehouse",
                   prefixIcon: const Icon(Icons.search, color: Colors.black87),
-                  // Tambahkan tombol clear jika teks tidak kosong
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear, size: 20),
                           onPressed: () {
                             _searchController.clear();
-                            provider.searchKartuStock("");
+                            provider.searchStockWarehouse("");
                           },
                         )
                       : null,
@@ -185,7 +255,9 @@ class _KartuStockPageState extends State<KartuStockPage> {
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const FilterKartuStockPage(),
+                  builder: (context) => FilterKartuStockPage(
+                    warehouses: provider.warehouses,
+                  ),
                 ),
               );
 
@@ -196,11 +268,22 @@ class _KartuStockPageState extends State<KartuStockPage> {
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: _currentWarehouseIds.isNotEmpty
+                    ? Colors.green.shade50
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(
+                  color: _currentWarehouseIds.isNotEmpty
+                      ? Colors.green.shade300
+                      : Colors.grey.shade200,
+                ),
               ),
-              child: const Icon(Icons.tune, color: Colors.black87),
+              child: Icon(
+                Icons.tune,
+                color: _currentWarehouseIds.isNotEmpty
+                    ? Colors.green
+                    : Colors.black87,
+              ),
             ),
           ),
         ],
@@ -208,57 +291,21 @@ class _KartuStockPageState extends State<KartuStockPage> {
     );
   }
 
-  Widget _buildTotalWeightHeader(double totalWeight) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.green.shade200),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              "Total Weight",
-              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
-            ),
-            Text(
-              "${totalWeight.toStringAsFixed(0)} KG",
-              style: const TextStyle(
-                color: Colors.green,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _buildStockCard(StockWarehouseModel item) {
+    final qty = item.netQty ?? 0;
+    final qtyColor = qty > 0 ? Colors.green : Colors.red;
 
-  Widget _buildStockCard({
-    required String itemCode,
-    required String itemName,
-    required String qty,
-    required String transactionCode,
-    required String date,
-    required bool isOut,
-    required String uomSatuan,
-  }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 15),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.05),
+            color: Colors.grey.withValues(alpha: 0.07),
             spreadRadius: 2,
-            blurRadius: 5,
+            blurRadius: 6,
             offset: const Offset(0, 3),
           ),
         ],
@@ -270,19 +317,28 @@ class _KartuStockPageState extends State<KartuStockPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                itemCode,
+                item.itemCode ?? "-",
                 style: const TextStyle(color: Colors.grey, fontSize: 11),
               ),
-              // Icon(
-              //   Icons.,
-              //   color: Colors.green.shade400,
-              //   size: 20,
-              // ),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.warehouse_outlined,
+                    size: 13,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    item.warehouseName ?? "-",
+                    style: const TextStyle(color: Colors.grey, fontSize: 11),
+                  ),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
-            itemName,
+            item.itemName ?? "Tanpa Nama",
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -291,179 +347,36 @@ class _KartuStockPageState extends State<KartuStockPage> {
               color: Colors.black87,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            "Satuan Unit: $uomSatuan",
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
-          ),
           const SizedBox(height: 8),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Weight/Unit: $qty KG",
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+                "Satuan: ${item.uom ?? '-'}",
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
                 ),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text("|", style: TextStyle(color: Colors.grey)),
-              ),
-              Expanded(
+                decoration: BoxDecoration(
+                  color: qtyColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: Text(
-                  transactionCode,
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  "Stok: $qty",
+                  style: TextStyle(
+                    color: qtyColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
-              ),
-              Text(
-                date,
-                style: const TextStyle(color: Colors.grey, fontSize: 10),
               ),
             ],
           ),
         ],
       ),
-    );
-  }
-
-  void _showDetailDialog(BuildContext context, KartuStockModel item) {
-    final bool isOut = (item.qtyOut ?? 0) > 0;
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: isOut ? Colors.red : Colors.green,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Icon(
-                        isOut
-                            ? Icons.monitor_weight
-                            : Icons.monitor_weight_outlined,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      item.date ?? "-",
-                      style: const TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 15),
-                const Divider(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "No. Reference",
-                            style: TextStyle(color: Colors.grey, fontSize: 12),
-                          ),
-                          Text(
-                            item.transactionCode ?? "-",
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        const Text(
-                          "Weight/Unit",
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
-                        Text(
-                          "${item.weightPerUnit ?? '0'} KG",
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 15),
-                const Text(
-                  "Customer/Supplier/Other",
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-                Text(
-                  "${item.customerCode} - ${item.customerSupplier}",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 15),
-                const Text(
-                  "Satuan Unit",
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-                Text(
-                  item.uomSatuan ?? "-",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 15,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.green.shade200),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Total Balance",
-                        style: TextStyle(color: Colors.grey, fontSize: 13),
-                      ),
-                      Text(
-                        "${item.qtyBalance} KG",
-                        style: const TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }

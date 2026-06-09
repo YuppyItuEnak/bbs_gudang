@@ -29,6 +29,8 @@ class PenerimaanBarangRepository {
         '$baseUrl/dynamic/t_penerimaan_barang',
       ).replace(queryParameters: queryParams);
 
+      debugPrint('📄 FETCH PB LIST URI: $uri');
+
       final response = await http.get(
         uri,
         headers: {
@@ -36,6 +38,8 @@ class PenerimaanBarangRepository {
           'Authorization': 'Bearer $token',
         },
       );
+
+      debugPrint('📄 FETCH PB LIST STATUS CODE: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -91,6 +95,8 @@ class PenerimaanBarangRepository {
         },
       );
 
+      debugPrint('📋 DETAIL PB URI: $uri');
+
       final response = await http.get(
         uri,
         headers: {
@@ -99,8 +105,24 @@ class PenerimaanBarangRepository {
         },
       );
 
+      debugPrint('📋 DETAIL PB STATUS CODE: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
+
+        debugPrint('📋 DETAIL PB RAW RESPONSE STATUS: ${body['status']}');
+        if (body['data'] is Map) {
+          final data = body['data'] as Map<String, dynamic>;
+          debugPrint('📋 DETAIL PB KEYS: ${data.keys.toList()}');
+          final details = data['pbDetailPenerimaanBarangs'];
+          if (details is List && details.isNotEmpty) {
+            debugPrint('📋 DETAIL PB ITEM COUNT: ${details.length}');
+            debugPrint('📋 DETAIL PB ITEM[0] KEYS: ${(details[0] as Map).keys.toList()}');
+            debugPrint('📋 DETAIL PB ITEM[0] DATA: ${details[0]}');
+          } else {
+            debugPrint('📋 DETAIL PB ITEMS: kosong atau bukan List → $details');
+          }
+        }
 
         if (body['status'] == 'success' && body['data'] is Map) {
           return PenerimaanBarangModel.fromJson(body['data']);
@@ -134,11 +156,19 @@ class PenerimaanBarangRepository {
     }
   }
 
-  Future<List<AvailablePoModel>> fetchListPO({required String token}) async {
+  Future<List<AvailablePoModel>> fetchListPO({
+    required String token,
+    String? unitBusinessId,
+  }) async {
     try {
+      final params = <String, String>{'no_pagination': 'true'};
+      if (unitBusinessId != null) params['unit_bussiness_id'] = unitBusinessId;
+
       final uri = Uri.parse(
         "$baseUrl/fn/t_penerimaan_barang/getAvailablePos",
-      ).replace(queryParameters: {'no_pagination': 'true'});
+      ).replace(queryParameters: params);
+
+      debugPrint('📋 FETCH LIST PO URI: $uri');
 
       final response = await http.get(
         uri,
@@ -147,6 +177,8 @@ class PenerimaanBarangRepository {
           'Authorization': 'Bearer $token',
         },
       );
+
+      debugPrint('📋 FETCH LIST PO STATUS CODE: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -196,10 +228,14 @@ class PenerimaanBarangRepository {
       },
     );
 
+    debugPrint('🛒 FETCH PO DETAIL URI: $uri');
+
     final res = await http.get(
       uri,
       headers: {'Authorization': 'Bearer $token'},
     );
+
+    debugPrint('🛒 FETCH PO DETAIL STATUS CODE: ${res.statusCode}');
 
     final body = jsonDecode(res.body);
     debugPrint('Penerimaan Barang DETAIL RESPONSE: $body');
@@ -230,6 +266,8 @@ class PenerimaanBarangRepository {
                 'm_unit',
           },
         );
+
+    debugPrint("Fetch URI Detail PB: $uri");
 
     final response = await http.get(
       uri,
@@ -264,6 +302,8 @@ class PenerimaanBarangRepository {
       },
     );
 
+    debugPrint('📦 GET PO OUTSTANDING ITEMS URI: $uri');
+
     final response = await http.get(
       uri,
       headers: {
@@ -290,6 +330,8 @@ class PenerimaanBarangRepository {
   }) async {
     final uri = Uri.parse('$baseUrl/dynamic/t_penerimaan_barang/with-details');
 
+    debugPrint('➕ CREATE PB URI: $uri');
+
     final response = await http.post(
       uri,
       headers: {
@@ -299,8 +341,8 @@ class PenerimaanBarangRepository {
       body: jsonEncode(payload),
     );
 
-    debugPrint('STATUS CODE: ${response.statusCode}');
-    debugPrint('RESPONSE BODY: ${response.body}');
+    debugPrint('➕ CREATE PB STATUS CODE: ${response.statusCode}');
+    debugPrint('➕ CREATE PB RESPONSE BODY: ${response.body}');
 
     final json = jsonDecode(response.body);
 
@@ -348,6 +390,8 @@ class PenerimaanBarangRepository {
       "$baseUrl/fn/t_penerimaan_barang/checkStatusPurchaseOrder",
     );
 
+    debugPrint('🔍 CHECK STATUS PO URI: $uri');
+
     final res = await http.post(
       uri,
       headers: {
@@ -356,6 +400,9 @@ class PenerimaanBarangRepository {
       },
       body: jsonEncode(payload),
     );
+
+    debugPrint('🔍 CHECK STATUS PO STATUS CODE: ${res.statusCode}');
+    debugPrint('🔍 CHECK STATUS PO RESPONSE: ${res.body}');
 
     return jsonDecode(res.body);
   }
@@ -372,6 +419,8 @@ class PenerimaanBarangRepository {
           },
         );
 
+    debugPrint('🔢 GENERATE NO PB URI: $uri');
+
     final response = await http.get(
       uri,
       headers: {
@@ -380,8 +429,8 @@ class PenerimaanBarangRepository {
       },
     );
 
-    debugPrint('GENERATE CODE STATUS: ${response.statusCode}');
-    debugPrint('GENERATE CODE BODY: ${response.body}');
+    debugPrint('🔢 GENERATE NO PB STATUS CODE: ${response.statusCode}');
+    debugPrint('🔢 GENERATE NO PB RESPONSE: ${response.body}');
 
     if (response.statusCode != 200) {
       throw Exception('HTTP Error ${response.statusCode}');
@@ -406,6 +455,8 @@ class PenerimaanBarangRepository {
       "$baseUrl/dynamic/t_penerimaan_barang/with-details/$pbId",
     );
 
+    debugPrint('📡 UPDATE PB URI: $uri');
+
     final response = await http.put(
       uri,
       headers: {
@@ -415,8 +466,8 @@ class PenerimaanBarangRepository {
       body: jsonEncode(payload),
     );
 
-    print("📡 UPDATE PB STATUS: ${response.statusCode}");
-    print("📡 UPDATE PB RAW RESPONSE: ${response.body}");
+    debugPrint('📡 UPDATE PB STATUS CODE: ${response.statusCode}');
+    debugPrint('📡 UPDATE PB RESPONSE: ${response.body}');
 
     Map<String, dynamic>? json;
 
@@ -473,6 +524,8 @@ class PenerimaanBarangRepository {
     try {
       final uri = Uri.parse("$baseUrl/fn/t_penerimaan_barang/insertInventory");
 
+      debugPrint('📦 INSERT INVENTORY URI: $uri');
+
       final response = await http.post(
         uri,
         headers: {
@@ -482,8 +535,8 @@ class PenerimaanBarangRepository {
         body: jsonEncode(payload),
       );
 
-      debugPrint('📦 INSERT INVENTORY STATUS: ${response.statusCode}');
-      debugPrint('📦 INSERT INVENTORY BODY: ${response.body}');
+      debugPrint('📦 INSERT INVENTORY STATUS CODE: ${response.statusCode}');
+      debugPrint('📦 INSERT INVENTORY RESPONSE: ${response.body}');
 
       if (response.statusCode != 200) {
         throw Exception('HTTP ${response.statusCode}');
