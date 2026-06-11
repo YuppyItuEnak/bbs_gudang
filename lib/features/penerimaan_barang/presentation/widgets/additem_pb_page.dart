@@ -223,13 +223,21 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                           final String itemName = item['item_name'] ?? '-';
                           final String itemCode = item['item_code'] ?? '-';
                           final int currentQty = _qtyMap[itemId] ?? 0;
-                          final double stockValue = ((item['qty_outstanding'] ??
-                                      item['qty'] ??
-                                      0) as num)
+                          final int qtyOutstanding =
+                              ((item['qty_outstanding'] ?? item['qty'] ?? 0)
+                                      as num)
+                                  .toInt();
+                          final double tolerance =
+                              ((item['excess_tolerance'] ?? 0) as num)
                                   .toDouble();
+                          final int maxQty = qtyOutstanding > 0
+                              ? (qtyOutstanding * (1 + tolerance / 100)).floor()
+                              : 0;
+                          final double stockValue = qtyOutstanding.toDouble();
                           final double qtyReceived = double.tryParse(
                                 item['qty_net_received']?.toString() ?? '0',
-                              ) ?? 0;
+                              ) ??
+                              0;
                           final bool isChecked = _checkedIds.contains(itemId);
 
                           return Row(
@@ -258,10 +266,12 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                                     stockLabel: 'Qty Outstanding',
                                     initialQty: currentQty,
                                     receivedQty: qtyReceived,
+                                    maxQty: maxQty,
+                                    excessTolerance: tolerance > 0 ? tolerance : null,
+                                    showQtyCounter: false,
                                     onQtyChanged: (newQty) {
                                       setState(() {
                                         _qtyMap[itemId] = newQty;
-                                        // auto-check saat qty diubah > 0
                                         if (newQty > 0) {
                                           _checkedIds.add(itemId);
                                         }

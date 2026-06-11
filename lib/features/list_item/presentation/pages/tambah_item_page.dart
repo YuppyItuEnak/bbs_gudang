@@ -235,11 +235,14 @@ class _TambahItemState extends State<TambahItem> {
       ),
       body: Consumer<ItemBarangProvider>(
         builder: (context, provider, _) {
-          final filteredItems = widget.isOpnameMode
-              ? provider.items
-                    .where((item) => item.itemTypeName.toUpperCase() != "JASA")
-                    .toList()
-              : provider.items;
+          final searchQuery = _searchController.text.toLowerCase().trim();
+          final filteredItems = provider.items.where((item) {
+            if (widget.isOpnameMode &&
+                item.itemTypeName.toUpperCase() == "JASA") return false;
+            if (searchQuery.isEmpty) return true;
+            return item.name.toLowerCase().contains(searchQuery) ||
+                item.code.toLowerCase().contains(searchQuery);
+          }).toList();
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -328,8 +331,8 @@ class _TambahItemState extends State<TambahItem> {
                         controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount:
-                            filteredItems.length + (provider.hasMore ? 1 : 0),
+                        itemCount: filteredItems.length +
+                            (provider.hasMore && searchQuery.isEmpty ? 1 : 0),
                         itemBuilder: (context, index) {
                           // LOADING BAWAH (NEXT PAGE)
                           if (index == filteredItems.length) {
@@ -382,8 +385,9 @@ class _TambahItemState extends State<TambahItem> {
                     onPressed: hasSelectedItem
                         ? () {
                             if (widget.isOpnameMode) {
-                              final allItems =
-                                  context.read<ItemBarangProvider>().items;
+                              final itemProvider =
+                                  context.read<ItemBarangProvider>();
+                              final allItems = itemProvider.items;
                               final selectedItems = _selectedIds.map((id) {
                                 final item = allItems.firstWhere(
                                   (i) => i.id == id,
@@ -395,6 +399,7 @@ class _TambahItemState extends State<TambahItem> {
                                   "item_uom_id": item.itemUomId,
                                   "item_group_coa_id": item.itemGroupCoaId,
                                   "qty": 0,
+                                  "stock": itemProvider.itemStocks[id] ?? 0.0,
                                 };
                               }).toList();
                               Navigator.pop(context, selectedItems);

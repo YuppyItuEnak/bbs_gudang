@@ -74,6 +74,17 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
       selectedItems.isNotEmpty;
 
   Future<void> _navigateToSelectItem() async {
+    if (selectedWarehouseId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.orange.shade700,
+          content: const Text('Pilih Gudang terlebih dahulu'),
+        ),
+      );
+      return;
+    }
+
     final token = context.read<AuthProvider>().token;
     final result = await Navigator.push(
       context,
@@ -353,26 +364,34 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
   }
 
   Widget _buildInitialAddButton() {
+    final bool warehouseSelected = selectedWarehouseId != null;
     return InkWell(
       onTap: _navigateToSelectItem,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 40),
         width: double.infinity,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: warehouseSelected ? Colors.white : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Colors.grey.shade300,
-            style: BorderStyle.solid,
+            color: warehouseSelected ? Colors.grey.shade300 : Colors.grey.shade200,
           ),
         ),
         child: Column(
           children: [
-            Icon(Icons.add_circle_outline, size: 40, color: primaryGreen),
+            Icon(
+              warehouseSelected ? Icons.add_circle_outline : Icons.warehouse_outlined,
+              size: 40,
+              color: warehouseSelected ? primaryGreen : Colors.grey.shade400,
+            ),
             const SizedBox(height: 8),
-            const Text(
-              "Belum ada item. Ketuk untuk menambah.",
-              style: TextStyle(color: Colors.grey),
+            Text(
+              warehouseSelected
+                  ? "Belum ada item. Ketuk untuk menambah."
+                  : "Pilih Gudang terlebih dahulu",
+              style: TextStyle(
+                color: warehouseSelected ? Colors.grey : Colors.grey.shade400,
+              ),
             ),
           ],
         ),
@@ -465,12 +484,55 @@ class _TambahStckOpnamePageState extends State<TambahStckOpnamePage> {
                         onChanged: (v) {
                           final parsed = int.tryParse(v);
                           if (parsed != null && parsed >= 0) {
-                            setState(() => selectedItems[index]['qty'] = parsed);
+                            final stock =
+                                (selectedItems[index]['stock'] as num?)
+                                    ?.toDouble() ??
+                                0.0;
+                            if (parsed > stock) {
+                              final maxQty = stock.toInt();
+                              _qtyControllers[item['id'].toString()]?.text =
+                                  '$maxQty';
+                              _qtyControllers[item['id'].toString()]
+                                  ?.selection = TextSelection.fromPosition(
+                                TextPosition(offset: '$maxQty'.length),
+                              );
+                              setState(
+                                () => selectedItems[index]['qty'] = maxQty,
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: Colors.orange,
+                                  content: Text(
+                                    'Qty tidak bisa melebihi stock (${stock % 1 == 0 ? stock.toInt() : stock})',
+                                  ),
+                                ),
+                              );
+                            } else {
+                              setState(
+                                () => selectedItems[index]['qty'] = parsed,
+                              );
+                            }
                           }
                         },
                       ),
                     ),
                     _qtyActionBtn(Icons.add, () {
+                      final stock =
+                          (selectedItems[index]['stock'] as num?)?.toDouble() ??
+                          0.0;
+                      if (selectedItems[index]['qty'] >= stock) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.orange,
+                            content: Text(
+                              'Qty tidak bisa melebihi stock (${stock % 1 == 0 ? stock.toInt() : stock})',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
                       setState(() {
                         selectedItems[index]['qty']++;
                         _qtyControllers[item['id'].toString()]?.text =

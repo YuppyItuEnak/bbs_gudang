@@ -171,15 +171,10 @@ class AuthRepository {
     String? unitBusinessId,
   }) async {
     try {
-      final params = <String, String>{
-        'selectfield': 'id,name',
-        'no_pagination': 'true',
-      };
-      if (unitBusinessId != null) params['unit_bussiness_id'] = unitBusinessId;
-
-      final uri = Uri.parse("$baseUrl/dynamic/user_default").replace(
-        queryParameters: params,
-      );
+      final uri = Uri.parse("$baseUrl/fn/user_default/getUsersByCompany")
+          .replace(queryParameters: {
+        if (unitBusinessId != null) 'company_id': unitBusinessId,
+      });
 
       debugPrint('👤 FETCH USER PIC URI: $uri');
 

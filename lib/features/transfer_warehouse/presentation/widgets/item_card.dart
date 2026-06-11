@@ -6,11 +6,13 @@ class ItemCard extends StatefulWidget {
   final double stock;
   final int initialQty;
   final Function(int) onQtyChanged;
-  // --- Tambahkan Parameter Baru ---
   final bool isSelectionMode;
   final VoidCallback? onTap;
   final String stockLabel;
   final double? receivedQty;
+  final int? maxQty;
+  final double? excessTolerance;
+  final bool showQtyCounter;
 
   const ItemCard({
     super.key,
@@ -23,6 +25,9 @@ class ItemCard extends StatefulWidget {
     this.onTap,
     this.stockLabel = 'Total Stock',
     this.receivedQty,
+    this.maxQty,
+    this.excessTolerance,
+    this.showQtyCounter = true,
   });
 
   @override
@@ -48,6 +53,7 @@ class _ItemCardState extends State<ItemCard> {
 
   void _updateQty(int newQty) {
     if (newQty < 0) return;
+    if (widget.maxQty != null && newQty > widget.maxQty!) return;
     setState(() => qty = newQty);
     widget.onQtyChanged(qty);
   }
@@ -138,6 +144,31 @@ class _ItemCardState extends State<ItemCard> {
                             ),
                           ),
                         ),
+                      if (widget.excessTolerance != null &&
+                          widget.excessTolerance! > 0 &&
+                          widget.maxQty != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: Colors.green.shade200,
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            "Toleransi ${widget.excessTolerance!.toStringAsFixed(widget.excessTolerance! == widget.excessTolerance!.floorToDouble() ? 0 : 1)}% · Maks ${widget.maxQty}",
+                            style: TextStyle(
+                              color: Colors.green.shade700,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ],
@@ -147,6 +178,22 @@ class _ItemCardState extends State<ItemCard> {
             // --- Logika Kondisional ---
             if (widget.isSelectionMode)
               const Icon(Icons.chevron_right, color: Colors.grey)
+            else if (!widget.showQtyCounter)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Text(
+                  qty.toString(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+              )
             else ...[
               const Text(
                 "PCS",
@@ -162,6 +209,7 @@ class _ItemCardState extends State<ItemCard> {
   }
 
   Widget _buildQtySelector(bool isSelected) {
+    final bool atMax = widget.maxQty != null && qty >= widget.maxQty!;
     return Row(
       children: [
         _buildQtyBtn(
@@ -187,7 +235,7 @@ class _ItemCardState extends State<ItemCard> {
         ),
         _buildQtyBtn(
           icon: Icons.add,
-          color: Colors.green,
+          color: atMax ? Colors.grey.shade400 : Colors.green,
           onTap: () => _updateQty(qty + 1),
         ),
       ],

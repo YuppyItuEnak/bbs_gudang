@@ -30,6 +30,8 @@ class ItemBarangProvider extends ChangeNotifier {
   final Map<String, double> _itemStocks = {};
   Map<String, double> get itemStocks => _itemStocks;
 
+  int _fetchGeneration = 0;
+
   Future<void> fetchItems({
     required String token,
     bool refresh = false,
@@ -42,7 +44,10 @@ class ItemBarangProvider extends ChangeNotifier {
     String? group,
     String? division,
   }) async {
-    if (_isLoading) return;
+    // Pagination blocked if already loading; refresh (search/filter) allowed through
+    if (_isLoading && !refresh) return;
+
+    final int myGeneration = ++_fetchGeneration;
 
     // REFRESH / FILTER BARU
     if (refresh) {
@@ -81,6 +86,9 @@ class ItemBarangProvider extends ChangeNotifier {
         itemDivision: itemDivision,
       );
 
+      // Discard stale response if a newer request has been dispatched
+      if (myGeneration != _fetchGeneration) return;
+
       final List<ItemBarangModel> newItems = result['items'];
       final Map<String, double> incomingStocks = Map<String, double>.from(
         result['stocks'] ?? {},
@@ -102,11 +110,14 @@ class ItemBarangProvider extends ChangeNotifier {
       );
       debugPrint("STOCKS LOADED: ${_itemStocks.length} items");
     } catch (e) {
+      if (myGeneration != _fetchGeneration) return;
       _errorMessage = e.toString();
       debugPrint("❌ FETCH ITEM ERROR: $e");
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (myGeneration == _fetchGeneration) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
