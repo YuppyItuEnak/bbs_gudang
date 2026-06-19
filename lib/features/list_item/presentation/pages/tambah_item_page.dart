@@ -25,7 +25,9 @@ class TambahItem extends StatefulWidget {
 class _TambahItemState extends State<TambahItem> {
   final ScrollController _scrollController = ScrollController();
   final Map<String, int> _qtyMap = {};
-  final Set<String> _selectedIds = {};
+  // Stores full item data so "Tambahkan" doesn't need to look up in provider.items
+  // (which may have been replaced by a search refresh)
+  final Map<String, ItemBarangModel> _selectedItemMap = {};
   final TextEditingController _searchController = TextEditingController();
 
   Timer? _debounce; // untuk debounce search
@@ -69,7 +71,7 @@ class _TambahItemState extends State<TambahItem> {
   }
 
   bool get hasSelectedItem => widget.isOpnameMode
-      ? _selectedIds.isNotEmpty
+      ? _selectedItemMap.isNotEmpty
       : _qtyMap.values.any((qty) => qty > 0);
 
   void _onScroll() {
@@ -84,7 +86,6 @@ class _TambahItemState extends State<TambahItem> {
   }
 
   void _onSearchChanged(String value) {
-    // DEBOUNCE 500ms
     if (_debounce?.isActive ?? false) _debounce!.cancel();
 
     _debounce = Timer(const Duration(milliseconds: 500), () {
@@ -114,9 +115,9 @@ class _TambahItemState extends State<TambahItem> {
       onTap: () {
         setState(() {
           if (isChecked) {
-            _selectedIds.remove(item.id);
+            _selectedItemMap.remove(item.id);
           } else {
-            _selectedIds.add(item.id);
+            _selectedItemMap[item.id] = item;
           }
         });
       },
@@ -187,9 +188,9 @@ class _TambahItemState extends State<TambahItem> {
               onChanged: (val) {
                 setState(() {
                   if (val == true) {
-                    _selectedIds.add(item.id);
+                    _selectedItemMap[item.id] = item;
                   } else {
-                    _selectedIds.remove(item.id);
+                    _selectedItemMap.remove(item.id);
                   }
                 });
               },
@@ -332,7 +333,7 @@ class _TambahItemState extends State<TambahItem> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         itemCount: filteredItems.length +
-                            (provider.hasMore && searchQuery.isEmpty ? 1 : 0),
+                            (provider.hasMore ? 1 : 0),
                         itemBuilder: (context, index) {
                           // LOADING BAWAH (NEXT PAGE)
                           if (index == filteredItems.length) {
@@ -347,7 +348,7 @@ class _TambahItemState extends State<TambahItem> {
                               provider.itemStocks[item.id] ?? 0.0;
 
                           if (widget.isOpnameMode) {
-                            final isChecked = _selectedIds.contains(item.id);
+                            final isChecked = _selectedItemMap.containsKey(item.id);
                             return _buildCheckboxItemTile(
                               item,
                               isChecked,
@@ -387,11 +388,8 @@ class _TambahItemState extends State<TambahItem> {
                             if (widget.isOpnameMode) {
                               final itemProvider =
                                   context.read<ItemBarangProvider>();
-                              final allItems = itemProvider.items;
-                              final selectedItems = _selectedIds.map((id) {
-                                final item = allItems.firstWhere(
-                                  (i) => i.id == id,
-                                );
+                              final selectedItems = _selectedItemMap.entries.map((entry) {
+                                final item = entry.value;
                                 return {
                                   "id": item.id,
                                   "code": item.code,
@@ -399,7 +397,7 @@ class _TambahItemState extends State<TambahItem> {
                                   "item_uom_id": item.itemUomId,
                                   "item_group_coa_id": item.itemGroupCoaId,
                                   "qty": 0,
-                                  "stock": itemProvider.itemStocks[id] ?? 0.0,
+                                  "stock": itemProvider.itemStocks[item.id] ?? 0.0,
                                 };
                               }).toList();
                               Navigator.pop(context, selectedItems);

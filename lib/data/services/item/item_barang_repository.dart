@@ -28,10 +28,10 @@ class ItemBarangRepository {
           'filter_column_is_active': 'true',
 
           if (filterCode != null && filterCode.isNotEmpty)
-            'filter_code': filterCode,
+            'filter_column_code': filterCode,
 
           if (filterName != null && filterName.isNotEmpty)
-            'filter_name': filterName,
+            'filter_column_name': filterName,
 
           if (filterStatus != null && filterStatus.isNotEmpty)
             'filter_status': filterStatus,
