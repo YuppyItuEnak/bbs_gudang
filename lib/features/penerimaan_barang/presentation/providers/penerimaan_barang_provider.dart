@@ -223,6 +223,53 @@ class PenerimaanBarangProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  static num _toNum(Object? v) {
+    if (v is num) return v;
+    return double.tryParse('$v') ?? 0;
+  }
+
+  /// Validasi wajib form PB, bekerja dari state provider (tidak bergantung pada widget/tab aktif).
+  /// Mengembalikan pesan error field kosong pertama, atau null jika semua lolos.
+  String? validatePbForm() {
+    if (purchaseOrderId == null || purchaseOrderId!.isEmpty) {
+      return "Nomor PO wajib dipilih";
+    }
+    if (unitBusinessId == null) {
+      return "Company wajib dipilih";
+    }
+    if (pbCode == null || pbCode!.isEmpty) {
+      return "No. PB belum tersedia";
+    }
+    if (warehouseId == null) {
+      return "Warehouse wajib dipilih";
+    }
+    if (supplierName == null || supplierName!.isEmpty) {
+      return "Supplier wajib diisi";
+    }
+    if (prCode == null || prCode!.isEmpty) {
+      return "No. PR wajib diisi";
+    }
+    if (invoiceDate == null) {
+      return "Tgl Surat Jalan wajib diisi";
+    }
+    if (supplierSjNo == null || supplierSjNo!.isEmpty) {
+      return "Nomor SJ Supplier tidak boleh kosong";
+    }
+    if (supplierInvoiceNo == null || supplierInvoiceNo!.isEmpty) {
+      return "Nomor Invoice Supplier tidak boleh kosong";
+    }
+    if (policeNo == null || policeNo!.isEmpty) {
+      return "Nomor Polisi tidak boleh kosong";
+    }
+    if (driverName == null || driverName!.isEmpty) {
+      return "Nama Supir tidak boleh kosong";
+    }
+    if (selectedItems.isEmpty) {
+      return "Item belum dipilih. Silakan tambahkan item terlebih dahulu";
+    }
+    return null;
+  }
+
   Future<void> checkStatusPO({required String token}) async {
     if (selectedPO == null) {
       checkMessage = "PO belum dipilih";
@@ -308,12 +355,14 @@ class PenerimaanBarangProvider extends ChangeNotifier {
       final List detailList = detailsRes['data'] ?? [];
       final List outstandingList = outstandingRes['data'] ?? [];
 
-      // Map: purchase_order_d_id → qty_outstanding
+      // Hitung qty_outstanding secara lokal (qty - qty_net_received) agar tidak
+      // bergantung pada endpoint kedua yang rentan mismatch id/format.
+      // Endpoint kedua tetap dipakai sebagai fallback bila hitungan lokal ≤ 0.
       final Map<String, num> outstandingMap = {};
       for (final item in outstandingList) {
         final id = item['id'] as String?;
         if (id != null) {
-          outstandingMap[id] = (item['qty_outstanding'] ?? 0) as num;
+          outstandingMap[id] = _toNum(item['qty_outstanding']);
         }
       }
 
@@ -322,7 +371,12 @@ class PenerimaanBarangProvider extends ChangeNotifier {
       } else {
         final merged = detailList.map((item) {
           final Map<String, dynamic> m = Map<String, dynamic>.from(item as Map);
-          m['qty_outstanding'] = outstandingMap[item['id']] ?? 0;
+          final num qty = _toNum(m['qty']);
+          final num received = _toNum(m['qty_net_received']);
+          final num localOutstanding = qty - received;
+          m['qty_outstanding'] = localOutstanding > 0
+              ? localOutstanding
+              : (outstandingMap[item['id']] ?? 0);
           return m;
         }).toList();
 

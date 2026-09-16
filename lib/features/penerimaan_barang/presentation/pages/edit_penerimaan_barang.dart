@@ -64,6 +64,14 @@ class _EditPenerimaanBarangPageState extends State<EditPenerimaanBarangPage> {
 
     if (token == null) return;
 
+    final validationMessage = provider.validatePbForm();
+    if (validationMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(validationMessage), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     setState(() => isSubmitting = true);
 
     try {

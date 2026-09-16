@@ -86,54 +86,6 @@ class InfoPenerimaanBarangState extends State<InfoPenerimaanBarang> {
     super.dispose();
   }
 
-  bool validateForm() {
-    final p = context.read<PenerimaanBarangProvider>();
-
-    if (p.selectedPO == null) {
-      _showSnackBar("Nomor PO wajib dipilih");
-      return false;
-    }
-
-    if (p.unitBusinessId == null) {
-      _showSnackBar("Company wajib dipilih");
-      return false;
-    }
-
-    if (p.warehouseId == null) {
-      _showSnackBar("Warehouse wajib dipilih");
-      return false;
-    }
-
-    if (_sjController.text.isEmpty) {
-      _showSnackBar("Nomor SJ Supplier tidak boleh kosong");
-      return false;
-    }
-
-    if (_invoiceController.text.isEmpty) {
-      _showSnackBar("Nomor Invoice Supplier tidak boleh kosong");
-      return false;
-    }
-
-    if (_policeController.text.isEmpty) {
-      _showSnackBar("Nomor Police tidak boleh kosong");
-      return false;
-    }
-
-    if (_driverController.text.isEmpty) {
-      _showSnackBar("Driver tidak boleh kosong");
-      return false;
-    }
-
-
-    return true;
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(

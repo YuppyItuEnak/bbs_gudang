@@ -151,6 +151,18 @@ class _ItemCardPB extends StatefulWidget {
 class _ItemCardPBState extends State<_ItemCardPB> {
   late TextEditingController _controller;
 
+  int _toInt(Object? v) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return double.tryParse('$v')?.toInt() ?? 0;
+  }
+
+  double _toDouble(Object? v) {
+    if (v is double) return v;
+    if (v is num) return v.toDouble();
+    return double.tryParse('$v') ?? 0;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -183,9 +195,9 @@ class _ItemCardPBState extends State<_ItemCardPB> {
       _controller.text = "${widget.item['qty_receipt'] ?? 1}";
       return;
     }
-    final outstanding = (widget.item['qty_outstanding'] as num?)?.toInt();
-    final tolerance = (widget.item['excess_tolerance'] as num?)?.toDouble() ?? 0;
-    final maxQty = (outstanding != null && outstanding > 0)
+    final outstanding = _toInt(widget.item['qty_outstanding']);
+    final tolerance = _toDouble(widget.item['excess_tolerance']);
+    final maxQty = (outstanding > 0)
         ? (outstanding * (1 + tolerance / 100)).floor()
         : null;
     debugPrint('🔍 TOLERANCE APPLY: outstanding=$outstanding, tolerance=$tolerance%, maxQty=$maxQty, parsed=$parsed');
@@ -199,10 +211,12 @@ class _ItemCardPBState extends State<_ItemCardPB> {
     final item = widget.item;
     final String name = item["item_name"] ?? "-";
     final String code = item["item_code"] ?? "-";
-    final int qtyOrder = (item["qty_order"] as num?)?.toInt() ?? 0;
-    final int qtyOutstanding = (item["qty_outstanding"] as num?)?.toInt() ?? 0;
-    final int qtyReceipt = (item["qty_receipt"] as num?)?.toInt() ?? 1;
-    final double tolerance = (item["excess_tolerance"] as num?)?.toDouble() ?? 0;
+    final int qtyOrder = _toInt(item["qty_order"]);
+    final int qtyOutstanding = _toInt(item["qty_outstanding"]);
+    final int qtyReceipt = _toInt(item["qty_receipt"]) != 0
+        ? _toInt(item["qty_receipt"])
+        : 1;
+    final double tolerance = _toDouble(item["excess_tolerance"]);
     final int maxQty = qtyOutstanding > 0
         ? (qtyOutstanding * (1 + tolerance / 100)).floor()
         : 0;
