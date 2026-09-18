@@ -37,6 +37,18 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
     _scrollController.addListener(_onScroll);
   }
 
+  int _toInt(Object? v) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return double.tryParse('$v')?.toInt() ?? 0;
+  }
+
+  double _toDouble(Object? v) {
+    if (v is double) return v;
+    if (v is num) return v.toDouble();
+    return double.tryParse('$v') ?? 0;
+  }
+
   /// Isi _qtyMap dan _checkedIds dengan qty_outstanding untuk item baru.
   void _initOutstandingQty(List<Map<String, dynamic>> details) {
     if (!mounted) return;
@@ -44,8 +56,7 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
     for (final item in details) {
       final String id = item['id'] as String;
       if (!_qtyMap.containsKey(id)) {
-        final int outstanding =
-            ((item['qty_outstanding'] ?? 0) as num).toInt();
+        final int outstanding = _toInt(item['qty_outstanding']);
         _qtyMap[id] = outstanding;
         if (outstanding > 0) _checkedIds.add(id);
         changed = true;
@@ -54,8 +65,7 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
     if (changed) setState(() {});
   }
 
-  bool get hasSelectedItem =>
-      _checkedIds.any((id) => (_qtyMap[id] ?? 0) > 0);
+  bool get hasSelectedItem => _checkedIds.isNotEmpty;
 
   void _onScroll() {
     final provider = context.read<PenerimaanBarangProvider>();
@@ -160,7 +170,14 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                               _checkedIds.clear();
                             } else {
                               for (final item in provider.pbDetails) {
-                                _checkedIds.add(item['id'] as String);
+                                final String id = item['id'] as String;
+                                _checkedIds.add(id);
+                                if ((_qtyMap[id] ?? 0) <= 0) {
+                                  final int outstanding = _toInt(item['qty_outstanding']) != 0
+                                      ? _toInt(item['qty_outstanding'])
+                                      : _toInt(item['qty']);
+                                  _qtyMap[id] = outstanding > 0 ? outstanding : 1;
+                                }
                               }
                             }
                           });
@@ -223,13 +240,11 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                           final String itemName = item['item_name'] ?? '-';
                           final String itemCode = item['item_code'] ?? '-';
                           final int currentQty = _qtyMap[itemId] ?? 0;
-                          final int qtyOutstanding =
-                              ((item['qty_outstanding'] ?? item['qty'] ?? 0)
-                                      as num)
-                                  .toInt();
+                          final int qtyOutstanding = _toInt(item['qty_outstanding']) != 0
+                              ? _toInt(item['qty_outstanding'])
+                              : _toInt(item['qty']);
                           final double tolerance =
-                              ((item['excess_tolerance'] ?? 0) as num)
-                                  .toDouble();
+                              _toDouble(item['excess_tolerance']);
                           final int maxQty = qtyOutstanding > 0
                               ? (qtyOutstanding * (1 + tolerance / 100)).floor()
                               : 0;
@@ -250,6 +265,11 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                                   setState(() {
                                     if (val == true) {
                                       _checkedIds.add(itemId);
+                                      if ((_qtyMap[itemId] ?? 0) <= 0) {
+                                        final int outstanding = qtyOutstanding;
+                                        _qtyMap[itemId] =
+                                            outstanding > 0 ? outstanding : 1;
+                                      }
                                     } else {
                                       _checkedIds.remove(itemId);
                                     }
@@ -317,9 +337,10 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                                     "item_id": item["item_id"],
                                     "code": item["item_code"],
                                     "name": item["item_name"],
-                                    "qty_order": item["qty_outstanding"] ?? item["qty"],
+                                    "qty_order": item["qty"] ?? item["qty_order"] ?? 0,
                                     "qty_outstanding": item["qty_outstanding"],
-                                    "qty_receipt": _qtyMap[id] ?? 1,
+                                    "qty_receipt":
+                                        (_qtyMap[id] ?? 0) > 0 ? _qtyMap[id]! : 1,
                                     "excess_tolerance": excessTolerance,
                                   };
                                 })
