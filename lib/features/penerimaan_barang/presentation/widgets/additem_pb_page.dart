@@ -49,7 +49,8 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
     return double.tryParse('$v') ?? 0;
   }
 
-  /// Isi _qtyMap dan _checkedIds dengan qty_outstanding untuk item baru.
+  /// Isi _qtyMap dengan qty_outstanding untuk item baru.
+  /// Item tidak otomatis dicentang; user harus centang dulu sebelum ditambahkan.
   void _initOutstandingQty(List<Map<String, dynamic>> details) {
     if (!mounted) return;
     bool changed = false;
@@ -58,7 +59,6 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
       if (!_qtyMap.containsKey(id)) {
         final int outstanding = _toInt(item['qty_outstanding']);
         _qtyMap[id] = outstanding;
-        if (outstanding > 0) _checkedIds.add(id);
         changed = true;
       }
     }
@@ -125,11 +125,13 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
             );
           }
 
-          final bool allChecked = provider.pbDetails.isNotEmpty &&
+          final bool allChecked =
+              provider.pbDetails.isNotEmpty &&
               provider.pbDetails.every(
                 (item) => _checkedIds.contains(item['id'] as String),
               );
-          final bool someChecked = !allChecked &&
+          final bool someChecked =
+              !allChecked &&
               provider.pbDetails.any(
                 (item) => _checkedIds.contains(item['id'] as String),
               );
@@ -162,8 +164,8 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                         value: allChecked
                             ? true
                             : someChecked
-                                ? null
-                                : false,
+                            ? null
+                            : false,
                         onChanged: (_) {
                           setState(() {
                             if (allChecked) {
@@ -173,10 +175,13 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                                 final String id = item['id'] as String;
                                 _checkedIds.add(id);
                                 if ((_qtyMap[id] ?? 0) <= 0) {
-                                  final int outstanding = _toInt(item['qty_outstanding']) != 0
+                                  final int outstanding =
+                                      _toInt(item['qty_outstanding']) != 0
                                       ? _toInt(item['qty_outstanding'])
                                       : _toInt(item['qty']);
-                                  _qtyMap[id] = outstanding > 0 ? outstanding : 1;
+                                  _qtyMap[id] = outstanding > 0
+                                      ? outstanding
+                                      : 1;
                                 }
                               }
                             }
@@ -223,7 +228,8 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                         controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(8, 0, 20, 0),
-                        itemCount: provider.pbDetails.length +
+                        itemCount:
+                            provider.pbDetails.length +
                             (provider.hasMore && provider.isLoadingPbDetail
                                 ? 1
                                 : 0),
@@ -240,16 +246,19 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                           final String itemName = item['item_name'] ?? '-';
                           final String itemCode = item['item_code'] ?? '-';
                           final int currentQty = _qtyMap[itemId] ?? 0;
-                          final int qtyOutstanding = _toInt(item['qty_outstanding']) != 0
+                          final int qtyOutstanding =
+                              _toInt(item['qty_outstanding']) != 0
                               ? _toInt(item['qty_outstanding'])
                               : _toInt(item['qty']);
-                          final double tolerance =
-                              _toDouble(item['excess_tolerance']);
+                          final double tolerance = _toDouble(
+                            item['excess_tolerance'],
+                          );
                           final int maxQty = qtyOutstanding > 0
                               ? (qtyOutstanding * (1 + tolerance / 100)).floor()
                               : 0;
                           final double stockValue = qtyOutstanding.toDouble();
-                          final double qtyReceived = double.tryParse(
+                          final double qtyReceived =
+                              double.tryParse(
                                 item['qty_net_received']?.toString() ?? '0',
                               ) ??
                               0;
@@ -267,8 +276,9 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                                       _checkedIds.add(itemId);
                                       if ((_qtyMap[itemId] ?? 0) <= 0) {
                                         final int outstanding = qtyOutstanding;
-                                        _qtyMap[itemId] =
-                                            outstanding > 0 ? outstanding : 1;
+                                        _qtyMap[itemId] = outstanding > 0
+                                            ? outstanding
+                                            : 1;
                                       }
                                     } else {
                                       _checkedIds.remove(itemId);
@@ -287,7 +297,9 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                                     initialQty: currentQty,
                                     receivedQty: qtyReceived,
                                     maxQty: maxQty,
-                                    excessTolerance: tolerance > 0 ? tolerance : null,
+                                    excessTolerance: tolerance > 0
+                                        ? tolerance
+                                        : null,
                                     showQtyCounter: false,
                                     onQtyChanged: (newQty) {
                                       setState(() {
@@ -316,39 +328,53 @@ class _AddItemPBPageState extends State<AddItemPBPage> {
                   width: double.infinity,
                   height: 55,
                   child: ElevatedButton(
-                    onPressed: hasSelectedItem
-                        ? () {
-                            final selectedItems = _checkedIds
-                                .where((id) => (_qtyMap[id] ?? 0) > 0)
-                                .map((id) {
-                                  final item = context
-                                      .read<PenerimaanBarangProvider>()
-                                      .pbDetails
-                                      .firstWhere((i) => i['id'] == id);
+                    onPressed: () {
+                      if (!hasSelectedItem) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "Centang dulu item yang ingin ditambahkan",
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
 
-                                  final excessTolerance = item["excess_tolerance"];
-                                  debugPrint('🔍 TOLERANCE CHECK item[${item["item_code"]}]:'
-                                      ' exchange_rate=$excessTolerance'
-                                      ', qty_outstanding=${item["qty_outstanding"]}'
-                                      ', qty=${item["qty"]}');
+                      final selectedItems = _checkedIds
+                          .where((id) => (_qtyMap[id] ?? 0) > 0)
+                          .map((id) {
+                            final item = context
+                                .read<PenerimaanBarangProvider>()
+                                .pbDetails
+                                .firstWhere((i) => i['id'] == id);
 
-                                  return {
-                                    "purchase_order_d_id": item["id"],
-                                    "item_id": item["item_id"],
-                                    "code": item["item_code"],
-                                    "name": item["item_name"],
-                                    "qty_order": item["qty"] ?? item["qty_order"] ?? 0,
-                                    "qty_outstanding": item["qty_outstanding"],
-                                    "qty_receipt":
-                                        (_qtyMap[id] ?? 0) > 0 ? _qtyMap[id]! : 1,
-                                    "excess_tolerance": excessTolerance,
-                                  };
-                                })
-                                .toList();
+                            final excessTolerance = item["excess_tolerance"];
+                            debugPrint(
+                              '🔍 TOLERANCE CHECK item[${item["item_code"]}]:'
+                              ' exchange_rate=$excessTolerance'
+                              ', qty_outstanding=${item["qty_outstanding"]}'
+                              ', qty=${item["qty"]}',
+                            );
 
-                            Navigator.pop(context, selectedItems);
-                          }
-                        : null,
+                            return {
+                              "purchase_order_d_id": item["id"],
+                              "item_id": item["item_id"],
+                              "code": item["item_code"],
+                              "name": item["item_name"],
+                              "qty_order":
+                                  item["qty"] ?? item["qty_order"] ?? 0,
+                              "qty_outstanding": item["qty_outstanding"],
+                              "qty_receipt": (_qtyMap[id] ?? 0) > 0
+                                  ? _qtyMap[id]!
+                                  : 1,
+                              "excess_tolerance": excessTolerance,
+                            };
+                          })
+                          .toList();
+
+                      Navigator.pop(context, selectedItems);
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4CAF50),
                       disabledBackgroundColor: Colors.grey.shade400,
